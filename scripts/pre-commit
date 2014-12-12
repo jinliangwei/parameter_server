@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Put me in /path/to/repo/.git/hooks/
+
+echo Using git pre-commit hook
+
+script_dir="$( cd "$( dirname "$0" )" && pwd )"
+echo $script_dir
+git_dir=`dirname $script_dir`
+project_root=`dirname $git_dir`
+files=`git diff-index --cached --name-only HEAD | grep '\(cpp\|hpp\)$'`
+
+echo ============================
+num_files=0;
+for i in $files
+do
+  echo Linting $i
+  num_files=$((num_files+1))
+done
+echo ============================
+
+file_paths=""
+for i in $files
+do
+  file_paths+="$project_root/$i "
+done
+
+if [ $num_files -gt 0 ]; then
+  python $project_root/scripts/cpplint.py --extension=hpp,cpp $file_paths
+  if [ $? -ne 0 ]; then
+    read -p "Please fix format before commiting. Force commit? [y/N]" -n 1 -r
+    if [[ ! $REPLY =~ ^[Yy]$ ]]
+    then
+      echo Abort commit.
+      exit 1
+    fi
+    echo # new line
+  fi
+
+  echo Passed all cpplint check. Commiting now.
+  echo ============================
+fi
+
+exit 0
