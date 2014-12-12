@@ -967,7 +967,6 @@ void *AbstractBgWorker::operator() () {
       timeout_milli = BgIdleWork();
       continue;
     } else {
-      // (TODO): verify the difference in performance
       timeout_milli = ResetBgIdleMilli();
     }
 

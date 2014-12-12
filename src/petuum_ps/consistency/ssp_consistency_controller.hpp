@@ -62,12 +62,12 @@ public:
   virtual void Clock();
 
 protected:
-  void DenseBatchIncDenseOpLog(OpLogAccessor *oplog_accessor, const uint8_t *updates,
+  void DenseBatchIncDenseOpLog(AbstractRowOpLog *row_oplog, const uint8_t *updates,
                                int32_t index_st, int32_t num_updates);
-  void DenseBatchIncNonDenseOpLog(OpLogAccessor *oplog_accessor, const uint8_t *updates,
+  void DenseBatchIncNonDenseOpLog(AbstractRowOpLog *row_oplog, const uint8_t *updates,
                                   int32_t index_st, int32_t num_updates);
   typedef void (SSPConsistencyController::*DenseBatchIncOpLogFunc)(
-      OpLogAccessor *oplog_accessor, const uint8_t *updates,
+      AbstractRowOpLog *row_oplog, const uint8_t *updates,
       int32_t index_st, int32_t num_updates);
 
   // SSP staleness parameter.

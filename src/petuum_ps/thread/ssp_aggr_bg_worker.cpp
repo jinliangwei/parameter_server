@@ -310,7 +310,6 @@ BgOpLog *SSPAggrBgWorker::PrepareOpLogsToSend(int32_t clock_to_push) {
 }
 
 long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
-
   if (!clock_advanced)
     return GlobalContext::get_bg_idle_milli();
 
@@ -324,9 +323,12 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   if (clock_to_push >= 0)
     clock_has_pushed_ = clock_to_push;
 
+  STATS_BG_ACCUM_CLOCK_END_OPLOG_SERIALIZE_BEGIN();
   BgOpLog *bg_oplog = PrepareOpLogsToSend(clock_to_push);
 
   CreateOpLogMsgs(bg_oplog);
+  STATS_BG_ACCUM_CLOCK_END_OPLOG_SERIALIZE_END();
+
   size_t sent_size = SendOpLogMsgs(true);
   TrackBgOpLog(bg_oplog);
 
@@ -334,8 +336,6 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
       = TransTimeEstimate::EstimateTransMillisec(sent_size);
 
   msg_send_timer_.restart();
-
-  STATS_BG_ACCUM_IDLE_SEND_END();
 
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 

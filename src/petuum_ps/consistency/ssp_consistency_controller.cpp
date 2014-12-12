@@ -129,12 +129,13 @@ void SSPConsistencyController::DenseBatchInc(
   OpLogAccessor oplog_accessor;
   bool new_create = oplog_.FindInsertOpLog(row_id, &oplog_accessor);
 
+  AbstractRowOpLog *row_oplog = oplog_accessor.get_row_oplog();
+
   if (new_create) {
-    oplog_accessor.get_row_oplog()->OverwriteWithDenseUpdate(
-        updates, index_st, num_updates);
+    row_oplog->OverwriteWithDenseUpdate(updates, index_st, num_updates);
   } else {
     const uint8_t* deltas_uint8 = reinterpret_cast<const uint8_t*>(updates);
-    (this->*DenseBatchIncOpLog_)(&oplog_accessor, deltas_uint8,
+    (this->*DenseBatchIncOpLog_)(row_oplog, deltas_uint8,
                                  index_st, num_updates);
   }
   STATS_APP_SAMPLE_BATCH_INC_OPLOG_END();
@@ -150,11 +151,11 @@ void SSPConsistencyController::DenseBatchInc(
 }
 
 void SSPConsistencyController::DenseBatchIncDenseOpLog(
-    OpLogAccessor *oplog_accessor, const uint8_t *updates,
+    AbstractRowOpLog *row_oplog, const uint8_t *updates,
     int32_t index_st, int32_t num_updates) {
   size_t update_size = sample_row_->get_update_size();
   uint8_t *oplog_delta = reinterpret_cast<uint8_t*>(
-      oplog_accessor->get_row_oplog()->FindCreate(index_st));
+      row_oplog->FindCreate(index_st));
   for (int i = 0; i < num_updates; ++i) {
     int32_t col_id = i + index_st;
     AddUpdates_(col_id, oplog_delta, updates + update_size*i);
@@ -163,13 +164,13 @@ void SSPConsistencyController::DenseBatchIncDenseOpLog(
 }
 
 void SSPConsistencyController::DenseBatchIncNonDenseOpLog(
-    OpLogAccessor *oplog_accessor, const uint8_t *updates,
+    AbstractRowOpLog *row_oplog, const uint8_t *updates,
     int32_t index_st, int32_t num_updates) {
   size_t update_size = sample_row_->get_update_size();
   for (int i = 0; i < num_updates; ++i) {
     int32_t col_id = i + index_st;
     void *oplog_delta
-        = oplog_accessor->get_row_oplog()->FindCreate(col_id);
+        = row_oplog->FindCreate(col_id);
     sample_row_->AddUpdates(col_id, oplog_delta, updates + update_size*i);
   }
 }
