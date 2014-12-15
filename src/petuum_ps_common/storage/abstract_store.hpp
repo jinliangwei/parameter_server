@@ -36,13 +36,9 @@ public:
 
   virtual const void Copy(void *to) const = 0;
 
-  // Iterating over a range of row ids.
-  // This is optional.
-  // Implement if desired to use DenseBatchInc() on this store type.
-  // Up to (including) end or capacity.
-  virtual void RangeBegin(AbstractIterator<V> **iterator, int32_t begin,
-                          int32_t end) {
-    LOG(FATAL) << "Not implemented";
+  // contiguous memory
+  virtual V *GetPtr(int32_t col_id) {
+    LOG(FATAL) << "Not yet supported";
   }
 
   static_assert(std::is_pod<V>::value, "V must be POD");

@@ -175,12 +175,12 @@ template<template<typename> class StoreType, typename V,
          template<typename> class ImpCalc>
 void NumericStoreRow<StoreType, V, ImpCalc>::ApplyDenseBatchIncUnsafe(
     const void* update_batch, int32_t index_st, int32_t num_updates) {
-  AbstractIterator<V> *iter;
-  store_.RangeBegin(&iter, index_st, index_st + num_updates - 1);
+
+  V *val_array = store_.GetPtr(index_st);
   const V *update_array = reinterpret_cast<const V*>(update_batch);
+
   for (int32_t i = 0; i < num_updates; ++i) {
-    (**iter) += update_array[i];
-    ++(*iter);
+    val_array[i] += update_array[i];
   }
 }
 

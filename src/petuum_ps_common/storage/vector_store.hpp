@@ -30,33 +30,14 @@ public:
   V Get (int32_t col_id) const;
   void Inc(int32_t col_id, V delta);
 
+  V *GetPtr(int32_t col_id);
+
   size_t get_capacity() const;
 
   const void Copy(void *to) const;
 
-  class Iterator : public AbstractIterator<V> {
-  public:
-    Iterator() { }
-    ~Iterator() { }
-
-    int32_t get_key();
-    V & operator *();
-    void operator ++ ();
-    bool is_end();
-
-    friend class VectorStore<V>;
-
-  private:
-    V *data_ptr_;
-    int32_t col_id_;
-    int32_t end_id_;
-  };
-
-  void RangeBegin(AbstractIterator<V> **iterator, int32_t begin,
-                  int32_t end);
 private:
   std::vector<V> data_;
-  Iterator iter_;
 };
 
 template<typename V>
@@ -117,6 +98,11 @@ void VectorStore<V>::Inc(int32_t col_id, V delta) {
 }
 
 template<typename V>
+V* VectorStore<V>::GetPtr(int32_t col_id) {
+  return &(data_[col_id]);
+}
+
+template<typename V>
 size_t VectorStore<V>::get_capacity() const {
   return data_.size();
 }
@@ -125,36 +111,6 @@ template<typename V>
 const void VectorStore<V>::Copy(void *to) const {
   std::vector<V> *vec = reinterpret_cast<std::vector<V>*>(to);
   memcpy(vec->data(), data_.data(), data_.size()*sizeof(V));
-}
-
-template<typename V>
-void VectorStore<V>::RangeBegin(AbstractIterator<V> **iterator, int32_t begin,
-                                int32_t end) {
-  iter_.data_ptr_ = data_.data() + begin;
-  iter_.col_id_ = begin;
-  iter_.end_id_ = (end < data_.size()) ? end : (data_.size() - 1);
-  *iterator = &iter_;
-}
-
-template<typename V>
-int32_t VectorStore<V>::Iterator::get_key() {
-  return col_id_;
-}
-
-template<typename V>
-V &VectorStore<V>::Iterator::operator *() {
-  return *data_ptr_;
-}
-
-template<typename V>
-void VectorStore<V>::Iterator::operator ++ () {
-  ++col_id_;
-  data_ptr_ += 1;
-}
-
-template<typename V>
-bool VectorStore<V>::Iterator::is_end() {
-  return col_id_ > end_id_;
 }
 
 }

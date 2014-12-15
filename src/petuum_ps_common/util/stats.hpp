@@ -761,7 +761,7 @@ private:
 
   static const int32_t kGetSampleFreq = 10000;
   static const int32_t kIncSampleFreq = 10000;
-  static const int32_t kBatchIncSampleFreq = 1000;
+  static const int32_t kBatchIncSampleFreq = 10000;
   static const int32_t kBatchIncOplogSampleFreq = 10000;
   static const int32_t kBatchIncProcessStorageSampleFreq = 10000;
   static const int32_t kClockSampleFreq = 1;
@@ -770,8 +770,8 @@ private:
   static const int32_t kThreadIncSampleFreq = 10000;
   static const int32_t kThreadBatchIncSampleFreq = 10000;
 
-  static const int32_t kProcessCacheInsertSampleFreq = 1000;
-  static const int32_t kServerPushDeserializeSampleFreq = 1000;
+  static const int32_t kProcessCacheInsertSampleFreq = 10000;
+  static const int32_t kServerPushDeserializeSampleFreq = 10000;
 
   // assuming I have received all server pushed message after this number
   // of Get()s.

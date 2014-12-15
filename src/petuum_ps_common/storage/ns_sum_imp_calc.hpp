@@ -79,22 +79,18 @@ double NSSumImpCalc<V>::ApplyDenseBatchIncGetImportance(
     AbstractStore<V> *store,
     const void* update_batch, int32_t index_st, int32_t num_updates) {
 
-  AbstractIterator<V> *iter;
-  store->RangeBegin(&iter, index_st, index_st + num_updates - 1);
+  V *val_array = store->GetPtr(index_st);
   const V *update_array = reinterpret_cast<const V*>(update_batch);
-
   double accum_importance = 0;
 
   for (int32_t i = 0; i < num_updates; ++i) {
-    V &val = **iter;
-
+    V &val = val_array[i];
     double importance
         = (double(val) == 0) ? double(update_array[i])
         : double(update_array[i]) / double(val);
     accum_importance += std::abs(importance);
 
     val += update_array[i];
-    ++(*iter);
   }
 
   return accum_importance;
