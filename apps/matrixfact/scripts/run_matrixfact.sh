@@ -3,14 +3,15 @@
 # Input files:
 #data_filename="/l0/netflix.dat.list.gl"
 #data_filename="/l0/movielens_10m.dat"
-data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
+#data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
-#host_filename="../../machinefiles/servers"
-host_filename="../../machinefiles/localserver"
+data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
+host_filename="../../machinefiles/servers"
+#host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=20
-init_step_size=3e-3
+K=1000
+init_step_size=5e-5
 step_dec=0.985
 use_step_dec=true # false to use power decay.
 lambda=0
@@ -19,8 +20,8 @@ data_format=list
 # Execution parameters:
 num_iterations=20
 ssp_mode="SSPPush"
-num_worker_threads=4
-num_comm_channels_per_client=1
+num_worker_threads=64
+num_comm_channels_per_client=32
 staleness=2 # effective staleness is staleness / num_clocks_per_iter.
 N_cache_size=480190
 #N_cache_size=500000
@@ -72,7 +73,7 @@ unique_host_list=`cat $host_file | awk '{ print $2 }' | uniq`
 num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 
 # output paths
-output_dir="$app_dir/output_1node_vm_test"
+output_dir="$app_dir/output_8node_debug"
 output_dir="${output_dir}/netflix_K${K}"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
@@ -149,8 +150,8 @@ for ip in $unique_host_list; do
     --process_storage_type ${process_storage_type} \
     --no_oplog_replay=${no_oplog_replay}"
 
-  #ssh $ssh_options $ip $cmd&
-  eval $cmd
+  ssh $ssh_options $ip $cmd&
+  #eval $cmd
 
   # Wait a few seconds for the name node (client 0) to set up
   if [ $client_id -eq 0 ]; then
