@@ -121,8 +121,6 @@ void SSPPushRowRequestOpLogMgr::ServerAcknowledgeVersion(int32_t server_id,
     }
     if (version_oplog_list_.empty())
       break;
-
-    version_oplog = version_oplog_list_.front();
   } while (1);
 
 }

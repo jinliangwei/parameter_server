@@ -1,6 +1,7 @@
 #include <petuum_ps/thread/ssp_aggr_bg_worker.hpp>
 #include <petuum_ps/thread/trans_time_estimate.hpp>
 #include <petuum_ps_common/util/stats.hpp>
+#include <algorithm>
 
 namespace petuum {
 
@@ -121,8 +122,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
   }
   return accum_table_oplog_bytes;
 }
-  size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
-      int32_t table_id, ClientTable *table, size_t bytes_accumulated,
+size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
+    int32_t table_id, ClientTable *table, size_t bytes_accumulated,
     TableOpLogMeta *table_oplog_meta,
     GetSerializedRowOpLogSizeFunc GetSerializedRowOpLogSize,
     BgOpLogPartition *bg_table_oplog) {
@@ -167,6 +168,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
 
   table_oplog_meta->Sort();
 
+  //LOG(INFO) << "GetAndClearNextInOrder() ";
   int32_t row_id;
   row_id = table_oplog_meta->GetAndClearNextInOrder();
 
@@ -332,16 +334,26 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   size_t sent_size = SendOpLogMsgs(true);
   TrackBgOpLog(bg_oplog);
 
+  double left_over_send_milli_sec = 0;
+
+  if (oplog_send_milli_sec_ > 0) {
+    double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
+    left_over_send_milli_sec = std::max<double>(0, oplog_send_milli_sec_ - send_elapsed_milli);
+  }
+
   oplog_send_milli_sec_
-      = TransTimeEstimate::EstimateTransMillisec(sent_size);
+      = TransTimeEstimate::EstimateTransMillisec(sent_size)
+      + left_over_send_milli_sec;
 
   msg_send_timer_.restart();
 
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 
-  VLOG(0) << "BgIdle send bytes = " << sent_size
-          << " send milli sec = " << oplog_send_milli_sec_
-          << " bg_id = " << my_id_;
+  //LOG(INFO) << "HandleClock send bytes = " << sent_size
+  //        << " clock_to_push = " << clock_to_push
+  //        << " send milli sec = " << oplog_send_milli_sec_
+  //        << " left over milli = " << left_over_send_milli_sec
+  //        << " bg_id = " << my_id_;
 
   return oplog_send_milli_sec_;
 }
@@ -456,6 +468,8 @@ long SSPAggrBgWorker::BgIdleWork() {
   // check if last msg has been sent out
   if (oplog_send_milli_sec_ > 1) {
     double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
+    //LOG(INFO) << "send_elapsed_milli = " << send_elapsed_milli
+    //        << " oplog_send_milli_sec_ = " << oplog_send_milli_sec_;
     if (oplog_send_milli_sec_ > send_elapsed_milli + 1)
       return (oplog_send_milli_sec_ - send_elapsed_milli);
   }
@@ -473,6 +487,7 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   if (!found_oplog) {
     oplog_send_milli_sec_ = 0;
+    //LOG(INFO) << "Bg nothing to send";
     return GlobalContext::get_bg_idle_milli();
   }
 
@@ -494,9 +509,10 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 
-  VLOG(0) << "BgIdle send bytes = " << sent_size
-            << " send milli sec = " << oplog_send_milli_sec_
-            << " bg_id = " << ThreadContext::get_id();
+  //LOG(INFO) << "BgIdle send bytes = " << sent_size
+  //        << " bw = " << GlobalContext::get_bandwidth_mbps()
+  //        << " send milli sec = " << oplog_send_milli_sec_
+  //        << " bg_id = " << my_id_;
   return oplog_send_milli_sec_;
 }
 

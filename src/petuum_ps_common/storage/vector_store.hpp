@@ -99,7 +99,7 @@ void VectorStore<V>::Inc(int32_t col_id, V delta) {
 
 template<typename V>
 V* VectorStore<V>::GetPtr(int32_t col_id) {
-  return &(data_[col_id]);
+  return data_.data() + col_id;
 }
 
 template<typename V>

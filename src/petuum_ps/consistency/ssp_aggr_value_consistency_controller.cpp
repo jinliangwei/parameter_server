@@ -92,21 +92,17 @@ void SSPAggrValueConsistencyController::DenseBatchInc(
 
   OpLogAccessor oplog_accessor;
   bool new_create = oplog_.FindInsertOpLog(row_id, &oplog_accessor);
+  AbstractRowOpLog *row_oplog = oplog_accessor.get_row_oplog();
 
   if (new_create) {
-    oplog_accessor.get_row_oplog()->OverwriteWithDenseUpdate(
-        updates, index_st, num_updates);
+    row_oplog->OverwriteWithDenseUpdate(updates, index_st, num_updates);
   } else {
-      const uint8_t* deltas_uint8 = reinterpret_cast<const uint8_t*>(updates);
-      for (int i = 0; i < num_updates; ++i) {
-        int32_t col_id = i + index_st;
-        void *oplog_delta = oplog_accessor.get_row_oplog()->FindCreate(col_id);
-        sample_row_->AddUpdates(col_id, oplog_delta, deltas_uint8
-                                + sample_row_->get_update_size()*i);
-      }
-    }
+    const uint8_t* deltas_uint8 = reinterpret_cast<const uint8_t*>(updates);
+    (this->*DenseBatchIncOpLog_)(row_oplog, deltas_uint8, index_st,
+                                 num_updates);
+  }
   MetaRowOpLog *meta_row_oplog
-      = dynamic_cast<MetaRowOpLog*>(oplog_accessor.get_row_oplog());
+      = dynamic_cast<MetaRowOpLog*>(row_oplog);
   meta_row_oplog->GetMeta().set_clock(ThreadContext::get_clock());
 
   double importance = 0.0;

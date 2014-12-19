@@ -23,6 +23,7 @@ TableOpLogMeta::TableOpLogMeta(const AbstractRow *sample_row):
       MergeRowOpLogMeta_ = MergeRowOpLogMetaNoOp;
       break;
     case RelativeMagnitude:
+      //LOG(INFO) << "Sort on importance";
       CompRowOpLogMeta_ = CompRowOpLogMetaImportance;
       ReassignImportance_ = ReassignImportanceNoOp;
       MergeRowOpLogMeta_ = MergeRowOpLogMetaAccum;
@@ -61,6 +62,7 @@ void TableOpLogMeta::InsertMergeRowOpLogMeta(int32_t row_id,
 }
 
 void TableOpLogMeta::Sort() {
+  //LOG(INFO) << "Sort called";
   ReassignImportance_(&oplog_list_);
   oplog_list_.sort(CompRowOpLogMeta_);
 }

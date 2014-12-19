@@ -11,7 +11,6 @@
 
 namespace petuum {
 
-
 // SortedVectorMapStore stores pairs of (int32_t, V) in an array, sorted on
 // int32_t (the weight) in descending order. Like map, it supports unbounded
 // number of items through dynamic memory allocation.

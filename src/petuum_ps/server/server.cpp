@@ -146,6 +146,10 @@ void Server::Init(int32_t server_id,
 
    while (updates != 0) {
      ++accum_oplog_count_;
+     //LOG(INFO) << "table_id = " << table_id
+     //        << " row_id = " << row_id
+     //        << " updates = " << updates
+     //        << " num_updates = " << num_updates;
      bool found
        = server_table->ApplyRowOpLog(row_id, column_ids, updates, num_updates);
 

@@ -2,6 +2,7 @@
 
 #include <petuum_ps_common/include/abstract_row.hpp>
 
+#include <petuum_ps_common/storage/vector_store.hpp>
 #include <petuum_ps_common/storage/ns_sum_imp_calc.hpp>
 
 #include <mutex>
@@ -165,8 +166,7 @@ void NumericStoreRow<StoreType, V, ImpCalc>::ApplyBatchIncUnsafe(
     const int32_t *column_ids,
     const void* update_batch, int32_t num_updates) {
   const V *update_array = reinterpret_cast<const V*>(update_batch);
-  int i;
-  for (i = 0; i < num_updates; ++i) {
+  for (int i = 0; i < num_updates; ++i) {
     store_.Inc(column_ids[i], update_array[i]);
   }
 }
@@ -175,7 +175,6 @@ template<template<typename> class StoreType, typename V,
          template<typename> class ImpCalc>
 void NumericStoreRow<StoreType, V, ImpCalc>::ApplyDenseBatchIncUnsafe(
     const void* update_batch, int32_t index_st, int32_t num_updates) {
-
   V *val_array = store_.GetPtr(index_st);
   const V *update_array = reinterpret_cast<const V*>(update_batch);
 

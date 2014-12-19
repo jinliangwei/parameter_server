@@ -20,7 +20,7 @@ SSPPushConsistencyController::SSPPushConsistencyController(
 
 void SSPPushConsistencyController::GetAsyncForced(int32_t row_id) {
   // Look for row_id in process_storage_.
-  int32_t stalest_clock = ThreadContext::get_clock();
+  int32_t stalest_clock = std::max(0, ThreadContext::get_clock() - staleness_);
 
   if (pending_async_get_cnt_.get() == 0) {
     pending_async_get_cnt_.reset(new size_t);
@@ -38,7 +38,7 @@ void SSPPushConsistencyController::GetAsyncForced(int32_t row_id) {
 
 void SSPPushConsistencyController::GetAsync(int32_t row_id) {
   // Look for row_id in process_storage_.
-  int32_t stalest_clock = ThreadContext::get_clock();
+  int32_t stalest_clock = std::max(0, ThreadContext::get_clock() - staleness_);
 
   if (process_storage_.Find(row_id))
     return;

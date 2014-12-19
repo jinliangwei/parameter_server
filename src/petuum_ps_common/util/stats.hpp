@@ -551,7 +551,7 @@ struct BgThreadStats {
   size_t accum_num_push_row_msg_recv;
   double accum_idle_send_sec;
 
-  size_t accum_idle_send_bytes;
+  double accum_idle_send_bytes_mb;
 
   HighResolutionTimer idle_send_timer;
 
@@ -584,7 +584,7 @@ struct BgThreadStats {
     accum_num_idle_send(0),
     accum_num_push_row_msg_recv(0),
     accum_idle_send_sec(0),
-    accum_idle_send_bytes(0),
+    accum_idle_send_bytes_mb(0.0),
     accum_handle_append_oplog_sec(0),
     num_row_oplog_created(0),
     num_row_oplog_recycled(0) { }
@@ -852,7 +852,7 @@ private:
   static std::vector<size_t> bg_accum_num_idle_send_;
   static std::vector<size_t> bg_accum_num_push_row_msg_recv_;
   static std::vector<double> bg_accum_idle_send_sec_;
-  static std::vector<size_t> bg_accum_idle_send_bytes_;
+  static std::vector<double> bg_accum_idle_send_bytes_mb_;
 
   static std::vector<double> bg_accum_handle_append_oplog_sec_;
   static std::vector<size_t> bg_num_append_oplog_buff_handled_;

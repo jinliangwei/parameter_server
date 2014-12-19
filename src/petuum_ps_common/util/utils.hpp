@@ -5,6 +5,7 @@
 #include <string>
 
 #include <petuum_ps_common/include/host_info.hpp>
+#include <petuum_ps_common/include/configs.hpp>
 
 namespace petuum {
 // Read in a file containing list of servers. 'server_file' need to have the
@@ -18,5 +19,7 @@ void GetHostInfos(std::string server_file,
 
 void GetServerIDsFromHostMap(std::vector<int32_t> *server_ids,
   const std::map<int32_t, HostInfo> & host_map);
+
+UpdateSortPolicy GetUpdateSortPolicy(const std::string &policy);
 
 }   // namespace petuum

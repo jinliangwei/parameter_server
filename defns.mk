@@ -16,10 +16,7 @@ PETUUM_CXXFLAGS = -O3 \
            -fno-builtin-malloc \
            -fno-builtin-calloc \
            -fno-builtin-realloc \
-           -fno-builtin-free \
-           -fno-omit-frame-pointer
-
-# PETUUM_CXXFLAGS += -g
+           -fno-builtin-free
 
 # PETUUM_CXXFLAGS += -DPETUUM_CHECK_DENSE_STORAGE_RANGE
 
@@ -43,6 +40,14 @@ PETUUM_LDFLAGS = -Wl,-rpath,$(PETUUM_THIRD_PARTY_LIB) \
 
 # PETUUM_LDFLAGS += -lnuma
 PETUUM_LDFLAGS += -lsnappy
+
+# debug
+#PETUUM_CXXFLAGS += -g
+#PETUUM_CXXFLAGS += -fno-omit-frame-pointer
+#PETUUM_CXXFLAGS += -fsanitize=address
+#PETUUM_CXXFLAGS += -fno-common
+#PETUUM_CXXFLAGS += -fsanitize=thread
+
 
 PETUUM_PS_LIB = $(PETUUM_LIB)/libpetuum-ps.a
 PETUUM_PS_SN_LIB = $(PETUUM_LIB)/libpetuum-ps-sn.a

@@ -113,8 +113,10 @@ void read_libsvm_data(const std::string& file) {
   LOG_IF(INFO, FLAGS_client_id == 0) << "(#-rows, #-cols) = ("
     << N_ << ", " << M_ << ")";
   int nnz = 0;  // number of non-zero entries.
+  int row_id = 0;
   while (getline(&line, &num_bytes, data_stream) != -1) {
-    int row_id = strtol(line, &endptr, base);   // Read the row id.
+    int nnz_line = strtol(line, &endptr, base);   // Read the row id.
+    int curr_nnz = 0;
     ptr = endptr;
     while (*ptr != '\n') {
       // read a word_id:count pair
@@ -128,8 +130,11 @@ void read_libsvm_data(const std::string& file) {
       X_col.push_back(col_id);
       X_val.push_back(val);
       ++nnz;
+      ++curr_nnz;
       while (*ptr == ' ') ++ptr; // goto next non-space char
     }
+    CHECK_EQ(nnz_line, curr_nnz);
+    ++row_id;
   }
   fclose(data_stream);
   LOG(INFO) << "Done reading " << nnz << " non-zero entries in "
@@ -552,6 +557,7 @@ void solve_mf(int32_t thread_id, boost::barrier* process_barrier) {
 
   // Bootstrap.
   if (thread_id == 0) {
+    LOG(INFO) << "Bootstrap starting";
     petuum::HighResolutionTimer bootstrap_timer;
     STATS_APP_BOOTSTRAP_BEGIN();
     std::set<int32_t> L_rows;
@@ -582,6 +588,9 @@ void solve_mf(int32_t thread_id, boost::barrier* process_barrier) {
     if (global_worker_id == 0) {
       LOG(INFO) << "Iteration " << iter+1 << "/" <<
         FLAGS_num_iterations << "... ";
+
+      //      std::cerr << "Iteration " << iter+1 << "/" <<
+      //  FLAGS_num_iterations << "... " << std::endl;
     }
     int element_counter = 0;
     float step_size = 0.;
@@ -726,6 +735,8 @@ int main(int argc, char *argv[]) {
     table_group_config.consistency_model = petuum::SSP;
   } else if (FLAGS_ssp_mode == "SSPAggr") {
     table_group_config.consistency_model = petuum::SSPAggr;
+    table_group_config.update_sort_policy
+        = petuum::GetUpdateSortPolicy(FLAGS_update_sort_policy);
   } else {
     LOG(FATAL) << "Unsupported ssp mode " << FLAGS_ssp_mode;
   }
@@ -844,6 +855,8 @@ int main(int argc, char *argv[]) {
   table_config.oplog_capacity = FLAGS_M_cache_size;
   petuum::PSTableGroup::CreateTable(1,table_config);
 
+  table_config.table_info.oplog_dense_serialized = true;
+  table_config.table_info.dense_row_oplog_capacity = 6;
   table_config.no_oplog_replay = false;
   table_config.oplog_type = petuum::Sparse;
   table_config.process_storage_type = petuum::BoundedSparse;
@@ -851,7 +864,7 @@ int main(int argc, char *argv[]) {
   table_config.table_info.table_staleness = FLAGS_staleness;  // No staleness for loss table
   // <iter, clock, compute-time, compute+eval_time, L2_loss, L2_regularized_loss> (each row is an iter).
   table_config.table_info.row_capacity = 6;
-  table_config.process_cache_capacity = 1;
+  table_config.process_cache_capacity = 100;
   table_config.oplog_capacity = 100;
   petuum::PSTableGroup::CreateTable(2,table_config);
 

@@ -73,7 +73,7 @@ std::vector<size_t> Stats::bg_accum_num_idle_invoke_;
 std::vector<size_t> Stats::bg_accum_num_idle_send_;
 std::vector<size_t> Stats::bg_accum_num_push_row_msg_recv_;
 std::vector<double> Stats::bg_accum_idle_send_sec_;
-std::vector<size_t> Stats::bg_accum_idle_send_bytes_;
+std::vector<double> Stats::bg_accum_idle_send_bytes_mb_;
 
 std::vector<double> Stats::bg_accum_handle_append_oplog_sec_;
 std::vector<size_t> Stats::bg_num_append_oplog_buff_handled_;
@@ -349,7 +349,7 @@ void Stats::DeregisterBgThread() {
   bg_accum_num_idle_send_.push_back(stats.accum_num_idle_send);
   bg_accum_num_push_row_msg_recv_.push_back(stats.accum_num_push_row_msg_recv);
   bg_accum_idle_send_sec_.push_back(stats.accum_idle_send_sec);
-  bg_accum_idle_send_bytes_.push_back(stats.accum_idle_send_bytes);
+  bg_accum_idle_send_bytes_mb_.push_back(stats.accum_idle_send_bytes_mb);
 
   bg_accum_handle_append_oplog_sec_.push_back(stats.accum_handle_append_oplog_sec);
   bg_num_append_oplog_buff_handled_.push_back(stats.num_append_oplog_buff_handled);
@@ -782,8 +782,7 @@ void Stats::BgAddPerClockOpLogSize(size_t oplog_size) {
 
   BgThreadStats &stats = *bg_thread_stats_;
 
-  stats.per_clock_oplog_sent_kb[stats.clock_num]
-    += oplog_size_kb;
+  stats.per_clock_oplog_sent_kb[stats.clock_num] += oplog_size_kb;
   stats.accum_oplog_sent_kb += oplog_size_kb;
 }
 
@@ -821,7 +820,8 @@ void Stats::BgAccumIdleSendEnd() {
 }
 
 void Stats::BgAccumIdleOpLogSentBytes(size_t num_bytes) {
-  bg_thread_stats_->accum_idle_send_bytes += num_bytes;
+  BgThreadStats &stats = *bg_thread_stats_;
+  stats.accum_idle_send_bytes_mb += num_bytes / double(k1_Mi);
 }
 
 void Stats::BgAccumHandleAppendOpLogBegin() {
@@ -1217,13 +1217,13 @@ void Stats::PrintStats() {
     << YAML::Value;
   YamlPrintSequence(&yaml_out, bg_accum_num_push_row_msg_recv_);
 
-  yaml_out << YAML::Key << "bg_acccum_idle_send_sec"
+  yaml_out << YAML::Key << "bg_accum_idle_send_sec"
     << YAML::Value;
   YamlPrintSequence(&yaml_out, bg_accum_idle_send_sec_);
 
-  yaml_out << YAML::Key << "bg_acccum_idle_send_bytes"
+  yaml_out << YAML::Key << "bg_accum_idle_send_bytes_mb"
     << YAML::Value;
-  YamlPrintSequence(&yaml_out, bg_accum_idle_send_bytes_);
+  YamlPrintSequence(&yaml_out, bg_accum_idle_send_bytes_mb_);
 
   yaml_out << YAML::Key << "bg_accum_handle_append_oplog_sec"
            << YAML::Value;

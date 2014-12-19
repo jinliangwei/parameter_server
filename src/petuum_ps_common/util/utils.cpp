@@ -47,5 +47,19 @@ void GetServerIDsFromHostMap(std::vector<int32_t> *server_ids,
   }
 }
 
+UpdateSortPolicy GetUpdateSortPolicy(const std::string &policy) {
+  if (policy == "Random") {
+    return Random;
+  } else if (policy == "FIFO") {
+    return FIFO;
+  } else if (policy == "RelativeMagnitude") {
+    return RelativeMagnitude;
+  } else if (policy == "FIFO_N_RegMag") {
+    return FIFO_N_ReMag;
+  } else {
+    LOG(FATAL) << "Unknown update sort policy: "
+               << policy;
+  }
+}
 
 }   // namespace petuum
