@@ -10,6 +10,16 @@ public:
       clock_(-1),
       importance_(0) { }
 
+  RowOpLogMeta(const RowOpLogMeta &from):
+  clock_(from.clock_),
+  importance_(from.importance_) { }
+
+  RowOpLogMeta & operator = (const RowOpLogMeta & from) {
+    clock_ = from.clock_;
+    importance_ = from.importance_;
+    return *this;
+  }
+
   int32_t get_clock() const {
     return clock_;
   }
@@ -17,6 +27,10 @@ public:
   void set_clock(int32_t clock) {
     if (clock_ == -1 || clock < clock_)
       clock_ = clock;
+  }
+
+  void invalidate_clock() {
+    clock_ = -1;
   }
 
   double get_importance() const {

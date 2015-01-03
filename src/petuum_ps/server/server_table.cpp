@@ -89,7 +89,7 @@ void ServerTable::GetPartialTableToSend(
     size_t num_rows_threshold) {
 
   size_t num_candidate_rows
-      = num_rows_threshold * GlobalContext::get_server_row_candidate_factor();
+      = num_rows_threshold * GlobalContext::get_row_candidate_factor();
 
   std::vector<CandidateServerRow> candidate_row_vector;
 

@@ -59,7 +59,9 @@ TableGroup::TableGroup(const TableGroupConfig &table_group_config,
       table_group_config.thread_oplog_batch_size,
       table_group_config.server_push_row_threshold,
       table_group_config.server_idle_milli,
-      table_group_config.server_row_candidate_factor);
+      table_group_config.row_candidate_factor,
+      table_group_config.numa_index,
+      table_group_config.numa_policy);
 
   NumaMgr::Init(table_group_config.numa_opt);
 
@@ -214,6 +216,7 @@ void TableGroup::ClockConservative() {
   }
   int clock = vector_clock_.Tick(ThreadContext::get_id());
   if (clock != 0) {
+    //LOG(INFO) << "New clock = " << clock;
     BgWorkers::ClockAllTables();
   }
 }

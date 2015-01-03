@@ -63,8 +63,8 @@ void TableOpLogMeta::InsertMergeRowOpLogMeta(int32_t row_id,
 
 void TableOpLogMeta::Sort() {
   //LOG(INFO) << "Sort called";
-  ReassignImportance_(&oplog_list_);
-  oplog_list_.sort(CompRowOpLogMeta_);
+  //ReassignImportance_(&oplog_list_);
+  //oplog_list_.sort(CompRowOpLogMeta_);
 }
 
 
@@ -83,34 +83,19 @@ int32_t TableOpLogMeta::GetAndClearNextInOrder() {
   return row_id;
 }
 
-int32_t TableOpLogMeta::GetAndClearNextInOrder(double *importance) {
-  if (oplog_list_.empty())
-    return -1;
-
-  std::pair<int32_t, RowOpLogMeta*> &oplog_pair
-      = oplog_list_.front();
-  int32_t row_id = oplog_pair.first;
-  *importance = oplog_pair.second->get_importance();
-  delete oplog_pair.second;
-
-  oplog_list_.pop_front();
-  oplog_map_.erase(row_id);
-
-  return row_id;
-}
-
 int32_t TableOpLogMeta::InitGetUptoClock(int32_t clock) {
   list_iter_ = oplog_list_.begin();
   clock_to_clear_ = clock;
 
+  //LOG(INFO) << __func__ << " list size = " << oplog_list_.size();
   return GetAndClearNextUptoClock();
 }
 
 int32_t TableOpLogMeta::GetAndClearNextUptoClock() {
   for (; list_iter_ != oplog_list_.end(); ++list_iter_) {
-    if (list_iter_->second->get_clock() > clock_to_clear_)
+    if (list_iter_->second->get_clock() > clock_to_clear_) {
       continue;
-    else
+    } else
       break;
   }
 
@@ -169,10 +154,13 @@ void TableOpLogMeta::ReassignImportanceNoOp(
 
 void TableOpLogMeta::MergeRowOpLogMetaAccum(RowOpLogMeta *row_oplog_meta,
                                             const RowOpLogMeta& to_merge) {
-  return row_oplog_meta->accum_importance(to_merge.get_importance());
+  row_oplog_meta->accum_importance(to_merge.get_importance());
+  row_oplog_meta->set_clock(to_merge.get_clock());
 }
 
 void TableOpLogMeta::MergeRowOpLogMetaNoOp(RowOpLogMeta *row_oplog_meta,
-                                           const RowOpLogMeta& to_merge) { }
+                                           const RowOpLogMeta& to_merge) {
+  row_oplog_meta->set_clock(to_merge.get_clock());
+}
 
 }

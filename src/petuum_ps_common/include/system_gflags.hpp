@@ -41,6 +41,11 @@ DEFINE_int32(resume_clock, -1, "resume clock");
 DEFINE_string(snapshot_dir, "", "snap shot directory");
 DEFINE_string(resume_dir, "", "resume directory");
 
+// numa flags
+DEFINE_bool(numa_opt, false, "numa opt on?");
+DEFINE_int32(numa_index, 0, "numa node index");
+DEFINE_string(numa_policy, "Even", "numa policy");
+
 namespace petuum {
 void InitTableGroupConfig(TableGroupConfig *config, int32_t *client_id,
                           int32_t num_tables) {
@@ -92,6 +97,19 @@ void InitTableGroupConfig(TableGroupConfig *config, int32_t *client_id,
   config->server_push_row_threshold = FLAGS_server_push_row_threshold;
   config->server_idle_milli = FLAGS_server_idle_milli;
   config->server_row_candidate_factor = FLAGS_server_row_candidate_factor;
+
+  config->numa_opt = FLAGS_numa_opt;
+  config->numa_index = FLAGS_numa_index;
+
+  if (FALGS_numa_opt) {
+    if (FLAGS_numa_policy == "Even") {
+      config->numa_policy = Even;
+    } else if (FLAGS_numa_policy == "Center") {
+      config->numa_policy = Center;
+    } else {
+      LOG(FATAL) << "Unknown NUMA policy = " << FLAGS_numa_policy;
+    }
+  }
 
   *client_id = FLAGS_client_id;
 }

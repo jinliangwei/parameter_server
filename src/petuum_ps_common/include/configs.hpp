@@ -54,6 +54,11 @@ enum ProcessStorageType {
   BoundedSparse = 1
 };
 
+enum NumaPolicy {
+  Even = 0,
+  Center = 1
+};
+
 struct TableGroupConfig {
 
   TableGroupConfig():
@@ -72,8 +77,10 @@ struct TableGroupConfig {
       oplog_push_upper_bound_kb(100),
       oplog_push_staleness_tolerance(2),
       thread_oplog_batch_size(100*1000*1000),
-      server_row_candidate_factor(5),
-      numa_opt(false) { }
+      row_candidate_factor(5),
+      numa_opt(false),
+      numa_index(0),
+      numa_policy(Even) { }
 
   std::string stats_path;
 
@@ -146,9 +153,13 @@ struct TableGroupConfig {
 
   long server_idle_milli;
 
-  long server_row_candidate_factor;
+  long row_candidate_factor;
 
   bool numa_opt;
+
+  int32_t numa_index;
+
+  NumaPolicy numa_policy;
 };
 
 // TableInfo is shared between client and server.

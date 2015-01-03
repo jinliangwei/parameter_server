@@ -104,8 +104,8 @@ public:
         + comm_channel_idx;
   }
 
-  static size_t get_server_row_candidate_factor() {
-    return server_row_candidate_factor_;
+  static size_t get_row_candidate_factor() {
+    return row_candidate_factor_;
   }
 
   static void GetServerThreadIDs(int32_t comm_channel_idx,
@@ -153,7 +153,9 @@ public:
       size_t thread_oplog_batch_size,
       size_t server_push_row_threshold,
       long server_idle_milli,
-      int32_t server_row_candidate_factor) {
+      int32_t row_candidate_factor,
+      int32_t numa_index,
+      NumaPolicy numa_policy) {
 
     num_comm_channels_per_client_
         = num_comm_channels_per_client;
@@ -189,7 +191,11 @@ public:
 
     server_idle_milli_ = server_idle_milli;
 
-    server_row_candidate_factor_ = server_row_candidate_factor;
+    row_candidate_factor_ = row_candidate_factor;
+
+    numa_index_ = numa_index;
+
+    numa_policy_ = numa_policy;
 
     for (auto host_iter = host_map.begin();
          host_iter != host_map.end(); ++host_iter) {
@@ -377,6 +383,14 @@ public:
     return server_idle_milli_;
   }
 
+  static int32_t get_numa_index() {
+    return numa_index_;
+  }
+
+  static NumaPolicy get_numa_policy() {
+    return numa_policy_;
+  }
+
   static CommBus* comm_bus;
 
   // name node thread id - 0
@@ -431,7 +445,11 @@ private:
 
   static long server_idle_milli_;
 
-  static int32_t server_row_candidate_factor_;
+  static int32_t row_candidate_factor_;
+
+  static int32_t numa_index_;
+
+  static NumaPolicy numa_policy_;
 };
 
 }   // namespace petuum

@@ -35,9 +35,14 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
   TableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
   if (table_oplog_meta == 0) {
+    LOG(INFO) << "Create new table_oplog_meta";
     const AbstractRow *sample_row = table->get_sample_row();
     table_oplog_meta = oplog_meta_.AddTableOpLogMeta(table_id, sample_row);
   }
+
+  LOG(INFO) << "table_id = " << table_id
+            << " table_oplog_meta size = " << table_oplog_meta->GetNumRowOpLogs()
+            << " new index size = " << new_table_oplog_index_ptr->size();
 
   for (auto oplog_index_iter = new_table_oplog_index_ptr->cbegin();
        !oplog_index_iter.is_end(); oplog_index_iter++) {
@@ -168,7 +173,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
 
   table_oplog_meta->Sort();
 
-  //LOG(INFO) << "GetAndClearNextInOrder() ";
+  LOG(INFO) << "Sort done";
+
   int32_t row_id;
   row_id = table_oplog_meta->GetAndClearNextInOrder();
 
@@ -196,6 +202,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
       row_id = table_oplog_meta->GetAndClearNextInOrder();
     }
   }
+
+  LOG(INFO) << "Read OpLog done ";
   return accum_table_oplog_bytes;
 }
 
@@ -347,13 +355,11 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
 
   msg_send_timer_.restart();
 
-  STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
-
-  //LOG(INFO) << "HandleClock send bytes = " << sent_size
-  //        << " clock_to_push = " << clock_to_push
-  //        << " send milli sec = " << oplog_send_milli_sec_
-  //        << " left over milli = " << left_over_send_milli_sec
-  //        << " bg_id = " << my_id_;
+  LOG(INFO) << "HandleClock send bytes = " << sent_size
+            << " clock_to_push = " << clock_to_push
+            << " send milli sec = " << oplog_send_milli_sec_
+            << " left over milli = " << left_over_send_milli_sec
+            << " size/4KB = " << sent_size / (4.0*k1_Ki);
 
   return oplog_send_milli_sec_;
 }
@@ -461,18 +467,18 @@ void SSPAggrBgWorker::PrepareBgIdleOpLogsAppendOnlyNoReplay(int32_t table_id,
 }
 
 long SSPAggrBgWorker::BgIdleWork() {
-  STATS_BG_IDLE_INVOKE_INC_ONE();
-
   bool found_oplog = false;
 
   // check if last msg has been sent out
   if (oplog_send_milli_sec_ > 1) {
     double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
-    //LOG(INFO) << "send_elapsed_milli = " << send_elapsed_milli
-    //        << " oplog_send_milli_sec_ = " << oplog_send_milli_sec_;
+    LOG(INFO) << "send_elapsed_milli = " << send_elapsed_milli
+              << " oplog_send_milli_sec_ = " << oplog_send_milli_sec_;
     if (oplog_send_milli_sec_ > send_elapsed_milli + 1)
       return (oplog_send_milli_sec_ - send_elapsed_milli);
   }
+
+  STATS_BG_IDLE_INVOKE_INC_ONE();
 
   if (oplog_meta_.OpLogMetaExists())
     found_oplog = true;
@@ -487,32 +493,32 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   if (!found_oplog) {
     oplog_send_milli_sec_ = 0;
-    //LOG(INFO) << "Bg nothing to send";
+    LOG(INFO) << "Nothing to send";
     return GlobalContext::get_bg_idle_milli();
   }
 
   STATS_BG_IDLE_SEND_INC_ONE();
   STATS_BG_ACCUM_IDLE_SEND_BEGIN();
 
+  msg_send_timer_.restart();
+
   BgOpLog *bg_oplog = PrepareBgIdleOpLogs();
 
   CreateOpLogMsgs(bg_oplog);
+
   size_t sent_size = SendOpLogMsgs(false);
   TrackBgOpLog(bg_oplog);
 
   oplog_send_milli_sec_
       = TransTimeEstimate::EstimateTransMillisec(sent_size);
 
-  msg_send_timer_.restart();
-
   STATS_BG_ACCUM_IDLE_SEND_END();
 
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 
-  //LOG(INFO) << "BgIdle send bytes = " << sent_size
-  //        << " bw = " << GlobalContext::get_bandwidth_mbps()
-  //        << " send milli sec = " << oplog_send_milli_sec_
-  //        << " bg_id = " << my_id_;
+  LOG(INFO) << "BgIdle send bytes = " << sent_size
+            << " send milli sec = " << oplog_send_milli_sec_
+            << " size/4KB = " << sent_size / (4.0*k1_Ki);
   return oplog_send_milli_sec_;
 }
 

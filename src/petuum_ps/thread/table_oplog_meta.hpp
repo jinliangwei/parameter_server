@@ -44,7 +44,6 @@ public:
   void Sort();
   // Assuming sort has happened
   int32_t GetAndClearNextInOrder();
-  int32_t GetAndClearNextInOrder(double *importance);
 
   int32_t InitGetUptoClock(int32_t clock);
   int32_t GetAndClearNextUptoClock();

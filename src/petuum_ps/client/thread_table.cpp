@@ -209,6 +209,9 @@ void ThreadTable::FlushCache(AbstractProcessStorage &process_storage,
 			     const AbstractRow *sample_row) {
   FlushCacheOpLog(process_storage, table_oplog, sample_row);
 
+  if (row_storage_.size() == 0)
+    return;
+
   for (auto iter = row_storage_.begin(); iter != row_storage_.end(); iter++) {
     if (iter->second != 0) {
       delete iter->second;
@@ -220,6 +223,9 @@ void ThreadTable::FlushCache(AbstractProcessStorage &process_storage,
 void ThreadTable::FlushCacheOpLog(AbstractProcessStorage &process_storage,
                                   AbstractOpLog &table_oplog,
                                   const AbstractRow *sample_row) {
+  if (oplog_map_.size() == 0)
+    return;
+
   for (auto oplog_iter = oplog_map_.begin(); oplog_iter != oplog_map_.end();
        oplog_iter++) {
     int32_t row_id = oplog_iter->first;

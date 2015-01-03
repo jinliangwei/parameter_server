@@ -6,6 +6,8 @@
 #data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
 data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
+#data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
+#data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_2K_2K_X.dat"
 host_filename="../../machinefiles/servers"
 #host_filename="../../machinefiles/localserver"
 
@@ -18,10 +20,10 @@ lambda=0
 data_format=list
 
 # Execution parameters:
-num_iterations=20
-ssp_mode="SSPPush"
+num_iterations=2
+ssp_mode="SSPAggr"
 num_worker_threads=64
-num_comm_channels_per_client=32
+num_comm_channels_per_client=1
 staleness=2 # effective staleness is staleness / num_clocks_per_iter.
 N_cache_size=480190
 #N_cache_size=500000
@@ -32,18 +34,15 @@ num_clocks_per_eval=5
 row_oplog_type=0
 
 # SSPAggr parameters:
-bg_idle_milli=8
+bg_idle_milli=2
 # Total bandwidth: bandwidth_mbps * num_comm_channels_per_client * 2
-bandwidth_mbps=12
+bandwidth_mbps=1000
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
-oplog_push_upper_bound_kb=100
+oplog_push_upper_bound_kb=16000
 oplog_push_staleness_tolerance=2
-# per table. (100480507 entries) * (100 rank) / (64 threads) / (10
-# num_clocks_per_iter)  * 1%
-thread_oplog_batch_size=`python -c "print \
-  int(100480507*$K/$num_worker_threads/$num_clocks_per_iter/100/8)"`
-server_push_row_threshold=10
-server_idle_milli=10
+thread_oplog_batch_size=100000
+server_push_row_threshold=400
+server_idle_milli=2
 update_sort_policy=Random
 
 append_only_buffer_capacity=$((1024*1024*4))
@@ -54,6 +53,7 @@ oplog_type=Dense
 process_storage_type=BoundedDense
 
 no_oplog_replay=true
+numa_opt=false
 
 # Find other Petuum paths by using the script's path
 app_dir=`readlink -f $0 | xargs dirname | xargs dirname`
@@ -68,13 +68,13 @@ ssh_options="-oStrictHostKeyChecking=no \
 host_file=$(readlink -f $host_filename)
 host_list=`cat $host_file | awk '{ print $2 }'`
 unique_host_list=`cat $host_file | awk '{ print $2 }' | uniq`
-#unique_host_list=`cat $host_file | awk '{ print $2 }' | \
-#  awk -F. '{print "10.1.1."$4}' | uniq`
+host_list=`cat $host_file | awk '{ print $2 }'`
 num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
+num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_8node_debug"
-output_dir="${output_dir}/netflix_K${K}"
+output_dir="$app_dir/output_8x8_mbssp"
+output_dir="${output_dir}/netflix_K${K}_${staleness}_SSPAggr_Mag_b${bandwidth_mbps}_fge_16mb"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
   echo $output_dir
@@ -99,18 +99,27 @@ echo "All done!"
 
 mkdir -p $log_dir
 
+#    perf stat -B \
+
+#perf_cmd="perf stat -e cache-misses,cache-references,cs,LLC-load-misses,LLC-loads,LLC-store-misses,LLC-stores,LLC-prefetch-misses,bus-cycles"
+
+perf_cmd=""
 # Spawn program instances
 client_id=0
-for ip in $unique_host_list; do
+for ip in $host_list; do
   echo Running client $client_id on $ip
   log_path=${log_dir}.${client_id}
 
+  numa_index=$(( client_id%num_unique_hosts ))
+
   cmd="rm -rf ${log_path}; mkdir -p ${log_path}; \
-    GLOG_logtostderr=true \
+    ASAN_OPTIONS=verbosity=1:malloc_context_size=256 \
+    GLOG_logtostderr=false \
     GLOG_log_dir=$log_path \
     GLOG_v=-1 \
     GLOG_minloglevel=0 \
     GLOG_vmodule="" \
+    ${perf_cmd} \
     $prog_path \
     --hostfile $host_file \
     --datafile $data_file \
@@ -126,7 +135,7 @@ for ip in $unique_host_list; do
     --use_step_dec $use_step_dec \
     --lambda $lambda \
     --staleness $staleness \
-    --num_clients $num_unique_hosts \
+    --num_clients $num_hosts \
     --num_clocks_per_iter $num_clocks_per_iter \
     --num_clocks_per_eval $num_clocks_per_eval \
     --stats_path ${stats_path} \
@@ -148,8 +157,11 @@ for ip in $unique_host_list; do
     --append_only_buffer_pool_size ${append_only_buffer_pool_size} \
     --bg_apply_append_oplog_freq ${bg_apply_append_oplog_freq} \
     --process_storage_type ${process_storage_type} \
-    --no_oplog_replay=${no_oplog_replay}"
+    --no_oplog_replay=${no_oplog_replay} \
+    --numa_opt=${numa_opt} \
+    --numa_index ${numa_index}"
 
+  #echo $cmd
   ssh $ssh_options $ip $cmd&
   #eval $cmd
 

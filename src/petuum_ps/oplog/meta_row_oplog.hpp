@@ -24,7 +24,7 @@ public:
   }
 
   void InvalidateMeta() {
-    meta_.set_clock(-1);
+    meta_.invalidate_clock();
   }
 
   void ResetImportance() {

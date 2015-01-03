@@ -58,7 +58,7 @@ DEFINE_int32(oplog_push_upper_bound_kb, 100,
              "oplog push upper bound in Kilobytes per comm thread.");
 DEFINE_int32(oplog_push_staleness_tolerance, 2,
              "oplog push staleness tolerance");
-DEFINE_int32(thread_oplog_batch_size, 100*1000*1000,
+DEFINE_int32(thread_oplog_batch_size, 10*1000,
              "Thread OpLog Batch Size");
 DEFINE_int32(server_push_row_threshold, 100, "Server push row threshold");
 DEFINE_int32(server_idle_milli, 10, "server idle time out in millisec");
@@ -74,6 +74,10 @@ DEFINE_int32(bg_apply_append_oplog_freq, 4, "bg apply append oplog freq");
 DEFINE_string(process_storage_type, "BoundedSparse", "process storage type");
 
 DEFINE_bool(no_oplog_replay, false, "oplog replay?");
+
+DEFINE_bool(numa_opt, false, "numa opt on?");
+
+DEFINE_int32(numa_index, 0, "numa node index");
 
 // Data variables
 int N_, M_; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
@@ -754,6 +758,11 @@ int main(int argc, char *argv[]) {
     = FLAGS_server_push_row_threshold;
   table_group_config.server_idle_milli
     = FLAGS_server_idle_milli;
+
+  table_group_config.numa_opt = FLAGS_numa_opt;
+  table_group_config.numa_index = FLAGS_numa_index;
+  table_group_config.numa_policy = petuum::Center;
+
 
   // Configure PS row types
   // Register dense float rows as ID 0
