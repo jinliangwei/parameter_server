@@ -3,8 +3,10 @@
 
 #include <petuum_ps_common/util/high_resolution_timer.hpp>
 #include <petuum_ps_common/include/configs.hpp>
+#include <petuum_ps/oplog/meta_row_oplog.hpp>
 #include <boost/thread/tss.hpp>
 #include <boost/unordered_map.hpp>
+#include <unordered_map>
 #include <vector>
 #include <stdint.h>
 #include <stddef.h>
@@ -230,6 +232,12 @@
 #define STATS_BG_APPEND_ONLY_RECYCLE_ROW_OPLOG_INC() \
   Stats::BgAppendOnlyRecycleRowOpLogInc()
 
+#define STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog) \
+  Stats::BgAccumImportance(table_id, meta_row_oplog)
+
+#define STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, importance) \
+  Stats::BgAccumImportance(table_id, importance)
+
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() \
   Stats::ServerAccumPushRowBegin()
 
@@ -354,6 +362,8 @@
 #define STATS_BG_ACCUM_HANDLE_APPEND_OPLOG_END() ((void) 0)
 #define STATS_BG_APPEND_ONLY_CREATE_ROW_OPLOG_INC() ((void) 0)
 #define STATS_BG_APPEND_ONLY_RECYCLE_ROW_OPLOG_INC() ((void) 0)
+#define STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog) ((void) 0)
+#define STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, importance) ((void) 0)
 
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() ((void) 0)
 #define STATS_SERVER_ACCUM_PUSH_ROW_END() ((void) 0)
@@ -562,6 +572,9 @@ struct BgThreadStats {
   size_t num_row_oplog_created;
   size_t num_row_oplog_recycled;
 
+  std::unordered_map<int32_t, std::vector<double> >
+  table_accum_importance;
+
   BgThreadStats():
     accum_clock_end_oplog_serialize_sec(0.0),
     accum_total_oplog_serialize_sec(0.0),
@@ -734,6 +747,9 @@ public:
   static void BgAppendOnlyCreateRowOpLogInc();
   static void BgAppendOnlyRecycleRowOpLogInc();
 
+  static void BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog);
+  static void BgAccumImportance(int32_t table_id, double importance);
+
   static void ServerAccumPushRowBegin();
   static void ServerAccumPushRowEnd();
 
@@ -859,6 +875,8 @@ private:
 
   static std::vector<size_t> bg_num_row_oplog_created_;
   static std::vector<size_t> bg_num_row_oplog_recycled_;
+
+  static std::unordered_map<int32_t, std::vector<double> > bg_table_accum_importance_;
 
   // Server thread stats
   static double server_accum_apply_oplog_sec_;

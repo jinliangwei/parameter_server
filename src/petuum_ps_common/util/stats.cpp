@@ -81,6 +81,8 @@ std::vector<size_t> Stats::bg_num_append_oplog_buff_handled_;
 std::vector<size_t> Stats::bg_num_row_oplog_created_;
 std::vector<size_t> Stats::bg_num_row_oplog_recycled_;
 
+std::unordered_map<int32_t, std::vector<double> > Stats::bg_table_accum_importance_;
+
 double Stats::server_accum_apply_oplog_sec_ = 0.0;
 double Stats::server_accum_push_row_sec_ = 0.0;
 
@@ -356,6 +358,21 @@ void Stats::DeregisterBgThread() {
 
   bg_num_row_oplog_created_.push_back(stats.num_row_oplog_created);
   bg_num_row_oplog_recycled_.push_back(stats.num_row_oplog_recycled);
+
+  for (const auto &table_pair : stats.table_accum_importance) {
+    int32_t table_id = table_pair.first;
+    auto table_iter = bg_table_accum_importance_.find(table_id);
+    if (table_iter == bg_table_accum_importance_.end()) {
+      bg_table_accum_importance_.insert(
+          std::make_pair(table_id, std::vector<double>(table_pair.second.size(), 0.0)));
+      table_iter = bg_table_accum_importance_.find(table_id);
+    }
+    CHECK_EQ(table_pair.second.size(), table_iter->second.size());
+
+    for (int i = 0; i < table_pair.second.size(); ++i) {
+      (table_iter->second)[i] += (table_pair.second)[i];
+    }
+  }
 }
 
 void Stats::DeregisterServerThread() {
@@ -771,9 +788,13 @@ void Stats::BgSampleServerPushDeserializeEnd() {
 }
 
 void Stats::BgClock() {
-  ++(bg_thread_stats_->clock_num);
-  bg_thread_stats_->per_clock_oplog_sent_kb.push_back(0.0);
-  bg_thread_stats_->per_clock_server_push_row_recv_kb.push_back(0.0);
+  BgThreadStats &stats = *bg_thread_stats_;
+  ++(stats.clock_num);
+  stats.per_clock_oplog_sent_kb.push_back(0.0);
+  stats.per_clock_server_push_row_recv_kb.push_back(0.0);
+  for (auto &table_pair : stats.table_accum_importance) {
+    table_pair.second.push_back(0.0);
+  }
 }
 
 void Stats::BgAddPerClockOpLogSize(size_t oplog_size) {
@@ -852,6 +873,32 @@ void Stats::BgAccumServerPushUpdateAppliedAddOne() {
 
 void Stats::BgAccumServerPushVersionDiffAdd(size_t diff) {
   bg_thread_stats_->accum_server_push_version_diff += diff;
+}
+
+void Stats::BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog) {
+  BgThreadStats &stats = *bg_thread_stats_;
+
+  auto table_iter = stats.table_accum_importance.find(table_id);
+  if (table_iter == stats.table_accum_importance.end()) {
+    LOG(FATAL) << "Error! should have been inserted!";
+  }
+
+  table_iter->second.back() += meta_row_oplog->GetMeta().get_importance();
+
+  LOG(INFO) << "importance = " << meta_row_oplog->GetMeta().get_importance();
+}
+
+void Stats::BgAccumImportance(int32_t table_id, double importance) {
+  BgThreadStats &stats = *bg_thread_stats_;
+
+  auto table_iter = stats.table_accum_importance.find(table_id);
+  if (table_iter == stats.table_accum_importance.end()) {
+    stats.table_accum_importance.insert(std::make_pair(table_id, std::vector<double>(0)));
+    table_iter = stats.table_accum_importance.find(table_id);
+    table_iter->second.push_back(0.0);
+  }
+
+  table_iter->second.back() += importance;
 }
 
 void Stats::ServerAccumApplyOpLogBegin() {
@@ -1240,6 +1287,19 @@ void Stats::PrintStats() {
   yaml_out << YAML::Key << "bg_num_row_oplog_recycled"
            << YAML::Value;
   YamlPrintSequence(&yaml_out, bg_num_row_oplog_recycled_);
+
+  yaml_out << YAML::Key << "bg_table_accum_importance"
+           << YAML::Value
+           << YAML::BeginMap;
+
+  for (const auto &table_pair : bg_table_accum_importance_) {
+    int32_t table_id = table_pair.first;
+    yaml_out << YAML::Key << table_id
+             << YAML::Value;
+    YamlPrintSequence(&yaml_out, table_pair.second);
+  }
+
+  yaml_out << YAML::EndMap;
 
   yaml_out << YAML::EndMap;
 
