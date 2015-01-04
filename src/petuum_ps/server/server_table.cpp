@@ -6,6 +6,7 @@
 #include <random>
 #include <algorithm>
 #include <iostream>
+#include <time.h>
 
 namespace petuum {
 
@@ -85,31 +86,42 @@ void ServerTable::SortCandidateVectorImportance(
 
 void ServerTable::GetPartialTableToSend(
     boost::unordered_map<int32_t, ServerRow*> *rows_to_send,
-    boost::unordered_map<int32_t, size_t> *client_size_map,
-    size_t num_rows_threshold) {
+    boost::unordered_map<int32_t, size_t> *client_size_map) {
+
+  size_t num_rows_threshold = table_info_.server_push_row_upper_bound;
 
   size_t num_candidate_rows
       = num_rows_threshold * GlobalContext::get_row_candidate_factor();
 
+  size_t storage_size = storage_.size();
+
+  if (num_candidate_rows > storage_.size()) {
+    num_candidate_rows = storage_.size();
+  }
+  std::mt19937 generator(time(NULL)); // max 4.2 billion
+  std::uniform_int_distribution<int> uniform_dist(0, INT_MAX);
+
   std::vector<CandidateServerRow> candidate_row_vector;
 
-  auto row_iter = storage_.begin();
-  for (; row_iter != storage_.end(); ++row_iter) {
-    if (row_iter->second.NoClientSubscribed())
-      continue;
+  for (size_t i = 0; i < num_candidate_rows; ++i) {
+    boost::unordered_map<int32_t, ServerRow>::iterator row_iter = storage_.end();
+    size_t num_trials = 0;
+    do {
+      if (num_trials > storage_size) break;
+      row_iter = storage_.begin();
+      std::advance(row_iter, uniform_dist(generator) % storage_size);
+      num_trials++;
+    } while(row_iter == storage_.end()
+            || row_iter->second.NoClientSubscribed()
+            || !row_iter->second.IsDirty());
 
-    if (!row_iter->second.IsDirty())
-      continue;
-
-    candidate_row_vector.push_back(
-        CandidateServerRow(row_iter->first, &(row_iter->second)));
-
-    if (candidate_row_vector.size() >= num_candidate_rows)
+    if (row_iter == storage_.end()
+            || row_iter->second.NoClientSubscribed()
+            || !row_iter->second.IsDirty())
       break;
-  }
 
-  if (candidate_row_vector.empty())
-    return;
+    candidate_row_vector.push_back(CandidateServerRow(row_iter->first, &(row_iter->second)));
+  }
 
   SortCandidateVector_(&candidate_row_vector);
 

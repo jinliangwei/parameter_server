@@ -23,7 +23,7 @@ public:
 
   virtual size_t GetNumRowOpLogs() const;
 
-private:
+protected:
   const AbstractRow *sample_row_;
   std::unordered_map<int32_t, RowOpLogMeta> oplog_meta_;
 

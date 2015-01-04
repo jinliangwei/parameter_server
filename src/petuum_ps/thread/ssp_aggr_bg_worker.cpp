@@ -11,6 +11,17 @@ void SSPAggrBgWorker::SetWaitMsg() {
 
 void SSPAggrBgWorker::PrepareBeforeInfiniteLoop() {
   msg_send_timer_.restart();
+  clock_timer_.restart();
+
+  if (GlobalContext::get_suppression_on()) {
+    if (min_table_staleness_ <= 2) {
+      suppression_level_ = 0;
+    } else {
+      suppression_level_ = 2;
+    }
+  } else {
+    suppression_level_ = 0;
+  }
 }
 
 void SSPAggrBgWorker::FinalizeTableStats() {
@@ -32,17 +43,17 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
       = table->GetAndResetOpLogIndex(my_comm_channel_idx_);
 
   AbstractOpLog &table_oplog = table->get_oplog();
-  TableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
+  AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
   if (table_oplog_meta == 0) {
-    LOG(INFO) << "Create new table_oplog_meta";
+    //LOG(INFO) << "Create new table_oplog_meta";
     const AbstractRow *sample_row = table->get_sample_row();
     table_oplog_meta = oplog_meta_.AddTableOpLogMeta(table_id, sample_row);
   }
 
-  LOG(INFO) << "table_id = " << table_id
-            << " table_oplog_meta size = " << table_oplog_meta->GetNumRowOpLogs()
-            << " new index size = " << new_table_oplog_index_ptr->size();
+  //LOG(INFO) << "table_id = " << table_id
+  //        << " table_oplog_meta size = " << table_oplog_meta->GetNumRowOpLogs()
+  //        << " new index size = " << new_table_oplog_index_ptr->size();
 
   for (auto oplog_index_iter = new_table_oplog_index_ptr->cbegin();
        !oplog_index_iter.is_end(); oplog_index_iter++) {
@@ -60,9 +71,11 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
 
 size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClock(
     int32_t table_id, ClientTable *table, int32_t clock_to_push,
-    TableOpLogMeta *table_oplog_meta,
+    AbstractTableOpLogMeta *table_oplog_meta,
     GetSerializedRowOpLogSizeFunc GetSerializedRowOpLogSize,
-    BgOpLogPartition *bg_table_oplog) {
+    BgOpLogPartition *bg_table_oplog, size_t *accum_num_rows) {
+
+  *accum_num_rows = 0;
 
   if (clock_to_push < 0)
     return 0;
@@ -83,6 +96,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClock(
           bg_table_oplog, GetSerializedRowOpLogSize);
 
       accum_table_oplog_bytes += serialized_oplog_size;
+      (*accum_num_rows)++;
     }
 
     row_id = table_oplog_meta->GetAndClearNextUptoClock();
@@ -92,9 +106,10 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClock(
 
 size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
     int32_t table_id, ClientTable *table, int32_t clock_to_push,
-    TableOpLogMeta *table_oplog_meta,
-    RowOpLogSerializer *row_oplog_serializer) {
+    AbstractTableOpLogMeta *table_oplog_meta,
+    RowOpLogSerializer *row_oplog_serializer, size_t *accum_num_rows) {
 
+  *accum_num_rows = 0;
   if (clock_to_push < 0)
     return 0;
 
@@ -120,24 +135,30 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
         meta_row_oplog->ResetImportance();
 
         accum_table_oplog_bytes += serialized_oplog_size;
+        (*accum_num_rows)++;
     }
 
-    row_id = table_oplog_meta->GetAndClearNextUptoClock();
+      row_id = table_oplog_meta->GetAndClearNextUptoClock();
     }
   }
   return accum_table_oplog_bytes;
 }
 size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
-    int32_t table_id, ClientTable *table, size_t bytes_accumulated,
-    TableOpLogMeta *table_oplog_meta,
+    int32_t table_id, ClientTable *table,
+    size_t accum_num_bytes, size_t accum_num_rows,
+    AbstractTableOpLogMeta *table_oplog_meta,
     GetSerializedRowOpLogSizeFunc GetSerializedRowOpLogSize,
     BgOpLogPartition *bg_table_oplog) {
 
-  size_t accum_table_oplog_bytes = bytes_accumulated;
+  size_t accum_table_oplog_bytes = accum_num_bytes;
+  size_t my_accum_num_rows  =  accum_num_rows;
 
   AbstractOpLog &table_oplog = table->get_oplog();
 
-  table_oplog_meta->Sort();
+  size_t num_rows_to_add = table->get_client_send_oplog_upper_bound() - my_accum_num_rows;
+  if (num_rows_to_add <= 0) return accum_table_oplog_bytes;
+
+  table_oplog_meta->Prepare(num_rows_to_add);
 
   int32_t row_id;
   row_id = table_oplog_meta->GetAndClearNextInOrder();
@@ -150,10 +171,10 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
       size_t serialized_oplog_size = CountRowOpLogToSend(
           row_id, row_oplog, &table_num_bytes_by_server_,
           bg_table_oplog, GetSerializedRowOpLogSize);
-      accum_table_oplog_bytes += serialized_oplog_size;
 
-      if (accum_table_oplog_bytes
-          >= GlobalContext::get_oplog_push_upper_bound_kb()*k1_Ki)
+      accum_table_oplog_bytes += serialized_oplog_size;
+      my_accum_num_rows++;
+      if (my_accum_num_rows >= table->get_client_send_oplog_upper_bound())
         break;
     }
 
@@ -163,17 +184,20 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
 }
 
 size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
-    int32_t table_id, ClientTable *table, size_t bytes_accumulated,
-    TableOpLogMeta *table_oplog_meta,
+    int32_t table_id, ClientTable *table,
+    size_t accum_num_bytes, size_t accum_num_rows,
+    AbstractTableOpLogMeta *table_oplog_meta,
     RowOpLogSerializer *row_oplog_serializer) {
 
-  size_t accum_table_oplog_bytes = bytes_accumulated;
+  size_t accum_table_oplog_bytes = accum_num_bytes;
+  size_t my_accum_num_rows  =  accum_num_rows;
 
   AbstractOpLog &table_oplog = table->get_oplog();
 
-  table_oplog_meta->Sort();
+  size_t num_rows_to_add = table->get_client_send_oplog_upper_bound() - my_accum_num_rows;
+  if (num_rows_to_add <= 0) return accum_table_oplog_bytes;
 
-  LOG(INFO) << "Sort done";
+  table_oplog_meta->Prepare(num_rows_to_add);
 
   int32_t row_id;
   row_id = table_oplog_meta->GetAndClearNextInOrder();
@@ -194,16 +218,16 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
         meta_row_oplog->ResetImportance();
 
         accum_table_oplog_bytes += serialized_oplog_size;
+        my_accum_num_rows++;
 
-        if (accum_table_oplog_bytes
-            >= GlobalContext::get_oplog_push_upper_bound_kb()*k1_Ki)
+        if (my_accum_num_rows >= table->get_client_send_oplog_upper_bound())
           break;
       }
       row_id = table_oplog_meta->GetAndClearNextInOrder();
     }
   }
 
-  LOG(INFO) << "Read OpLog done ";
+  //LOG(INFO) << "Read OpLog done ";
   return accum_table_oplog_bytes;
 }
 
@@ -229,14 +253,17 @@ BgOpLogPartition* SSPAggrBgWorker::PrepareOpLogsNormal(
   BgOpLogPartition *bg_table_oplog = new BgOpLogPartition(
       table_id, table_update_size, my_comm_channel_idx_);
 
-  TableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
+  AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
+
+  size_t accum_num_rows = 0;
 
   size_t accum_table_oplog_bytes = ReadTableOpLogMetaUpToClock(
       table_id, table, clock_to_push, table_oplog_meta,
-      GetSerializedRowOpLogSize, bg_table_oplog);
+      GetSerializedRowOpLogSize, bg_table_oplog, &accum_num_rows);
 
   ReadTableOpLogMetaUpToCapacity(
       table_id, table, accum_table_oplog_bytes,
+      accum_num_rows,
       table_oplog_meta, GetSerializedRowOpLogSize,
       bg_table_oplog);
 
@@ -265,14 +292,17 @@ void SSPAggrBgWorker::PrepareOpLogsNormalNoReplay(
 
   ReadTableOpLogsIntoOpLogMeta(table_id, table);
 
-  TableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
+  AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
+
+  size_t accum_num_rows = 0;
 
   size_t accum_table_oplog_bytes = ReadTableOpLogMetaUpToClockNoReplay(
       table_id, table, clock_to_push, table_oplog_meta,
-      row_oplog_serializer);
+      row_oplog_serializer, &accum_num_rows);
 
   ReadTableOpLogMetaUpToCapacityNoReplay(
       table_id, table, accum_table_oplog_bytes,
+      accum_num_rows,
       table_oplog_meta, row_oplog_serializer);
 
   for (const auto &server_id : server_ids_) {
@@ -323,15 +353,23 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   if (!clock_advanced)
     return GlobalContext::get_bg_idle_milli();
 
+  clock_tick_sec_ = clock_timer_.elapsed();
+  clock_timer_.restart();
+
   int32_t clock_to_push
-      = client_clock_ - min_table_staleness_
-      + GlobalContext::get_oplog_push_staleness_tolerance();
+      = client_clock_ - suppression_level_;
 
   if (clock_to_push > client_clock_)
     clock_to_push = client_clock_;
 
-  if (clock_to_push >= 0)
+  if (clock_to_push < 0)
+    clock_to_push = 0;
+
+  if (clock_to_push > clock_has_pushed_)
     clock_has_pushed_ = clock_to_push;
+
+  LOG(INFO) << "Clock to push = " << clock_to_push
+            << " clock has pushed = " << clock_has_pushed_;
 
   STATS_BG_ACCUM_CLOCK_END_OPLOG_SERIALIZE_BEGIN();
   BgOpLog *bg_oplog = PrepareOpLogsToSend(clock_to_push);
@@ -355,11 +393,28 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
 
   msg_send_timer_.restart();
 
-  LOG(INFO) << "HandleClock send bytes = " << sent_size
-            << " clock_to_push = " << clock_to_push
-            << " send milli sec = " << oplog_send_milli_sec_
-            << " left over milli = " << left_over_send_milli_sec
-            << " size/4KB = " << sent_size / (4.0*k1_Ki);
+    // reset suppression level
+  if (suppression_level_ != 0 && client_clock_ % suppression_level_ == 0) {
+    double comm_sec = oplog_send_milli_sec_*2;
+    double window_sec = min_table_staleness_ * clock_tick_sec_ / (2.0);
+    double comm_clock_ticks = comm_sec / clock_tick_sec_;
+    if (comm_clock_ticks < 1) comm_clock_ticks = 1;
+    int32_t comm_clock_ticks_int = (int32_t) comm_clock_ticks;
+
+    if (comm_clock_ticks_int <= 1 || comm_sec < window_sec) {
+      suppression_level_ = min_table_staleness_ - comm_clock_ticks_int;
+    } else {
+      suppression_level_ = comm_clock_ticks_int;
+      if (suppression_level_ > min_table_staleness_)
+        suppression_level_ = min_table_staleness_;
+    }
+  }
+
+  //LOG(INFO) << "HandleClock send bytes = " << sent_size
+  //        << " clock_to_push = " << clock_to_push
+  //        << " send milli sec = " << oplog_send_milli_sec_
+  //        << " left over milli = " << left_over_send_milli_sec
+  //        << " size/4KB = " << sent_size / (4.0*k1_Ki);
 
   return oplog_send_milli_sec_;
 }
@@ -417,10 +472,11 @@ BgOpLogPartition* SSPAggrBgWorker::PrepareBgIdleOpLogsNormal(int32_t table_id,
     BgOpLogPartition *bg_table_oplog = new BgOpLogPartition(
         table_id, table_update_size, my_comm_channel_idx_);
 
-    TableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
+    AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
     ReadTableOpLogMetaUpToCapacity(
-        table_id, table, 0, table_oplog_meta, GetSerializedRowOpLogSize,
+        table_id, table, 0, 0,
+        table_oplog_meta, GetSerializedRowOpLogSize,
         bg_table_oplog);
 
     return bg_table_oplog;
@@ -440,10 +496,10 @@ void SSPAggrBgWorker::PrepareBgIdleOpLogsNormalNoReplay(int32_t table_id,
   RowOpLogSerializer *row_oplog_serializer = serializer_iter->second;
 
   ReadTableOpLogsIntoOpLogMeta(table_id, table);
-  TableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
+  AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
   ReadTableOpLogMetaUpToCapacityNoReplay(
-      table_id, table, 0,
+      table_id, table, 0, 0,
       table_oplog_meta, row_oplog_serializer);
 
   for (const auto &server_id : server_ids_) {
@@ -472,8 +528,8 @@ long SSPAggrBgWorker::BgIdleWork() {
   // check if last msg has been sent out
   if (oplog_send_milli_sec_ > 1) {
     double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
-    LOG(INFO) << "send_elapsed_milli = " << send_elapsed_milli
-              << " oplog_send_milli_sec_ = " << oplog_send_milli_sec_;
+    //LOG(INFO) << "send_elapsed_milli = " << send_elapsed_milli
+    //        << " oplog_send_milli_sec_ = " << oplog_send_milli_sec_;
     if (oplog_send_milli_sec_ > send_elapsed_milli + 1)
       return (oplog_send_milli_sec_ - send_elapsed_milli);
   }
@@ -493,7 +549,7 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   if (!found_oplog) {
     oplog_send_milli_sec_ = 0;
-    LOG(INFO) << "Nothing to send";
+    //LOG(INFO) << "Nothing to send";
     return GlobalContext::get_bg_idle_milli();
   }
 
@@ -516,9 +572,9 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 
-  LOG(INFO) << "BgIdle send bytes = " << sent_size
-            << " send milli sec = " << oplog_send_milli_sec_
-            << " size/4KB = " << sent_size / (4.0*k1_Ki);
+  //LOG(INFO) << "BgIdle send bytes = " << sent_size
+  //        << " send milli sec = " << oplog_send_milli_sec_
+  //        << " size/4KB = " << sent_size / (4.0*k1_Ki);
   return oplog_send_milli_sec_;
 }
 

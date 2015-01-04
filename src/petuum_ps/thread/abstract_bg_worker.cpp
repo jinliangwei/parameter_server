@@ -99,6 +99,10 @@ bool AbstractBgWorker::CreateTable(int32_t table_id,
         = table_config.process_storage_type;
     bg_create_table_msg.get_no_oplog_replay()
         = table_config.no_oplog_replay;
+    bg_create_table_msg.get_server_push_row_upper_bound()
+        = table_config.table_info.server_push_row_upper_bound;
+    bg_create_table_msg.get_client_send_oplog_upper_bound()
+        = table_config.client_send_oplog_upper_bound;
 
     size_t sent_size = SendMsg(
         reinterpret_cast<MsgBase*>(&bg_create_table_msg));
@@ -313,6 +317,8 @@ void AbstractBgWorker::HandleCreateTables() {
           = bg_create_table_msg.get_row_oplog_type();
       client_table_config.table_info.dense_row_oplog_capacity
           = bg_create_table_msg.get_dense_row_oplog_capacity();
+      client_table_config.table_info.server_push_row_upper_bound
+          = bg_create_table_msg.get_server_push_row_upper_bound();
 
       client_table_config.oplog_type
           = bg_create_table_msg.get_oplog_type();
@@ -328,6 +334,8 @@ void AbstractBgWorker::HandleCreateTables() {
           = bg_create_table_msg.get_process_storage_type();
       client_table_config.no_oplog_replay
           = bg_create_table_msg.get_no_oplog_replay();
+      client_table_config.client_send_oplog_upper_bound
+          = bg_create_table_msg.get_client_send_oplog_upper_bound();
 
       CreateTableMsg create_table_msg;
       create_table_msg.get_table_id() = bg_create_table_msg.get_table_id();
@@ -341,6 +349,8 @@ void AbstractBgWorker::HandleCreateTables() {
           = bg_create_table_msg.get_row_oplog_type();
       create_table_msg.get_dense_row_oplog_capacity()
           = bg_create_table_msg.get_dense_row_oplog_capacity();
+      create_table_msg.get_server_push_row_upper_bound()
+          = bg_create_table_msg.get_server_push_row_upper_bound();
 
       table_id = create_table_msg.get_table_id();
 

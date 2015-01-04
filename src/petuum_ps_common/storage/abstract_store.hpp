@@ -39,6 +39,7 @@ public:
   // contiguous memory
   virtual V *GetPtr(int32_t col_id) {
     LOG(FATAL) << "Not yet supported";
+    return 0;
   }
 
   static_assert(std::is_pod<V>::value, "V must be POD");

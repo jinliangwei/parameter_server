@@ -148,14 +148,12 @@ public:
       UpdateSortPolicy update_sort_policy,
       long bg_idle_milli,
       double bandwidth_mbps,
-      size_t oplog_push_upper_bound_kb,
-      int32_t oplog_push_staleness_tolerance,
       size_t thread_oplog_batch_size,
-      size_t server_push_row_threshold,
       long server_idle_milli,
       int32_t row_candidate_factor,
       int32_t numa_index,
-      NumaPolicy numa_policy) {
+      NumaPolicy numa_policy,
+      bool naive_table_oplog_meta) {
 
     num_comm_channels_per_client_
         = num_comm_channels_per_client;
@@ -183,11 +181,7 @@ public:
     bg_idle_milli_ = bg_idle_milli;
 
     bandwidth_mbps_ = bandwidth_mbps;
-    oplog_push_upper_bound_kb_ = oplog_push_upper_bound_kb;
-    oplog_push_staleness_tolerance_ = oplog_push_staleness_tolerance;
     thread_oplog_batch_size_ = thread_oplog_batch_size;
-
-    server_push_row_threshold_ = server_push_row_threshold;
 
     server_idle_milli_ = server_idle_milli;
 
@@ -196,6 +190,8 @@ public:
     numa_index_ = numa_index;
 
     numa_policy_ = numa_policy;
+
+    naive_table_oplog_meta_ = naive_table_oplog_meta;
 
     for (auto host_iter = host_map.begin();
          host_iter != host_map.end(); ++host_iter) {
@@ -363,20 +359,8 @@ public:
     return bandwidth_mbps_;
   }
 
-  static size_t get_oplog_push_upper_bound_kb() {
-    return oplog_push_upper_bound_kb_;
-  }
-
-  static int32_t get_oplog_push_staleness_tolerance() {
-    return oplog_push_staleness_tolerance_;
-  }
-
   static size_t get_thread_oplog_batch_size() {
     return thread_oplog_batch_size_;
-  }
-
-  static size_t get_server_push_row_threshold() {
-    return server_push_row_threshold_;
   }
 
   static long get_server_idle_milli() {
@@ -389,6 +373,14 @@ public:
 
   static NumaPolicy get_numa_policy() {
     return numa_policy_;
+  }
+
+  static bool get_naive_table_oplog_meta() {
+    return naive_table_oplog_meta_;
+  }
+
+  static bool get_suppression_on() {
+    return suppression_on_;
   }
 
   static CommBus* comm_bus;
@@ -435,13 +427,8 @@ private:
   static long bg_idle_milli_;
 
   static double bandwidth_mbps_;
-  static size_t oplog_push_upper_bound_kb_;
-  static int32_t oplog_push_staleness_tolerance_;
 
   static size_t thread_oplog_batch_size_;
-  static size_t server_oplog_push_batch_size_;
-
-  static size_t server_push_row_threshold_;
 
   static long server_idle_milli_;
 
@@ -450,6 +437,10 @@ private:
   static int32_t numa_index_;
 
   static NumaPolicy numa_policy_;
+
+  static bool naive_table_oplog_meta_;
+
+  static bool suppression_on_;
 };
 
 }   // namespace petuum

@@ -129,6 +129,10 @@ public:
     return table_info_.oplog_dense_serialized;
   }
 
+  size_t get_server_push_row_upper_bound() const {
+    return table_info_.server_push_row_upper_bound;
+  }
+
   bool AppendTableToBuffs(
       int32_t client_id_st,
       boost::unordered_map<int32_t, RecordBuff> *buffs,
@@ -142,8 +146,7 @@ public:
 
   void GetPartialTableToSend(
     boost::unordered_map<int32_t, ServerRow*> *rows_to_send,
-    boost::unordered_map<int32_t, size_t> *client_size_map,
-    size_t num_rows_threshold);
+    boost::unordered_map<int32_t, size_t> *client_size_map);
 
   void AppendRowsToBuffsPartial(
     boost::unordered_map<int32_t, RecordBuff> *buffs,

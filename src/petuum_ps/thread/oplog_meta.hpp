@@ -5,7 +5,10 @@
 #include <boost/noncopyable.hpp>
 #include <glog/logging.h>
 
-#include <petuum_ps/thread/table_oplog_meta.hpp>
+#include <petuum_ps/thread/context.hpp>
+#include <petuum_ps/thread/naive_table_oplog_meta.hpp>
+#include <petuum_ps/thread/random_table_oplog_meta.hpp>
+#include <petuum_ps/thread/value_table_oplog_meta.hpp>
 
 namespace petuum {
 
@@ -13,36 +16,62 @@ class OpLogMeta : boost::noncopyable {
 public:
   OpLogMeta() { }
 
-  ~OpLogMeta() { }
-
-  TableOpLogMeta *AddTableOpLogMeta(int32_t table_id,
-                                    const AbstractRow *sample_row) {
-    table_oplog_map_.insert(
-        std::make_pair(table_id, TableOpLogMeta(sample_row)));
-
-    auto oplog_iter = table_oplog_map_.find(table_id);
-
-    return &(oplog_iter->second);
+  ~OpLogMeta() {
+    for(auto &oplog_pair : table_oplog_map_) {
+      delete oplog_pair.second;
+    }
   }
 
-  TableOpLogMeta *Get(int32_t table_id) {
+  AbstractTableOpLogMeta *AddTableOpLogMeta(int32_t table_id,
+                                    const AbstractRow *sample_row) {
+    AbstractTableOpLogMeta *table_oplog_meta;
+
+    if (GlobalContext::get_naive_table_oplog_meta()) {
+      table_oplog_meta = new NaiveTableOpLogMeta(sample_row);
+    } else {
+      UpdateSortPolicy update_sort_policy
+          = GlobalContext::get_update_sort_policy();
+
+      switch(update_sort_policy) {
+        case Random:
+          table_oplog_meta
+              = new RandomTableOpLogMeta(sample_row);
+          break;
+        case RelativeMagnitude:
+          table_oplog_meta
+              = new ValueTableOpLogMeta(sample_row);
+          break;
+        default:
+          LOG(FATAL) << "Unsupported update_sort_policy = "
+                     << update_sort_policy;
+      }
+
+    }
+
+    table_oplog_map_.insert(
+        std::make_pair(table_id, table_oplog_meta));
+
+    return table_oplog_meta;
+  }
+
+  AbstractTableOpLogMeta *Get(int32_t table_id) {
     auto oplog_iter = table_oplog_map_.find(table_id);
     if (oplog_iter == table_oplog_map_.end())
       return 0;
-    return &(oplog_iter->second);
+    return oplog_iter->second;
   }
 
   bool OpLogMetaExists() const {
     for (auto oplog_iter = table_oplog_map_.begin();
          oplog_iter != table_oplog_map_.end(); ++oplog_iter) {
-      if (oplog_iter->second.GetNumRowOpLogs() > 0)
+      if (oplog_iter->second->GetNumRowOpLogs() > 0)
         return true;
     }
     return false;
   }
 
 private:
-  std::map<int32_t, TableOpLogMeta> table_oplog_map_;
+  std::map<int32_t, AbstractTableOpLogMeta*> table_oplog_map_;
 };
 
 }

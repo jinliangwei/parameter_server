@@ -1,8 +1,3 @@
-/*
- * Least-squares Matrix Factorization application built on Petuum Parameter Server.
- *
- * Author: qho
- */
 #include <vector>
 #include <fstream>
 #include <algorithm>
@@ -16,14 +11,12 @@
 #include <boost/thread/barrier.hpp>
 
 #include <petuum_ps_common/include/petuum_ps.hpp>
+#include <petuum_ps_common/include/system_gflags.hpp>
+#include <petuum_ps_common/include/table_gflags.hpp>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 // Command-line flags
-DEFINE_string(hostfile, "", "Path to Petuum PS server configuration file");
-DEFINE_string(datafile, "", "Input sparse matrix");
-DEFINE_string(output_prefix, "", "Output results with this prefix. "
-    "If the prefix is X, the output will be called X.L and X.R");
 DEFINE_double(init_step_size, 0.5, "Initial stochastic gradient descent "
     "step size");
 DEFINE_double(step_dec, 0.9, "Step size is "
@@ -31,53 +24,25 @@ DEFINE_double(step_dec, 0.9, "Step size is "
 DEFINE_bool(use_step_dec, false, "False to use sqrt instead of "
     "multiplicative decay.");
 DEFINE_double(lambda, 0.001, "L2 regularization strength.");
-DEFINE_int32(num_clocks_per_eval, 1, "# of clocks between "
-    "each objective evaluation");
-DEFINE_int32(num_clients, 1, "Total number of clients");
-DEFINE_int32(num_worker_threads, 1, "Number of worker threads per client");
-DEFINE_int32(num_comm_channels_per_client, 1,
-    "number of comm channels per client");
-DEFINE_int32(client_id, 0, "This client's ID");
 DEFINE_int32(K, 100, "Factorization rank");
-DEFINE_int32(num_iterations, 100, "Number of iterations");
-DEFINE_int32(staleness, 0, "Staleness");
-DEFINE_int32(N_cache_size, 10000000, "Process cache size for the L table.");
-DEFINE_int32(M_cache_size, 10000000, "Process cache size for the M table.");
-DEFINE_int32(num_clocks_per_iter, 1,
-    "clock num_clocks_per_iter in each SGD sweep.");
-DEFINE_string(ssp_mode, "SSPPush", "SSPAggr/SSPPush/SSP");
+
+DEFINE_string(datafile, "", "Input sparse matrix");
 DEFINE_string(data_format, "list", "list, mmt or libsvm");
-DEFINE_string(stats_path, "", "Statistics output file");
+DEFINE_string(output_prefix, "", "Output results with this prefix. "
+    "If the prefix is X, the output will be called X.L and X.R");
+DEFINE_int32(num_iterations, 100, "Number of iterations");
+DEFINE_int32(num_clocks_per_iter, 1,
+             "clock num_clocks_per_iter in each SGD sweep.");
+DEFINE_int32(num_clocks_per_eval, 1, "# of clocks between "
+             "each objective evaluation");
+DEFINE_int32(num_worker_threads, 1, "Number of worker threads per client");
+
 DEFINE_bool(output_LR, false, "Save L and R matrices to disk or not.");
 
-// SSPAggr parameters
-DEFINE_int32(bandwidth_mbps, 40, "Bandwidth in Megabits per second"
-    " per comm thread.");
-DEFINE_int32(bg_idle_milli, 500, "Bg idle millisecond");
-DEFINE_int32(oplog_push_upper_bound_kb, 100,
-             "oplog push upper bound in Kilobytes per comm thread.");
-DEFINE_int32(oplog_push_staleness_tolerance, 2,
-             "oplog push staleness tolerance");
-DEFINE_int32(thread_oplog_batch_size, 10*1000,
-             "Thread OpLog Batch Size");
-DEFINE_int32(server_push_row_threshold, 100, "Server push row threshold");
-DEFINE_int32(server_idle_milli, 10, "server idle time out in millisec");
-DEFINE_string(update_sort_policy, "Random", "Update sort policy");
-DEFINE_int32(row_oplog_type, petuum::RowOpLogType::kDenseRowOpLog, "row oplog type");
-DEFINE_bool(oplog_dense_serialized, true, "dense serialized oplog");
-
-DEFINE_string(oplog_type, "Sparse", "use append only oplog?");
-DEFINE_uint64(append_only_buffer_capacity, 1024*1024, "buffer capacity in bytes");
-DEFINE_uint64(append_only_buffer_pool_size, 3, "append_ only buffer pool size");
-DEFINE_int32(bg_apply_append_oplog_freq, 4, "bg apply append oplog freq");
-
-DEFINE_string(process_storage_type, "BoundedSparse", "process storage type");
-
-DEFINE_bool(no_oplog_replay, false, "oplog replay?");
-
-DEFINE_bool(numa_opt, false, "numa opt on?");
-
-DEFINE_int32(numa_index, 0, "numa node index");
+DEFINE_uint64(N_cache_size, 10000000, "Process cache size for the L table.");
+DEFINE_uint64(M_cache_size, 10000000, "Process cache size for the M table.");
+DEFINE_uint64(N_client_send_oplog_upper_bound, 100, "N client upper bound");
+DEFINE_uint64(M_client_send_oplog_upper_bound, 100, "N client upper bound");
 
 // Data variables
 int N_, M_; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
@@ -364,8 +329,8 @@ std::string GetExperimentInfo() {
     << "num_clocks_per_eval = " << FLAGS_num_clocks_per_eval << std::endl
     << "N_cache_size = " << FLAGS_N_cache_size << std::endl
     << "M_cache_size = " << FLAGS_M_cache_size << std::endl
-    << "staleness = " << FLAGS_staleness << std::endl
-    << "ssp_mode = " << FLAGS_ssp_mode << std::endl
+    << "staleness = " << FLAGS_table_staleness << std::endl
+    << "ssp_mode = " << FLAGS_consistency_model << std::endl
     << "init_step_size = " << FLAGS_init_step_size << std::endl
     << "step_dec = " << FLAGS_step_dec << std::endl
     << "use_step_dec = " << ((FLAGS_use_step_dec) ? "True" : "False") << std::endl
@@ -719,59 +684,17 @@ int main(int argc, char *argv[]) {
   google::InitGoogleLogging(argv[0]);
   petuum::HighResolutionTimer total_timer;
 
-  LOG(INFO) << "staleness = " << FLAGS_staleness;
+  LOG(INFO) << "staleness = " << FLAGS_table_staleness;
 
   // Configure Petuum PS
   petuum::TableGroupConfig table_group_config;
-  table_group_config.num_comm_channels_per_client
-    = FLAGS_num_comm_channels_per_client;
-  // Global params
-  table_group_config.num_total_clients = FLAGS_num_clients;
-  // L_table, R_table, loss_table.
-  table_group_config.num_tables = 3;
-  // +1 for main() thread
-  table_group_config.num_local_app_threads = FLAGS_num_worker_threads + 1;
-  petuum::GetHostInfos(FLAGS_hostfile, &table_group_config.host_map);
-  table_group_config.client_id = FLAGS_client_id;
-  if (FLAGS_ssp_mode == "SSPPush") {
-    table_group_config.consistency_model = petuum::SSPPush;
-  } else if (FLAGS_ssp_mode == "SSP") {
-    table_group_config.consistency_model = petuum::SSP;
-  } else if (FLAGS_ssp_mode == "SSPAggr") {
-    table_group_config.consistency_model = petuum::SSPAggr;
-    table_group_config.update_sort_policy
-        = petuum::GetUpdateSortPolicy(FLAGS_update_sort_policy);
-  } else {
-    LOG(FATAL) << "Unsupported ssp mode " << FLAGS_ssp_mode;
-  }
-  table_group_config.stats_path = FLAGS_stats_path;
-
-  // SSPAggr parameters.
-  table_group_config.bandwidth_mbps = FLAGS_bandwidth_mbps;
-  table_group_config.bg_idle_milli = FLAGS_bg_idle_milli;
-  table_group_config.oplog_push_upper_bound_kb
-    = FLAGS_oplog_push_upper_bound_kb;
-  table_group_config.oplog_push_staleness_tolerance
-    = FLAGS_oplog_push_staleness_tolerance;
-  table_group_config.thread_oplog_batch_size = FLAGS_thread_oplog_batch_size;
-  table_group_config.server_push_row_threshold
-    = FLAGS_server_push_row_threshold;
-  table_group_config.server_idle_milli
-    = FLAGS_server_idle_milli;
-
-  table_group_config.numa_opt = FLAGS_numa_opt;
-  table_group_config.numa_index = FLAGS_numa_index;
-  table_group_config.numa_policy = petuum::Center;
-
+  petuum::InitTableGroupConfig(&table_group_config, 3);
 
   // Configure PS row types
   // Register dense float rows as ID 0
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<float> >(0);
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<int64_t> >(1);
-  // Start PS
-  // IMPORTANT: This command starts up the name node service on client 0.
-  //            We therefore do it ASAP, before other lengthy actions like
-  //            loading data.
+
   // Initializing thread does not need table access
   petuum::PSTableGroup::Init(table_group_config, false);
 
@@ -792,90 +715,50 @@ int main(int argc, char *argv[]) {
     LOG(FATAL) << "Unknown data format " << FLAGS_data_format;
   }
 
-  //  for (int i = 0; i < 8; ++i) {
-  //int num_elements_per_client = X_row.size() / 8;
-  //int element_begin = i * num_elements_per_client;
-  //int element_end = (i == (8 - 1)) ?
-  //X_row.size() : element_begin + num_elements_per_client;
-  //size_t num_rows = CountLocalNumRows(element_begin, element_end);
-  //  size_t num_cols = CountLocalNumColumns(element_begin, element_end);
-  //  LOG(INFO) << "client = " << i
-  //          << " num_rows = " << num_rows
-  //           << " num_cols = " << num_cols;
-  //}
-
-  //exit(0);
-
   if (FLAGS_client_id == 0) {
     LOG(INFO) << std::endl << GetExperimentInfo();
   }
 
-  petuum::OpLogType oplog_type;
-
-  if (FLAGS_oplog_type == "Sparse") {
-    oplog_type = petuum::Sparse;
-  } else if (FLAGS_oplog_type == "AppendOnly"){
-    oplog_type = petuum::AppendOnly;
-  } else if (FLAGS_oplog_type == "Dense") {
-    oplog_type = petuum::Dense;
-  } else {
-    LOG(FATAL) << "Unknown oplog type = " << FLAGS_oplog_type;
-  }
-
-  petuum::ProcessStorageType process_storage_type;
-
-  if (FLAGS_process_storage_type == "BoundedDense") {
-    process_storage_type = petuum::BoundedDense;
-  } else if (FLAGS_process_storage_type == "BoundedSparse") {
-    process_storage_type = petuum::BoundedSparse;
-  } else {
-    LOG(FATAL) << "Unknown process storage type " << FLAGS_process_storage_type;
-  }
-
   // Configure PS tables
   petuum::ClientTableConfig table_config;
-  table_config.table_info.row_type = 0; // Dense float rows
-  table_config.table_info.row_oplog_type = FLAGS_row_oplog_type;
-  table_config.table_info.oplog_dense_serialized = FLAGS_oplog_dense_serialized;
-  table_config.oplog_type = oplog_type;
-  table_config.append_only_oplog_type = petuum::DenseBatchInc;
-  table_config.append_only_buff_capacity = FLAGS_append_only_buffer_capacity;
-  table_config.per_thread_append_only_buff_pool_size
-      = FLAGS_append_only_buffer_pool_size;
-  table_config.bg_apply_append_oplog_freq = FLAGS_bg_apply_append_oplog_freq;
-  table_config.process_storage_type = process_storage_type;
-  table_config.no_oplog_replay = FLAGS_no_oplog_replay;
+  petuum::InitTableConfig(&table_config);
+
+  table_config.table_info.server_push_row_upper_bound
+      = FLAGS_server_push_row_upper_bound;
 
   // L_table (N by K)
-  table_config.table_info.table_staleness = FLAGS_staleness;
   table_config.table_info.row_capacity = FLAGS_K;
   table_config.table_info.dense_row_oplog_capacity = FLAGS_K;
-  //table_config.process_cache_capacity = N_;
   table_config.process_cache_capacity = FLAGS_N_cache_size;
+  table_config.thread_cache_capacity = 1;
   table_config.oplog_capacity = FLAGS_N_cache_size;
-  petuum::PSTableGroup::CreateTable(0,table_config);
+  table_config.client_send_oplog_upper_bound
+      = FLAGS_N_client_send_oplog_upper_bound;
+  petuum::PSTableGroup::CreateTable(0, table_config);
 
   // R_table (M by K)
-  table_config.table_info.table_staleness = FLAGS_staleness;
   table_config.table_info.row_capacity = FLAGS_K;
   table_config.table_info.dense_row_oplog_capacity = FLAGS_K;
-  //table_config.process_cache_capacity = M_;
   table_config.process_cache_capacity = FLAGS_M_cache_size;
+  table_config.thread_cache_capacity = 1;
   table_config.oplog_capacity = FLAGS_M_cache_size;
-  petuum::PSTableGroup::CreateTable(1,table_config);
+  table_config.client_send_oplog_upper_bound
+      = FLAGS_N_client_send_oplog_upper_bound;
+  petuum::PSTableGroup::CreateTable(1, table_config);
 
   table_config.table_info.oplog_dense_serialized = true;
-  table_config.table_info.dense_row_oplog_capacity = 6;
   table_config.no_oplog_replay = false;
   table_config.oplog_type = petuum::Sparse;
   table_config.process_storage_type = petuum::BoundedSparse;
-  // loss_table (1 by total # workers)
-  table_config.table_info.table_staleness = FLAGS_staleness;  // No staleness for loss table
-  // <iter, clock, compute-time, compute+eval_time, L2_loss, L2_regularized_loss> (each row is an iter).
+  table_config.table_info.table_staleness = FLAGS_table_staleness;
+
   table_config.table_info.row_capacity = 6;
+  table_config.table_info.dense_row_oplog_capacity = 6;
   table_config.process_cache_capacity = 100;
+  table_config.thread_cache_capacity = 1;
   table_config.oplog_capacity = 100;
-  petuum::PSTableGroup::CreateTable(2,table_config);
+  table_config.client_send_oplog_upper_bound = 1;
+  petuum::PSTableGroup::CreateTable(2, table_config);
 
   // Finished creating tables
   petuum::PSTableGroup::CreateTableDone();

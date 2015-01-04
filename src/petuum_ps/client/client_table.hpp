@@ -97,6 +97,10 @@ public:
     return no_oplog_replay_;
   }
 
+  size_t get_client_send_oplog_upper_bound() const {
+    return client_table_config_.client_send_oplog_upper_bound;
+  }
+
 private:
   const int32_t table_id_;
   const int32_t row_type_;

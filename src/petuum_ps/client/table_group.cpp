@@ -54,14 +54,12 @@ TableGroup::TableGroup(const TableGroupConfig &table_group_config,
       table_group_config.update_sort_policy,
       table_group_config.bg_idle_milli,
       table_group_config.bandwidth_mbps,
-      table_group_config.oplog_push_upper_bound_kb,
-      table_group_config.oplog_push_staleness_tolerance,
       table_group_config.thread_oplog_batch_size,
-      table_group_config.server_push_row_threshold,
       table_group_config.server_idle_milli,
       table_group_config.row_candidate_factor,
       table_group_config.numa_index,
-      table_group_config.numa_policy);
+      table_group_config.numa_policy,
+      table_group_config.naive_table_oplog_meta);
 
   NumaMgr::Init(table_group_config.numa_opt);
 

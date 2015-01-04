@@ -10,23 +10,14 @@
 #include <petuum_ps/thread/context.hpp>
 #include <boost/noncopyable.hpp>
 
+#include <petuum_ps/thread/abstract_table_oplog_meta.hpp>
+
 namespace petuum {
 
-class TableOpLogMeta : boost::noncopyable {
+class NaiveTableOpLogMeta : public AbstractTableOpLogMeta {
 public:
-  TableOpLogMeta(const AbstractRow *sample_row);
-  ~TableOpLogMeta();
-
-  TableOpLogMeta(TableOpLogMeta && other) {
-    oplog_map_ = other.oplog_map_;
-    oplog_list_ = other.oplog_list_;
-    other.oplog_map_.clear();
-    other.oplog_list_.clear();
-
-    CompRowOpLogMeta_ = other.CompRowOpLogMeta_;
-    ReassignImportance_ = other.ReassignImportance_;
-    MergeRowOpLogMeta_ = other.MergeRowOpLogMeta_;
-  }
+  NaiveTableOpLogMeta(const AbstractRow *sample_row);
+  ~NaiveTableOpLogMeta();
 
   typedef bool (*CompRowOpLogMetaFunc)(
       const std::pair<int32_t, RowOpLogMeta*> &oplog1,
@@ -41,8 +32,7 @@ public:
   void InsertMergeRowOpLogMeta(int32_t row_id,
                                const RowOpLogMeta& row_oplog_meta);
 
-  void Sort();
-  // Assuming sort has happened
+  void Prepare(size_t num_rows_to_send);
   int32_t GetAndClearNextInOrder();
 
   int32_t InitGetUptoClock(int32_t clock);

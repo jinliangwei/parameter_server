@@ -216,10 +216,14 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
       sender_id, version);
   STATS_SERVER_ACCUM_APPLY_OPLOG_END();
 
+  LOG(INFO) << "is_clock = " << is_clock
+            << " bg_clock = " << bg_clock;
+
   bool clock_changed = false;
   if (is_clock) {
     clock_changed = server_obj_.ClockUntil(sender_id, bg_clock);
     if (clock_changed) {
+      LOG(INFO) << "Clock has changed";
       std::vector<ServerRowRequest> requests;
       server_obj_.GetFulfilledRowRequests(&requests);
       for (auto request_iter = requests.begin();

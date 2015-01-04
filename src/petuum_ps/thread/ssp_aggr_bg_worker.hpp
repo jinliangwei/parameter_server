@@ -42,24 +42,26 @@ protected:
 
   size_t ReadTableOpLogMetaUpToClock(
     int32_t table_id, ClientTable *table, int32_t clock_to_push,
-    TableOpLogMeta *table_oplog_meta,
+    AbstractTableOpLogMeta *table_oplog_meta,
     GetSerializedRowOpLogSizeFunc GetSerializedRowOpLogSize,
-    BgOpLogPartition *bg_table_oplog);
+    BgOpLogPartition *bg_table_oplog, size_t *accum_num_rows);
 
   size_t ReadTableOpLogMetaUpToCapacity(
-    int32_t table_id, ClientTable *table, size_t bytes_accumulated,
-    TableOpLogMeta *table_oplog_meta,
+    int32_t table_id, ClientTable *table,
+    size_t accum_num_bytes, size_t accum_num_rows,
+    AbstractTableOpLogMeta *table_oplog_meta,
     GetSerializedRowOpLogSizeFunc GetSerializedRowOpLogSize,
     BgOpLogPartition *bg_table_oplog);
 
   size_t ReadTableOpLogMetaUpToClockNoReplay(
       int32_t table_id, ClientTable *table, int32_t clock_to_push,
-      TableOpLogMeta *table_oplog_meta,
-      RowOpLogSerializer *row_oplog_serializer);
+      AbstractTableOpLogMeta *table_oplog_meta,
+      RowOpLogSerializer *row_oplog_serializer, size_t *accum_num_rows);
 
   size_t ReadTableOpLogMetaUpToCapacityNoReplay(
-    int32_t table_id, ClientTable *table, size_t bytes_accumulated,
-    TableOpLogMeta *table_oplog_meta,
+    int32_t table_id, ClientTable *table,
+    size_t accum_num_bytes, size_t accum_num_rows,
+    AbstractTableOpLogMeta *table_oplog_meta,
     RowOpLogSerializer *row_oplog_serializer);
 
   BgOpLogPartition* PrepareOpLogsNormal(
@@ -95,6 +97,10 @@ protected:
   OpLogMeta oplog_meta_;
   HighResolutionTimer msg_send_timer_;
   double oplog_send_milli_sec_;
+
+  HighResolutionTimer clock_timer_;
+  int32_t suppression_level_;
+  double clock_tick_sec_;
 };
 
 }

@@ -22,4 +22,14 @@ void GetServerIDsFromHostMap(std::vector<int32_t> *server_ids,
 
 UpdateSortPolicy GetUpdateSortPolicy(const std::string &policy);
 
+ConsistencyModel GetConsistencyModel(const std::string &consistency_model);
+
+OpLogType GetOpLogType(const std::string &oplog_type);
+
+AppendOnlyOpLogType GetAppendOnlyOpLogType(
+    const std::string &append_only_oplog_type);
+
+ProcessStorageType GetProcessStroageType(
+    const std::string &process_storage_type);
+
 }   // namespace petuum

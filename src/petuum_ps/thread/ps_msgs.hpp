@@ -116,7 +116,8 @@ public:
         + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
         + sizeof(size_t)  + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
         + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
-        + sizeof(ProcessStorageType) + sizeof(bool);
+        + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t)
+        + sizeof(size_t);
   }
 
   int32_t &get_table_id() {
@@ -240,7 +241,7 @@ public:
   }
 
   bool &get_no_oplog_replay() {
- return *(reinterpret_cast<bool*>(
+    return *(reinterpret_cast<bool*>(
         mem_.get_mem()
         + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
         + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
@@ -248,6 +249,28 @@ public:
         + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
         + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
         + sizeof(ProcessStorageType) ));
+  }
+
+  size_t &get_server_push_row_upper_bound() {
+    return *(reinterpret_cast<size_t*>(
+        mem_.get_mem()
+        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
+        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
+        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
+        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
+        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
+        + sizeof(ProcessStorageType) + sizeof(bool) ));
+  }
+
+  size_t &get_client_send_oplog_upper_bound() {
+    return *(reinterpret_cast<size_t*>(
+        mem_.get_mem()
+        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
+        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
+        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
+        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
+        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
+        + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t) ));
   }
 
 protected:
@@ -278,7 +301,7 @@ public:
   size_t get_size() {
     return NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
         + sizeof(int32_t) + sizeof(size_t)
-        + sizeof(bool) + sizeof(int32_t) + sizeof(size_t);
+        + sizeof(bool) + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t);
   }
 
   int32_t &get_table_id() {
@@ -320,6 +343,13 @@ public:
         mem_.get_mem() + NumberedMsg::get_size()
         + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
         + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)));
+  }
+
+    size_t &get_server_push_row_upper_bound() {
+    return *(reinterpret_cast<size_t*>(
+        mem_.get_mem() + NumberedMsg::get_size()
+        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
+        + sizeof(size_t) + sizeof(bool) + sizeof(int32_t) +sizeof(size_t) ));
   }
 
 protected:

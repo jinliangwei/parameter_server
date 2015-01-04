@@ -1,4 +1,4 @@
-#include <petuum_ps/thread/table_oplog_meta.hpp>
+#include <petuum_ps/thread/naive_table_oplog_meta.hpp>
 #include <petuum_ps/thread/context.hpp>
 
 #include <time.h>
@@ -8,7 +8,7 @@
 
 namespace petuum {
 
-TableOpLogMeta::TableOpLogMeta(const AbstractRow *sample_row):
+NaiveTableOpLogMeta::NaiveTableOpLogMeta(const AbstractRow *sample_row):
     sample_row_(sample_row) {
 
   switch(GlobalContext::get_update_sort_policy()) {
@@ -39,14 +39,14 @@ TableOpLogMeta::TableOpLogMeta(const AbstractRow *sample_row):
   }
 }
 
-TableOpLogMeta::~TableOpLogMeta() {
+NaiveTableOpLogMeta::~NaiveTableOpLogMeta() {
   for (auto &oplog_iter : oplog_map_) {
     delete oplog_iter.second;
     oplog_iter.second = 0;
   }
 }
 
-void TableOpLogMeta::InsertMergeRowOpLogMeta(int32_t row_id,
+void NaiveTableOpLogMeta::InsertMergeRowOpLogMeta(int32_t row_id,
                                              const RowOpLogMeta& row_oplog_meta) {
   auto iter = oplog_map_.find(row_id);
 
@@ -61,14 +61,14 @@ void TableOpLogMeta::InsertMergeRowOpLogMeta(int32_t row_id,
   MergeRowOpLogMeta_(iter->second, row_oplog_meta);
 }
 
-void TableOpLogMeta::Sort() {
-  //LOG(INFO) << "Sort called";
-  //ReassignImportance_(&oplog_list_);
-  //oplog_list_.sort(CompRowOpLogMeta_);
+void NaiveTableOpLogMeta::Prepare(size_t num_rows_to_send
+                                  __attribute__((unused)) ) {
+  ReassignImportance_(&oplog_list_);
+  oplog_list_.sort(CompRowOpLogMeta_);
 }
 
 
-int32_t TableOpLogMeta::GetAndClearNextInOrder() {
+int32_t NaiveTableOpLogMeta::GetAndClearNextInOrder() {
   if (oplog_list_.empty())
     return -1;
 
@@ -83,7 +83,7 @@ int32_t TableOpLogMeta::GetAndClearNextInOrder() {
   return row_id;
 }
 
-int32_t TableOpLogMeta::InitGetUptoClock(int32_t clock) {
+int32_t NaiveTableOpLogMeta::InitGetUptoClock(int32_t clock) {
   list_iter_ = oplog_list_.begin();
   clock_to_clear_ = clock;
 
@@ -91,7 +91,7 @@ int32_t TableOpLogMeta::InitGetUptoClock(int32_t clock) {
   return GetAndClearNextUptoClock();
 }
 
-int32_t TableOpLogMeta::GetAndClearNextUptoClock() {
+int32_t NaiveTableOpLogMeta::GetAndClearNextUptoClock() {
   for (; list_iter_ != oplog_list_.end(); ++list_iter_) {
     if (list_iter_->second->get_clock() > clock_to_clear_) {
       continue;
@@ -110,7 +110,7 @@ int32_t TableOpLogMeta::GetAndClearNextUptoClock() {
   return row_id;
 }
 
-bool TableOpLogMeta::CompRowOpLogMetaClock(
+bool NaiveTableOpLogMeta::CompRowOpLogMetaClock(
     const std::pair<int32_t, RowOpLogMeta*> &oplog1,
     const std::pair<int32_t, RowOpLogMeta*> &oplog2) {
 
@@ -121,7 +121,7 @@ bool TableOpLogMeta::CompRowOpLogMetaClock(
   }
 }
 
-bool TableOpLogMeta::CompRowOpLogMetaImportance(
+bool NaiveTableOpLogMeta::CompRowOpLogMetaImportance(
     const std::pair<int32_t, RowOpLogMeta*> &oplog1,
     const std::pair<int32_t, RowOpLogMeta*> &oplog2) {
 
@@ -132,14 +132,14 @@ bool TableOpLogMeta::CompRowOpLogMetaImportance(
   }
 }
 
-bool TableOpLogMeta::CompRowOpLogMetaRelativeFIFONReMag(
+bool NaiveTableOpLogMeta::CompRowOpLogMetaRelativeFIFONReMag(
     const std::pair<int32_t, RowOpLogMeta*> &oplog1,
     const std::pair<int32_t, RowOpLogMeta*> &oplog2) {
 
   return CompRowOpLogMetaImportance(oplog1, oplog2);
 }
 
-void TableOpLogMeta::ReassignImportanceRandom(
+void NaiveTableOpLogMeta::ReassignImportanceRandom(
     std::list<std::pair<int32_t, RowOpLogMeta*> > *oplog_list) {
   srand(time(NULL));
   for (auto list_iter = (*oplog_list).begin(); list_iter != (*oplog_list).end();
@@ -149,16 +149,16 @@ void TableOpLogMeta::ReassignImportanceRandom(
   }
 }
 
-void TableOpLogMeta::ReassignImportanceNoOp(
+void NaiveTableOpLogMeta::ReassignImportanceNoOp(
     std::list<std::pair<int32_t, RowOpLogMeta*> > *oplog_list) { }
 
-void TableOpLogMeta::MergeRowOpLogMetaAccum(RowOpLogMeta *row_oplog_meta,
+void NaiveTableOpLogMeta::MergeRowOpLogMetaAccum(RowOpLogMeta *row_oplog_meta,
                                             const RowOpLogMeta& to_merge) {
   row_oplog_meta->accum_importance(to_merge.get_importance());
   row_oplog_meta->set_clock(to_merge.get_clock());
 }
 
-void TableOpLogMeta::MergeRowOpLogMetaNoOp(RowOpLogMeta *row_oplog_meta,
+void NaiveTableOpLogMeta::MergeRowOpLogMetaNoOp(RowOpLogMeta *row_oplog_meta,
                                            const RowOpLogMeta& to_merge) {
   row_oplog_meta->set_clock(to_merge.get_clock());
 }

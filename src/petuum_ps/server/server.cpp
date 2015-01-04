@@ -318,18 +318,16 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
     client_buff_size[client_id] = 0;
   }
 
-  for (auto table_iter = tables_.begin(); table_iter != tables_.end();
-       table_iter++) {
-    int32_t table_id = table_iter->first;
+  for (auto &table_pair : tables_) {
+    int32_t table_id = table_pair.first;
 
     table_rows_to_send.insert(std::make_pair(
         table_id,
         boost::unordered_map<int32_t, ServerRow*>()));
 
-    table_iter->second.GetPartialTableToSend(
+    table_pair.second.GetPartialTableToSend(
         &(table_rows_to_send[table_id]),
-        &client_buff_size,
-        GlobalContext::get_server_push_row_threshold());
+        &client_buff_size);
   }
 
   size_t num_tables = tables_.size();

@@ -74,13 +74,14 @@ struct TableGroupConfig {
       update_sort_policy(Random),
       bg_idle_milli(2),
       bandwidth_mbps(40),
-      oplog_push_upper_bound_kb(100),
-      oplog_push_staleness_tolerance(2),
       thread_oplog_batch_size(100*1000*1000),
       row_candidate_factor(5),
       numa_opt(false),
       numa_index(0),
-      numa_policy(Even) { }
+      numa_policy(Even),
+      naive_table_oplog_meta(true),
+    suppression_on(false)
+  { }
 
   std::string stats_path;
 
@@ -142,14 +143,7 @@ struct TableGroupConfig {
   // Bandwidth in Megabits per second
   double bandwidth_mbps;
 
-  // upper bound on update message size in kilobytes
-  size_t oplog_push_upper_bound_kb;
-
-  int32_t oplog_push_staleness_tolerance;
-
   size_t thread_oplog_batch_size;
-
-  size_t server_push_row_threshold;
 
   long server_idle_milli;
 
@@ -160,6 +154,10 @@ struct TableGroupConfig {
   int32_t numa_index;
 
   NumaPolicy numa_policy;
+
+  bool naive_table_oplog_meta;
+
+  bool suppression_on;
 };
 
 // TableInfo is shared between client and server.
@@ -170,7 +168,8 @@ struct TableInfo {
       row_capacity(0),
       oplog_dense_serialized(false),
       row_oplog_type(1),
-      dense_row_oplog_capacity(0) { }
+      dense_row_oplog_capacity(0),
+      server_push_row_upper_bound(100) { }
 
   // table_staleness is used for SSP and ClockVAP.
   int32_t table_staleness;
@@ -189,6 +188,8 @@ struct TableInfo {
   int32_t row_oplog_type;
 
   size_t dense_row_oplog_capacity;
+
+  size_t server_push_row_upper_bound;
 };
 
 // ClientTableConfig is used by client only.
@@ -203,7 +204,8 @@ struct ClientTableConfig {
       per_thread_append_only_buff_pool_size(3),
       bg_apply_append_oplog_freq(1),
       process_storage_type(BoundedDense),
-      no_oplog_replay(false) { }
+      no_oplog_replay(false),
+      client_send_oplog_upper_bound(100) { }
 
   TableInfo table_info;
 
@@ -230,6 +232,8 @@ struct ClientTableConfig {
   ProcessStorageType process_storage_type;
 
   bool no_oplog_replay;
+
+  size_t client_send_oplog_upper_bound;
 };
 
 }  // namespace petuum

@@ -60,6 +60,59 @@ UpdateSortPolicy GetUpdateSortPolicy(const std::string &policy) {
     LOG(FATAL) << "Unknown update sort policy: "
                << policy;
   }
+  return Random;
 }
 
+ConsistencyModel GetConsistencyModel(const std::string &consistency_model) {
+  if (consistency_model == "SSPPush") {
+    return SSPPush;
+  } else if (consistency_model == "SSP") {
+    return SSP;
+  } else if (consistency_model == "SSPAggr") {
+    return SSPAggr;
+  } else {
+    LOG(FATAL) << "Unsupported ssp mode " << consistency_model;
+  }
+  return SSPPush;
+}
+
+OpLogType GetOpLogType(const std::string &oplog_type) {
+  if (oplog_type == "Sparse") {
+    return Sparse;
+  } else if (oplog_type == "AppendOnly"){
+    return AppendOnly;
+  } else if (oplog_type == "Dense") {
+    return Dense;
+  } else {
+    LOG(FATAL) << "Unknown oplog type = " << oplog_type;
+  }
+
+  return Sparse;
+}
+
+AppendOnlyOpLogType GetAppendOnlyOpLogType(
+    const std::string &append_only_oplog_type) {
+    if (append_only_oplog_type == "Inc") {
+      return Inc;
+    } else if (append_only_oplog_type == "BatchInc") {
+      return BatchInc;
+    } else if (append_only_oplog_type == "DenseBatchInc") {
+      return DenseBatchInc;
+    } else {
+      LOG(FATAL) << "Unknown append only oplog type = " << append_only_oplog_type;
+    }
+    return Inc;
+}
+
+ProcessStorageType GetProcessStroageType(
+    const std::string &process_storage_type) {
+  if (process_storage_type == "BoundedDense") {
+    return BoundedDense;
+  } else if (process_storage_type == "BoundedSparse") {
+    return BoundedSparse;
+  } else {
+    LOG(FATAL) << "Unknown process storage type " << process_storage_type;
+  }
+  return BoundedSparse;
+}
 }   // namespace petuum

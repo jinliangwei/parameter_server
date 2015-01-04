@@ -50,13 +50,7 @@ long GlobalContext::bg_idle_milli_;
 
 double GlobalContext::bandwidth_mbps_;
 
-size_t GlobalContext::oplog_push_upper_bound_kb_;
-
-int32_t GlobalContext::oplog_push_staleness_tolerance_;
-
 size_t GlobalContext::thread_oplog_batch_size_;
-
-size_t GlobalContext::server_push_row_threshold_;
 
 long GlobalContext::server_idle_milli_;
 
@@ -65,4 +59,8 @@ int32_t GlobalContext::row_candidate_factor_;
 int32_t GlobalContext::numa_index_;
 
 NumaPolicy GlobalContext::numa_policy_;
+
+bool GlobalContext::naive_table_oplog_meta_;
+
+bool GlobalContext::suppression_on_;
 }   // namespace petuum

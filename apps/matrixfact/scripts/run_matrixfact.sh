@@ -1,18 +1,18 @@
-#!/bin/bash
+#!/bin/bash -u
 
 # Input files:
 #data_filename="/l0/netflix.dat.list.gl"
 #data_filename="/l0/movielens_10m.dat"
 #data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
-#data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
-data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
+data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
+#data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_2K_2K_X.dat"
-host_filename="../../machinefiles/servers"
-#host_filename="../../machinefiles/localserver"
+#host_filename="../../machinefiles/servers"
+host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=1000
+K=80
 init_step_size=5e-5
 step_dec=0.985
 use_step_dec=true # false to use power decay.
@@ -20,11 +20,11 @@ lambda=0
 data_format=list
 
 # Execution parameters:
-num_iterations=2
-ssp_mode="SSPAggr"
-num_worker_threads=64
+num_iterations=10
+consistency_model="SSPAggr"
+num_worker_threads=1
 num_comm_channels_per_client=1
-staleness=2 # effective staleness is staleness / num_clocks_per_iter.
+table_staleness=2 # effective staleness is staleness / num_clocks_per_iter.
 N_cache_size=480190
 #N_cache_size=500000
 M_cache_size=17771
@@ -38,22 +38,27 @@ bg_idle_milli=2
 # Total bandwidth: bandwidth_mbps * num_comm_channels_per_client * 2
 bandwidth_mbps=1000
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
-oplog_push_upper_bound_kb=16000
-oplog_push_staleness_tolerance=2
 thread_oplog_batch_size=100000
-server_push_row_threshold=400
 server_idle_milli=2
 update_sort_policy=Random
+row_candidate_factor=5
 
 append_only_buffer_capacity=$((1024*1024*4))
 append_only_buffer_pool_size=3
 bg_apply_append_oplog_freq=64
+
+N_client_send_oplog_upper_bound=100
+M_client_send_oplog_upper_bound=100
+server_push_row_upper_bound=100
 
 oplog_type=Dense
 process_storage_type=BoundedDense
 
 no_oplog_replay=true
 numa_opt=false
+numa_policy=Even
+naive_table_oplog_meta=true
+suppression_on=false
 
 # Find other Petuum paths by using the script's path
 app_dir=`readlink -f $0 | xargs dirname | xargs dirname`
@@ -74,7 +79,7 @@ num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
 output_dir="$app_dir/output_8x8_mbssp"
-output_dir="${output_dir}/netflix_K${K}_${staleness}_SSPAggr_Mag_b${bandwidth_mbps}_fge_16mb"
+output_dir="${output_dir}/netflix_K${K}_${table_staleness}_SSPAggr_Mag_b${bandwidth_mbps}_fge_16mb"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
   echo $output_dir
@@ -114,52 +119,60 @@ for ip in $host_list; do
 
   cmd="rm -rf ${log_path}; mkdir -p ${log_path}; \
     ASAN_OPTIONS=verbosity=1:malloc_context_size=256 \
-    GLOG_logtostderr=false \
+    GLOG_logtostderr=true \
     GLOG_log_dir=$log_path \
     GLOG_v=-1 \
     GLOG_minloglevel=0 \
     GLOG_vmodule="" \
     ${perf_cmd} \
     $prog_path \
-    --hostfile $host_file \
-    --datafile $data_file \
-    --output_prefix $output_prefix \
-    --K $K \
-    --num_iterations $num_iterations \
-    --num_worker_threads $num_worker_threads \
-    --num_comm_channels_per_client $num_comm_channels_per_client \
-    --init_step_size $init_step_size \
-    --step_dec $step_dec \
-    --N_cache_size $N_cache_size \
-    --M_cache_size $M_cache_size \
-    --use_step_dec $use_step_dec \
-    --lambda $lambda \
-    --staleness $staleness \
+    --stats_path ${stats_path}\
     --num_clients $num_hosts \
-    --num_clocks_per_iter $num_clocks_per_iter \
-    --num_clocks_per_eval $num_clocks_per_eval \
-    --stats_path ${stats_path} \
-    --ssp_mode $ssp_mode \
-    --data_format $data_format \
+    --num_comm_channels_per_client $num_comm_channels_per_client \
+    --init_thread_access_table=false \
+    --num_table_threads ${num_worker_threads} \
     --client_id $client_id \
-    --bg_idle_milli $bg_idle_milli \
+    --hostfile ${host_file} \
+    --consistency_model $consistency_model \
     --bandwidth_mbps $bandwidth_mbps \
-    --oplog_push_upper_bound_kb $oplog_push_upper_bound_kb \
-    --oplog_push_staleness_tolerance $oplog_push_staleness_tolerance \
+    --bg_idle_milli $bg_idle_milli \
     --thread_oplog_batch_size $thread_oplog_batch_size \
-    --server_push_row_threshold $server_push_row_threshold \
+    --row_candidate_factor ${row_candidate_factor}
     --server_idle_milli $server_idle_milli \
     --update_sort_policy $update_sort_policy \
+    --numa_opt=${numa_opt} \
+    --numa_index ${numa_index} \
+    --numa_policy ${numa_policy} \
+    --naive_table_oplog_meta=${naive_table_oplog_meta} \
+    --suppression_on=${suppression_on} \
+    --table_staleness $table_staleness \
+    --row_type 0 \
     --row_oplog_type ${row_oplog_type} \
     --oplog_dense_serialized \
     --oplog_type ${oplog_type} \
+    --append_only_oplog_type DenseBatchInc \
     --append_only_buffer_capacity ${append_only_buffer_capacity} \
     --append_only_buffer_pool_size ${append_only_buffer_pool_size} \
     --bg_apply_append_oplog_freq ${bg_apply_append_oplog_freq} \
     --process_storage_type ${process_storage_type} \
     --no_oplog_replay=${no_oplog_replay} \
-    --numa_opt=${numa_opt} \
-    --numa_index ${numa_index}"
+    --N_cache_size $N_cache_size \
+    --M_cache_size $M_cache_size \
+    --N_client_send_oplog_upper_bound ${N_client_send_oplog_upper_bound} \
+    --M_client_send_oplog_upper_bound ${M_client_send_oplog_upper_bound} \
+    --server_push_row_upper_bound ${server_push_row_upper_bound} \
+    --init_step_size $init_step_size \
+    --step_dec $step_dec \
+    --use_step_dec $use_step_dec \
+    --lambda $lambda \
+    --K $K \
+    --datafile $data_file \
+    --data_format $data_format \
+    --output_prefix $output_prefix \
+    --num_iterations $num_iterations \
+    --num_clocks_per_iter $num_clocks_per_iter \
+    --num_clocks_per_eval $num_clocks_per_eval \
+    --num_worker_threads $num_worker_threads"
 
   #echo $cmd
   ssh $ssh_options $ip $cmd&

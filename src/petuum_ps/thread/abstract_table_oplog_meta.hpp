@@ -17,7 +17,9 @@ public:
   virtual void InsertMergeRowOpLogMeta(int32_t row_id,
                                        const RowOpLogMeta& row_oplog_meta) = 0;
 
-  virtual int32_t InitGetAndClearNextInOrder() = 0;
+  virtual void Prepare(size_t num_rows_to_send
+                       __attribute__((unused)) ) { }
+  // Assuming prepare has happened
   virtual int32_t GetAndClearNextInOrder() = 0;
 
   virtual int32_t InitGetUptoClock(int32_t clock) = 0;
