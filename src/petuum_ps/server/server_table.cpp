@@ -73,7 +73,6 @@ void ServerTable::SortCandidateVectorImportance(
             (*candidate_row_vector).end(),
             [] (const CandidateServerRow &row1, const CandidateServerRow &row2)
             {
-
               if (row1.server_row_ptr->get_importance() ==
                   row2.server_row_ptr->get_importance()) {
                 return row1.row_id < row2.row_id;

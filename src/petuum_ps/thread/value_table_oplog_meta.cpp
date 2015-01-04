@@ -24,6 +24,7 @@ void ValueTableOpLogMeta::Prepare(size_t num_rows_to_send) {
   size_t oplog_meta_size = oplog_meta_.size();
   if (oplog_meta_size == 0) {
     sorted_vec_.resize(0);
+    vec_iter_ = sorted_vec_.begin();
     return;
   }
 
