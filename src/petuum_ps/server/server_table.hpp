@@ -31,14 +31,21 @@ public:
           ClassRegistry<AbstractRow>::GetRegistry().CreateObject(
               table_info.row_type)) {
 
+#ifdef PETUUM_COMP_IMPORTANCE
+    if (GlobalContext::get_consistency_model() == SSPAggr
+        && (GlobalContext::get_update_sort_policy() == RelativeMagnitude
+            || GlobalContext::get_update_sort_policy() == FIFO_N_ReMag
+            || GlobalContext::get_update_sort_policy() == Random)) {
+#else
     if (GlobalContext::get_consistency_model() == SSPAggr
         && (GlobalContext::get_update_sort_policy() == RelativeMagnitude
             || GlobalContext::get_update_sort_policy() == FIFO_N_ReMag)) {
+#endif
 
       if (table_info.oplog_dense_serialized)
         ApplyRowBatchInc_ = ApplyRowDenseBatchIncAccumImportance;
       else
-        ApplyRowBatchInc_ = ApplyRowDenseBatchInc;
+        ApplyRowBatchInc_ = ApplyRowBatchIncAccumImportance;
 
       ResetImportance_ = ResetImportance;
       SortCandidateVector_ = SortCandidateVectorImportance;

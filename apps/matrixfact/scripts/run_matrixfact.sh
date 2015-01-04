@@ -20,7 +20,7 @@ lambda=0
 data_format=list
 
 # Execution parameters:
-num_iterations=10
+num_iterations=20
 consistency_model="SSPAggr"
 num_worker_threads=1
 num_comm_channels_per_client=1
@@ -40,7 +40,7 @@ bandwidth_mbps=1000
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
 thread_oplog_batch_size=100000
 server_idle_milli=2
-update_sort_policy=Random
+update_sort_policy=RelativeMagnitude
 row_candidate_factor=5
 
 append_only_buffer_capacity=$((1024*1024*4))
@@ -57,7 +57,7 @@ process_storage_type=BoundedDense
 no_oplog_replay=true
 numa_opt=false
 numa_policy=Even
-naive_table_oplog_meta=true
+naive_table_oplog_meta=false
 suppression_on=false
 
 # Find other Petuum paths by using the script's path

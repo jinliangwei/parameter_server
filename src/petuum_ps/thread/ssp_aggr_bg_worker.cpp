@@ -95,6 +95,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClock(
           row_id, row_oplog, &table_num_bytes_by_server_,
           bg_table_oplog, GetSerializedRowOpLogSize);
 
+      STATS_BG_ACCUM_IMPORTANCE(table_id, dynamic_cast<MetaRowOpLog*>(row_oplog));
+
       accum_table_oplog_bytes += serialized_oplog_size;
       (*accum_num_rows)++;
     }
@@ -131,6 +133,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
         row_oplog->Reset();
 
         MetaRowOpLog *meta_row_oplog = dynamic_cast<MetaRowOpLog*>(row_oplog);
+        STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog);
+
         meta_row_oplog->InvalidateMeta();
         meta_row_oplog->ResetImportance();
 
@@ -171,6 +175,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
       size_t serialized_oplog_size = CountRowOpLogToSend(
           row_id, row_oplog, &table_num_bytes_by_server_,
           bg_table_oplog, GetSerializedRowOpLogSize);
+
+      STATS_BG_ACCUM_IMPORTANCE(table_id, dynamic_cast<MetaRowOpLog*>(row_oplog));
 
       accum_table_oplog_bytes += serialized_oplog_size;
       my_accum_num_rows++;
@@ -214,6 +220,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
         row_oplog->Reset();
 
         MetaRowOpLog *meta_row_oplog = dynamic_cast<MetaRowOpLog*>(row_oplog);
+        STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog);
         meta_row_oplog->InvalidateMeta();
         meta_row_oplog->ResetImportance();
 
@@ -323,6 +330,8 @@ BgOpLog *SSPAggrBgWorker::PrepareOpLogsToSend(int32_t clock_to_push) {
   for (const auto &table_pair : (*tables_)) {
     int32_t table_id = table_pair.first;
 
+    STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, 0.0);
+
     if (table_pair.second->get_no_oplog_replay()) {
       if (table_pair.second->get_oplog_type() == Sparse ||
           table_pair.second->get_oplog_type() == Dense)
@@ -424,6 +433,8 @@ BgOpLog *SSPAggrBgWorker::PrepareBgIdleOpLogs() {
 
   for (const auto &table_pair : (*tables_)) {
     int32_t table_id = table_pair.first;
+
+    STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, 0.0);
 
     if (table_pair.second->get_no_oplog_replay()) {
       if (table_pair.second->get_oplog_type() == Sparse ||

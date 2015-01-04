@@ -128,8 +128,14 @@ ClientTable::ClientTable(int32_t table_id, const ClientTableConfig &config):
       {
         UpdateSortPolicy update_sort_policy
             = GlobalContext::get_update_sort_policy();
+#ifdef PETUUM_COMP_IMPORTANCE
+        if (update_sort_policy == RelativeMagnitude
+            || update_sort_policy == FIFO_N_ReMag
+            || update_sort_policy == Random) {
+#else
         if (update_sort_policy == RelativeMagnitude
             || update_sort_policy == FIFO_N_ReMag) {
+#endif
           consistency_controller_
               = new SSPAggrValueConsistencyController(
                   config.table_info, table_id, *process_storage_,
