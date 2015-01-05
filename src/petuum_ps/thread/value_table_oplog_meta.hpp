@@ -21,6 +21,9 @@ public:
 private:
   std::vector<std::pair<int32_t, RowOpLogMeta> > sorted_vec_;
   std::vector<std::pair<int32_t, RowOpLogMeta> >::iterator vec_iter_;
+
+  std::mt19937 generator_; // max 4.2 billion
+  std::uniform_real_distribution<> uniform_dist_;
 };
 
 }

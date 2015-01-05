@@ -76,7 +76,7 @@ public:
       ++num_clients_subscribed_;
   }
 
-  bool NoClientSubscribed() {
+  bool NoClientSubscribed() const {
     return (num_clients_subscribed_ == 0);
   }
 
@@ -93,7 +93,7 @@ public:
       row_size, row_id, failed_client_id);
   }
 
-  bool IsDirty() {
+  bool IsDirty() const {
     return dirty_;
   }
 

@@ -18,9 +18,19 @@ long SSPAggrServerThread::ServerIdleWork() {
       return (row_send_milli_sec_ - send_elapsed_milli);
   }
 
+  STATS_SERVER_IDLE_INVOKE_INC_ONE();
+
   if (server_obj_.AccumedOpLogSinceLastPush()) {
+    STATS_SERVER_IDLE_SEND_INC_ONE();
+
+    STATS_SERVER_ACCUM_IDLE_SEND_BEGIN();
     size_t sent_bytes
         = server_obj_.CreateSendServerPushRowMsgsPartial(SendServerPushRowMsg);
+
+    STATS_SERVER_ACCUM_IDLE_SEND_END();
+
+    STATS_SERVER_ACCUM_IDLE_ROW_SENT_BYTES(sent_bytes);
+
     row_send_milli_sec_ = TransTimeEstimate::EstimateTransMillisec(sent_bytes);
 
     //LOG(INFO) << "ServerIdle send bytes = " << sent_bytes

@@ -3,6 +3,7 @@
 #include <petuum_ps/server/server.hpp>
 #include <petuum_ps/server/serialized_oplog_reader.hpp>
 #include <petuum_ps_common/util/class_register.hpp>
+#include <petuum_ps_common/util/stats.hpp>
 
 #include <utility>
 #include <fstream>
@@ -28,7 +29,7 @@ void Server::Init(int32_t server_id,
  }
 
  void Server::CreateTable(int32_t table_id, TableInfo &table_info){
-   auto ret = tables_.emplace(table_id, ServerTable(table_info));
+   auto ret = tables_.emplace(table_id, ServerTable(table_id, table_info));
    CHECK(ret.second);
 
    if (GlobalContext::get_resume_clock() > 0) {
@@ -207,6 +208,9 @@ void Server::Init(int32_t server_id,
   for (auto table_iter = tables_.begin(); table_iter != tables_.end();
        table_iter++) {
     int32_t table_id = table_iter->first;
+
+    STATS_SERVER_ACCUM_IMPORTANCE(table_id, 0.0, false);
+
     ServerTable &server_table = table_iter->second;
     for (client_id = 0;
          client_id < GlobalContext::get_num_clients(); ++client_id) {
@@ -224,7 +228,7 @@ void Server::Init(int32_t server_id,
       *table_id_ptr = table_id;
     }
 
-    //ServerTable packs the data.
+    // ServerTable packs the data.
     server_table.InitAppendTableToBuffs();
     int32_t failed_client_id;
     bool pack_suc = server_table.AppendTableToBuffs(0, &buffs,

@@ -82,6 +82,7 @@ std::vector<size_t> Stats::bg_num_row_oplog_created_;
 std::vector<size_t> Stats::bg_num_row_oplog_recycled_;
 
 std::unordered_map<int32_t, std::vector<double> > Stats::bg_table_accum_importance_;
+std::unordered_map<int32_t, std::vector<size_t> > Stats::bg_table_accum_num_rows_sent_;
 
 double Stats::server_accum_apply_oplog_sec_ = 0.0;
 double Stats::server_accum_push_row_sec_ = 0.0;
@@ -94,6 +95,14 @@ std::vector<double> Stats::server_per_clock_push_row_mb_;
 
 std::vector<size_t> Stats::server_accum_num_oplog_msg_recv_;
 std::vector<size_t> Stats::server_accum_num_push_row_msg_send_;
+
+std::vector<size_t> Stats::server_accum_num_idle_invoke_;
+std::vector<size_t> Stats::server_accum_num_idle_send_;
+std::vector<double> Stats::server_accum_idle_send_sec_;
+std::vector<double> Stats::server_accum_idle_send_bytes_mb_;
+
+std::unordered_map<int32_t, std::vector<double> > Stats::server_table_accum_importance_;
+std::unordered_map<int32_t, std::vector<size_t> > Stats::server_table_accum_num_rows_sent_;
 
 void Stats::Init(const TableGroupConfig &table_group_config) {
   table_group_config_ = table_group_config;
@@ -373,6 +382,21 @@ void Stats::DeregisterBgThread() {
       (table_iter->second)[i] += (table_pair.second)[i];
     }
   }
+
+  for (const auto &table_pair : stats.table_accum_num_rows_sent) {
+    int32_t table_id = table_pair.first;
+    auto table_iter = bg_table_accum_num_rows_sent_.find(table_id);
+    if (table_iter == bg_table_accum_num_rows_sent_.end()) {
+      bg_table_accum_num_rows_sent_.insert(
+          std::make_pair(table_id, std::vector<size_t>(table_pair.second.size(), 0)));
+      table_iter = bg_table_accum_num_rows_sent_.find(table_id);
+    }
+    CHECK_EQ(table_pair.second.size(), table_iter->second.size());
+
+    for (int i = 0; i < table_pair.second.size(); ++i) {
+      (table_iter->second)[i] += (table_pair.second)[i];
+    }
+  }
 }
 
 void Stats::DeregisterServerThread() {
@@ -415,6 +439,41 @@ void Stats::DeregisterServerThread() {
   server_accum_num_oplog_msg_recv_.push_back(stats.accum_num_oplog_msg_recv);
   server_accum_num_push_row_msg_send_.push_back(
       stats.accum_num_push_row_msg_send);
+
+  server_accum_num_idle_invoke_.push_back(stats.accum_num_idle_invoke);
+  server_accum_num_idle_send_.push_back(stats.accum_num_idle_send);
+  server_accum_idle_send_sec_.push_back(stats.accum_idle_send_sec);
+  server_accum_idle_send_bytes_mb_.push_back(stats.accum_idle_send_bytes_mb);
+
+  for (const auto &table_pair : stats.table_accum_importance) {
+    int32_t table_id = table_pair.first;
+    auto table_iter = server_table_accum_importance_.find(table_id);
+    if (table_iter == server_table_accum_importance_.end()) {
+      server_table_accum_importance_.insert(
+          std::make_pair(table_id, std::vector<double>(table_pair.second.size(), 0.0)));
+      table_iter = server_table_accum_importance_.find(table_id);
+    }
+    CHECK_EQ(table_pair.second.size(), table_iter->second.size());
+
+    for (int i = 0; i < table_pair.second.size(); ++i) {
+      (table_iter->second)[i] += (table_pair.second)[i];
+    }
+  }
+
+  for (const auto &table_pair : stats.table_accum_num_rows_sent) {
+    int32_t table_id = table_pair.first;
+    auto table_iter = server_table_accum_num_rows_sent_.find(table_id);
+    if (table_iter == server_table_accum_num_rows_sent_.end()) {
+      server_table_accum_num_rows_sent_.insert(
+          std::make_pair(table_id, std::vector<size_t>(table_pair.second.size(), 0)));
+      table_iter = server_table_accum_num_rows_sent_.find(table_id);
+    }
+    CHECK_EQ(table_pair.second.size(), table_iter->second.size());
+
+    for (int i = 0; i < table_pair.second.size(); ++i) {
+      (table_iter->second)[i] += (table_pair.second)[i];
+    }
+  }
 }
 
 void Stats::AppLoadDataBegin() {
@@ -795,6 +854,10 @@ void Stats::BgClock() {
   for (auto &table_pair : stats.table_accum_importance) {
     table_pair.second.push_back(0.0);
   }
+
+  for (auto &table_pair : stats.table_accum_num_rows_sent) {
+    table_pair.second.push_back(0);
+  }
 }
 
 void Stats::BgAddPerClockOpLogSize(size_t oplog_size) {
@@ -875,7 +938,7 @@ void Stats::BgAccumServerPushVersionDiffAdd(size_t diff) {
   bg_thread_stats_->accum_server_push_version_diff += diff;
 }
 
-void Stats::BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog) {
+void Stats::BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog, bool row_sent) {
   BgThreadStats &stats = *bg_thread_stats_;
 
   auto table_iter = stats.table_accum_importance.find(table_id);
@@ -885,10 +948,16 @@ void Stats::BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog) {
 
   table_iter->second.back() += meta_row_oplog->GetMeta().get_importance();
 
-  LOG(INFO) << "importance = " << meta_row_oplog->GetMeta().get_importance();
+  auto num_rows_iter = stats.table_accum_num_rows_sent.find(table_id);
+  if (num_rows_iter == stats.table_accum_num_rows_sent.end()) {
+    LOG(FATAL) << "Error! should have been inserted!";
+  }
+
+  if (row_sent)
+    num_rows_iter->second.back() += 1;
 }
 
-void Stats::BgAccumImportance(int32_t table_id, double importance) {
+void Stats::BgAccumImportance(int32_t table_id, double importance, bool row_sent) {
   BgThreadStats &stats = *bg_thread_stats_;
 
   auto table_iter = stats.table_accum_importance.find(table_id);
@@ -899,6 +968,16 @@ void Stats::BgAccumImportance(int32_t table_id, double importance) {
   }
 
   table_iter->second.back() += importance;
+
+  auto num_rows_iter = stats.table_accum_num_rows_sent.find(table_id);
+  if (num_rows_iter == stats.table_accum_num_rows_sent.end()) {
+    stats.table_accum_num_rows_sent.insert(std::make_pair(table_id, std::vector<size_t>(0)));
+    num_rows_iter = stats.table_accum_num_rows_sent.find(table_id);
+    num_rows_iter->second.push_back(0);
+  }
+
+  if (row_sent)
+    num_rows_iter->second.back() += 1;
 }
 
 void Stats::ServerAccumApplyOpLogBegin() {
@@ -927,6 +1006,14 @@ void Stats::ServerClock() {
   ++server_thread_stats_->clock_num;
   server_thread_stats_->per_clock_oplog_recv_kb.push_back(0.0);
   server_thread_stats_->per_clock_push_row_kb.push_back(0.0);
+
+  for (auto &table_pair : server_thread_stats_->table_accum_importance) {
+    table_pair.second.push_back(0.0);
+  }
+
+  for (auto &table_pair : server_thread_stats_->table_accum_num_rows_sent) {
+    table_pair.second.push_back(0);
+  }
 }
 
 void Stats::ServerAddPerClockOpLogSize(size_t oplog_size) {
@@ -957,6 +1044,52 @@ void Stats::ServerOpLogMsgRecvIncOne() {
 
 void Stats::ServerPushRowMsgSendIncOne() {
   ++(server_thread_stats_->accum_num_push_row_msg_send);
+}
+
+void Stats::ServerIdleInvokeIncOne() {
+  ++(server_thread_stats_->accum_num_idle_invoke);
+}
+
+void Stats::ServerIdleSendIncOne() {
+  ++(server_thread_stats_->accum_num_idle_send);
+}
+
+void Stats::ServerAccumIdleSendBegin() {
+  server_thread_stats_->idle_send_timer.restart();
+}
+
+void Stats::ServerAccumIdleSendEnd() {
+  ServerThreadStats &stats = *server_thread_stats_;
+  stats.accum_idle_send_sec += stats.idle_send_timer.elapsed();
+  stats.accum_push_row_sec += stats.idle_send_timer.elapsed();
+}
+
+void Stats::ServerAccumIdleRowSentBytes(size_t num_bytes) {
+  ServerThreadStats &stats = *server_thread_stats_;
+  stats.accum_idle_send_bytes_mb += num_bytes / double(k1_Mi);
+}
+
+void Stats::ServerAccumImportance(int32_t table_id, double importance, bool row_sent) {
+  ServerThreadStats &stats = *server_thread_stats_;
+
+  auto table_iter = stats.table_accum_importance.find(table_id);
+  if (table_iter == stats.table_accum_importance.end()) {
+    stats.table_accum_importance.insert(std::make_pair(table_id, std::vector<double>(0)));
+    table_iter = stats.table_accum_importance.find(table_id);
+    table_iter->second.push_back(0.0);
+  }
+
+  table_iter->second.back() += importance;
+
+  auto num_rows_iter = stats.table_accum_num_rows_sent.find(table_id);
+  if (num_rows_iter == stats.table_accum_num_rows_sent.end()) {
+    stats.table_accum_num_rows_sent.insert(std::make_pair(table_id, std::vector<size_t>(0)));
+    num_rows_iter = stats.table_accum_num_rows_sent.find(table_id);
+    num_rows_iter->second.push_back(0);
+  }
+
+  if (row_sent)
+    num_rows_iter->second.back() += 1;
 }
 
 template<typename T>
@@ -1301,13 +1434,26 @@ void Stats::PrintStats() {
 
   yaml_out << YAML::EndMap;
 
+  yaml_out << YAML::Key << "bg_accum_num_rows_sent"
+           << YAML::Value
+           << YAML::BeginMap;
+
+  for (const auto &table_pair : bg_table_accum_num_rows_sent_) {
+    int32_t table_id = table_pair.first;
+    yaml_out << YAML::Key << table_id
+             << YAML::Value;
+    YamlPrintSequence(&yaml_out, table_pair.second);
+  }
+
+  yaml_out << YAML::EndMap;
+
   yaml_out << YAML::EndMap;
 
   yaml_out << YAML::BeginMap
     << YAML::Comment("ServerThread Stats")
     << YAML::Key << "server_accum_apply_oplog_sec"
     << YAML::Value << server_accum_apply_oplog_sec_
-    << YAML::Key << "server_accum_push_row_sec"
+    << YAML::Key << "server_accum_total_serialize_push_row_sec"
     << YAML::Value << server_accum_push_row_sec_
     << YAML::Key << "server_accum_oplog_recv_mb"
     << YAML::Value << server_accum_oplog_recv_mb_
@@ -1329,6 +1475,48 @@ void Stats::PrintStats() {
   yaml_out << YAML::Key << "server_accum_num_push_row_msg_send"
     << YAML::Value;
   YamlPrintSequence(&yaml_out, server_accum_num_push_row_msg_send_);
+
+  yaml_out << YAML::Key << "server_accum_num_idle_invoke"
+    << YAML::Value;
+  YamlPrintSequence(&yaml_out, server_accum_num_idle_invoke_);
+
+  yaml_out << YAML::Key << "server_accum_num_idle_send"
+    << YAML::Value;
+  YamlPrintSequence(&yaml_out, server_accum_num_idle_send_);
+
+  yaml_out << YAML::Key << "server_accum_idle_send_sec"
+    << YAML::Value;
+  YamlPrintSequence(&yaml_out, server_accum_idle_send_sec_);
+
+  yaml_out << YAML::Key << "server_accum_idle_send_bytes_mb"
+    << YAML::Value;
+  YamlPrintSequence(&yaml_out, server_accum_idle_send_bytes_mb_);
+
+  yaml_out << YAML::Key << "server_table_accum_importance"
+           << YAML::Value
+           << YAML::BeginMap;
+
+  for (const auto &table_pair : server_table_accum_importance_) {
+    int32_t table_id = table_pair.first;
+    yaml_out << YAML::Key << table_id
+             << YAML::Value;
+    YamlPrintSequence(&yaml_out, table_pair.second);
+  }
+
+  yaml_out << YAML::EndMap;
+
+  yaml_out << YAML::Key << "server_accum_num_rows_sent"
+           << YAML::Value
+           << YAML::BeginMap;
+
+  for (const auto &table_pair : server_table_accum_num_rows_sent_) {
+    int32_t table_id = table_pair.first;
+    yaml_out << YAML::Key << table_id
+             << YAML::Value;
+    YamlPrintSequence(&yaml_out, table_pair.second);
+  }
+
+  yaml_out << YAML::EndMap;
 
   yaml_out << YAML::EndMap;
 

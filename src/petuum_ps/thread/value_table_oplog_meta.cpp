@@ -4,7 +4,8 @@
 
 namespace petuum {
 ValueTableOpLogMeta::ValueTableOpLogMeta(const AbstractRow *sample_row):
-    RandomTableOpLogMeta(sample_row) { }
+    RandomTableOpLogMeta(sample_row),
+    uniform_dist_(0, 1) { }
 
 ValueTableOpLogMeta::~ValueTableOpLogMeta() { }
 
@@ -35,16 +36,17 @@ void ValueTableOpLogMeta::Prepare(size_t num_rows_to_send) {
   if (num_candidate_rows > oplog_meta_size)
     num_candidate_rows = oplog_meta_size;
 
-  sorted_vec_.resize(num_candidate_rows);
+  sorted_vec_.resize(0);
 
-  for (auto &row_pair : sorted_vec_) {
-    do {
-      meta_iter_ = oplog_meta_.begin();
-      std::advance(meta_iter_, uniform_dist_(generator_) % oplog_meta_size);
-    } while(meta_iter_ == oplog_meta_.end());
+  double select_prob = double(num_candidate_rows) / double(oplog_meta_size);
 
-    row_pair = *meta_iter_;
+  for (const auto &meta_pair : oplog_meta_) {
+    double prob = uniform_dist_(generator_);
+    if (prob <= select_prob)
+      sorted_vec_.push_back(meta_pair);
+    if (sorted_vec_.size() == num_candidate_rows) break;
   }
+
   std::sort(sorted_vec_.begin(), sorted_vec_.end(),
             [] (const std::pair<int32_t, RowOpLogMeta> &oplog1,
                 const std::pair<int32_t, RowOpLogMeta> &oplog2) {

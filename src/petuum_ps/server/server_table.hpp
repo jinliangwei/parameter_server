@@ -24,7 +24,8 @@ struct CandidateServerRow {
 
 class ServerTable : boost::noncopyable {
 public:
-  explicit ServerTable(const TableInfo &table_info):
+  explicit ServerTable(int32_t table_id, const TableInfo &table_info):
+      table_id_(table_id),
       table_info_(table_info),
       tmp_row_buff_size_ (kTmpRowBuffSizeInit),
       sample_row_(
@@ -80,6 +81,7 @@ public:
   // Move constructor: storage gets other's storage, leaving other
   // in an unspecified but valid state.
   ServerTable(ServerTable && other):
+    table_id_(other.table_id_),
     table_info_(other.table_info_),
     storage_(std::move(other.storage_)) ,
     tmp_row_buff_size_(other.tmp_row_buff_size_) {
@@ -214,6 +216,7 @@ private:
   typedef void (*SortCandidateVectorFunc)(
       std::vector<CandidateServerRow> *candidate_row_vector);
 
+  int32_t table_id_;
   TableInfo table_info_;
   boost::unordered_map<int32_t, ServerRow> storage_;
 

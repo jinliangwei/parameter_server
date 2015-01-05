@@ -1,4 +1,5 @@
 #include <petuum_ps/server/server_table.hpp>
+#include <petuum_ps_common/util/stats.hpp>
 #include <iterator>
 #include <vector>
 #include <sstream>
@@ -26,12 +27,20 @@ bool ServerTable::AppendTableToBuffs(
     ++row_iter_;
     client_id_st = 0;
   }
+
+  size_t num_no_subscription = 0;
   for (; row_iter_ != storage_.end(); ++row_iter_) {
-    if (row_iter_->second.NoClientSubscribed())
+    if (row_iter_->second.NoClientSubscribed()) {
+      num_no_subscription++;
       continue;
+    }
 
     if (!row_iter_->second.IsDirty())
       continue;
+
+    //LOG(INFO) << table_id_ << " " << row_iter_->first << " " << row_iter_->second.get_importance();
+
+    STATS_SERVER_ACCUM_IMPORTANCE(table_id_, row_iter_->second.get_importance(), true);
 
     row_iter_->second.ResetDirty();
     ResetImportance_(&(row_iter_->second));
@@ -54,6 +63,7 @@ bool ServerTable::AppendTableToBuffs(
     }
   }
   delete[] tmp_row_buff_;
+
   return true;
 }
 
@@ -94,32 +104,24 @@ void ServerTable::GetPartialTableToSend(
 
   size_t storage_size = storage_.size();
 
-  if (num_candidate_rows > storage_.size()) {
-    num_candidate_rows = storage_.size();
-  }
+  if (num_candidate_rows > storage_size)
+    num_candidate_rows = storage_size;
+
+  double select_prob = double(num_candidate_rows) / double(storage_size);
   std::mt19937 generator(time(NULL)); // max 4.2 billion
-  std::uniform_int_distribution<int> uniform_dist(0, INT_MAX);
+  std::uniform_real_distribution<> uniform_dist(0, 1);
 
   std::vector<CandidateServerRow> candidate_row_vector;
 
-  for (size_t i = 0; i < num_candidate_rows; ++i) {
-    boost::unordered_map<int32_t, ServerRow>::iterator row_iter = storage_.end();
-    size_t num_trials = 0;
-    do {
-      if (num_trials > storage_size) break;
-      row_iter = storage_.begin();
-      std::advance(row_iter, uniform_dist(generator) % storage_size);
-      num_trials++;
-    } while(row_iter == storage_.end()
-            || row_iter->second.NoClientSubscribed()
-            || !row_iter->second.IsDirty());
+    for (auto &row_pair : storage_) {
+      if (row_pair.second.NoClientSubscribed()
+          || !row_pair.second.IsDirty())
+        continue;
 
-    if (row_iter == storage_.end()
-            || row_iter->second.NoClientSubscribed()
-            || !row_iter->second.IsDirty())
-      break;
-
-    candidate_row_vector.push_back(CandidateServerRow(row_iter->first, &(row_iter->second)));
+      double prob = uniform_dist(generator);
+      if (prob <= select_prob)
+        candidate_row_vector.push_back(CandidateServerRow(row_pair.first, &(row_pair.second)));
+      if (candidate_row_vector.size() == num_candidate_rows) break;
   }
 
   SortCandidateVector_(&candidate_row_vector);
@@ -150,6 +152,10 @@ void ServerTable::AppendRowsToBuffsPartial(
 
     if (!row_iter->second->IsDirty())
       continue;
+
+    //LOG(INFO) << table_id_ << " " << row_iter_->first << " " << row_iter_->second.get_importance();
+
+    STATS_SERVER_ACCUM_IMPORTANCE(table_id_, row_iter->second->get_importance(), true);
 
     row_iter->second->ResetDirty();
     ResetImportance_(row_iter->second);

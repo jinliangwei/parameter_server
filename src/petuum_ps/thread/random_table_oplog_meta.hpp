@@ -29,9 +29,12 @@ protected:
 
   std::unordered_map<int32_t, RowOpLogMeta>::iterator meta_iter_;
 
+  int32_t clock_to_clear_;
+
+private:
   std::mt19937 generator_; // max 4.2 billion
   std::uniform_int_distribution<int> uniform_dist_;
-  int32_t clock_to_clear_;
+
 };
 
 }

@@ -232,11 +232,11 @@
 #define STATS_BG_APPEND_ONLY_RECYCLE_ROW_OPLOG_INC() \
   Stats::BgAppendOnlyRecycleRowOpLogInc()
 
-#define STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog) \
-  Stats::BgAccumImportance(table_id, meta_row_oplog)
+#define STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, row_sent)    \
+  Stats::BgAccumImportance(table_id, meta_row_oplog, row_sent)
 
-#define STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, importance) \
-  Stats::BgAccumImportance(table_id, importance)
+#define STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, importance, row_sent)  \
+  Stats::BgAccumImportance(table_id, importance, row_sent)
 
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() \
   Stats::ServerAccumPushRowBegin()
@@ -264,6 +264,24 @@
 
 #define STATS_SERVER_PUSH_ROW_MSG_SEND_INC_ONE() \
   Stats::ServerPushRowMsgSendIncOne();
+
+#define STATS_SERVER_IDLE_INVOKE_INC_ONE() \
+  Stats::ServerIdleInvokeIncOne()
+
+#define STATS_SERVER_IDLE_SEND_INC_ONE() \
+  Stats::ServerIdleSendIncOne()
+
+#define STATS_SERVER_ACCUM_IDLE_SEND_BEGIN() \
+  Stats::ServerAccumIdleSendBegin()
+
+#define STATS_SERVER_ACCUM_IDLE_SEND_END() \
+  Stats::ServerAccumIdleSendEnd()
+
+#define STATS_SERVER_ACCUM_IDLE_ROW_SENT_BYTES(num_bytes) \
+  Stats::ServerAccumIdleRowSentBytes(num_bytes)
+
+#define STATS_SERVER_ACCUM_IMPORTANCE(table_id, importance, row_sent)    \
+  Stats::ServerAccumImportance(table_id, importance, row_sent)
 
 #define STATS_PRINT() \
   Stats::PrintStats()
@@ -362,8 +380,8 @@
 #define STATS_BG_ACCUM_HANDLE_APPEND_OPLOG_END() ((void) 0)
 #define STATS_BG_APPEND_ONLY_CREATE_ROW_OPLOG_INC() ((void) 0)
 #define STATS_BG_APPEND_ONLY_RECYCLE_ROW_OPLOG_INC() ((void) 0)
-#define STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog) ((void) 0)
-#define STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, importance) ((void) 0)
+#define STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, row_sent) ((void) 0)
+#define STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, importance, row_sent) ((void) 0)
 
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() ((void) 0)
 #define STATS_SERVER_ACCUM_PUSH_ROW_END() ((void) 0)
@@ -374,6 +392,14 @@
 #define STATS_SERVER_ADD_PER_CLOCK_PUSH_ROW_SIZE(push_row_size) ((void) 0)
 #define STATS_SERVER_OPLOG_MSG_RECV_INC_ONE() ((void) 0)
 #define STATS_SERVER_PUSH_ROW_MSG_SEND_INC_ONE() ((void) 0)
+#define STATS_SERVER_IDLE_INVOKE_INC_ONE() ((void) 0)
+
+#define STATS_SERVER_IDLE_SEND_INC_ONE() ((void) 0)
+#define STATS_Server_ACCUM_IDLE_SEND_BEGIN() ((void) 0)
+#define STATS_Server_ACCUM_IDLE_SEND_END() ((void) 0)
+
+#define STATS_SERVER_ACCUM_IDLE_ROW_SENT_BYTES(num_bytes) ((void) 0)
+#define STATS_SERVER_ACCUM_IMPORTANCE(table_id, importance, row_sent) ((void) 0)
 
 #define STATS_PRINT() ((void) 0)
 #endif
@@ -575,6 +601,9 @@ struct BgThreadStats {
   std::unordered_map<int32_t, std::vector<double> >
   table_accum_importance;
 
+  std::unordered_map<int32_t, std::vector<size_t> >
+  table_accum_num_rows_sent;
+
   BgThreadStats():
     accum_clock_end_oplog_serialize_sec(0.0),
     accum_total_oplog_serialize_sec(0.0),
@@ -621,6 +650,21 @@ struct ServerThreadStats {
   size_t accum_num_oplog_msg_recv;
   size_t accum_num_push_row_msg_send;
 
+  size_t accum_num_idle_invoke;
+  size_t accum_num_idle_send;
+
+  double accum_idle_send_sec;
+
+  double accum_idle_send_bytes_mb;
+
+  HighResolutionTimer idle_send_timer;
+
+  std::unordered_map<int32_t, std::vector<double> >
+  table_accum_importance;
+
+  std::unordered_map<int32_t, std::vector<size_t> >
+  table_accum_num_rows_sent;
+
   ServerThreadStats():
     accum_apply_oplog_sec(0.0),
     accum_push_row_sec(0.0),
@@ -630,7 +674,11 @@ struct ServerThreadStats {
     per_clock_push_row_kb(1, 0.0),
     clock_num(0),
     accum_num_oplog_msg_recv(0),
-    accum_num_push_row_msg_send(0) { }
+    accum_num_push_row_msg_send(0),
+    accum_num_idle_invoke(0),
+    accum_num_idle_send(0),
+    accum_idle_send_sec(0.0),
+    accum_idle_send_bytes_mb(0.0) { }
 };
 
 struct NameNodeThreadStats {
@@ -747,8 +795,8 @@ public:
   static void BgAppendOnlyCreateRowOpLogInc();
   static void BgAppendOnlyRecycleRowOpLogInc();
 
-  static void BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog);
-  static void BgAccumImportance(int32_t table_id, double importance);
+  static void BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog, bool row_sent);
+  static void BgAccumImportance(int32_t table_id, double importance, bool row_sent);
 
   static void ServerAccumPushRowBegin();
   static void ServerAccumPushRowEnd();
@@ -763,8 +811,14 @@ public:
   static void ServerOpLogMsgRecvIncOne();
   static void ServerPushRowMsgSendIncOne();
 
-  static void PrintStats();
+  static void ServerIdleInvokeIncOne();
+  static void ServerIdleSendIncOne();
+  static void ServerAccumIdleSendBegin();
+  static void ServerAccumIdleSendEnd();
+  static void ServerAccumIdleRowSentBytes(size_t num_bytes);
+  static void ServerAccumImportance(int32_t table_id, double importance, bool row_sent);
 
+  static void PrintStats();
 private:
 
   static void DeregisterAppThread();
@@ -877,6 +931,7 @@ private:
   static std::vector<size_t> bg_num_row_oplog_recycled_;
 
   static std::unordered_map<int32_t, std::vector<double> > bg_table_accum_importance_;
+  static std::unordered_map<int32_t, std::vector<size_t> > bg_table_accum_num_rows_sent_;
 
   // Server thread stats
   static double server_accum_apply_oplog_sec_;
@@ -891,6 +946,14 @@ private:
 
   static std::vector<size_t> server_accum_num_oplog_msg_recv_;
   static std::vector<size_t> server_accum_num_push_row_msg_send_;
+
+  static std::vector<size_t> server_accum_num_idle_invoke_;
+  static std::vector<size_t> server_accum_num_idle_send_;
+  static std::vector<double> server_accum_idle_send_sec_;
+  static std::vector<double> server_accum_idle_send_bytes_mb_;
+
+  static std::unordered_map<int32_t, std::vector<double> > server_table_accum_importance_;
+  static std::unordered_map<int32_t, std::vector<size_t> > server_table_accum_num_rows_sent_;
 };
 
 }   // namespace petuum
