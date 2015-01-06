@@ -1,6 +1,6 @@
 #pragma once
 
-#include <petuum_ps/thread/random_table_oplog_meta.hpp>
+#include <petuum_ps/thread/abstract_table_oplog_meta.hpp>
 
 #include <vector>
 #include <unordered_map>
@@ -8,22 +8,47 @@
 
 namespace petuum {
 
-class ValueTableOpLogMeta : public RandomTableOpLogMeta {
+struct IndexRowOpLogMeta {
+  int32_t row_id;
+  int32_t clock;
+  double importance;
+};
+
+class ValueTableOpLogMeta : public AbstractTableOpLogMeta {
 public:
-  ValueTableOpLogMeta(const AbstractRow *sample_row);
+  ValueTableOpLogMeta(const AbstractRow *sample_row, size_t table_size);
   virtual ~ValueTableOpLogMeta();
 
-  virtual void InsertMergeRowOpLogMeta(int32_t row_id,
-                                       const RowOpLogMeta& row_oplog_meta);
-  virtual void Prepare(size_t num_rows_to_send);
-  virtual int32_t GetAndClearNextInOrder();
+  void InsertMergeRowOpLogMeta(int32_t row_id,
+                               const RowOpLogMeta& row_oplog_meta);
+  int32_t GetAndClearNextInOrder();
+
+  int32_t InitGetUptoClock(int32_t clock);
+  int32_t GetAndClearNextUptoClock();
+
+  size_t GetNumRowOpLogs() const;
 
 private:
-  std::vector<std::pair<int32_t, RowOpLogMeta> > sorted_vec_;
-  std::vector<std::pair<int32_t, RowOpLogMeta> >::iterator vec_iter_;
+  bool CompRowOpLogMeta(const IndexRowOpLogMeta &row_oplog_meta1,
+                        const IndexRowOpLogMeta &row_oplog_meta2);
+  int32_t HeapParent(int32_t index);
+  int32_t HeapRight(int32_t index);
+  int32_t HeapLeft(int32_t index);
+  void HeapSwap(int32_t index1, int32_t index2);
+  void HeapIncrease(int32_t index, const RowOpLogMeta &row_oplog_meta);
+  void HeapInsert(int32_t row_id, const RowOpLogMeta &row_oplog_meta);
+  IndexRowOpLogMeta HeapExtractMax();
+  void HeapMaxHeapify(int32_t index);
+  void HeapBuildMaxHeap();
 
-  std::mt19937 generator_; // max 4.2 billion
-  std::uniform_real_distribution<> uniform_dist_;
+  size_t table_size_;
+  const AbstractRow *sample_row_;
+  std::vector<IndexRowOpLogMeta> heap_;
+  size_t heap_size_;
+  std::vector<int32_t> heap_index_;
+  int32_t heap_walker_;
+  size_t heap_last_;
+  int32_t clock_to_clear_;
 };
 
 }

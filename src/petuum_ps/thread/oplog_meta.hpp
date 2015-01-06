@@ -23,7 +23,8 @@ public:
   }
 
   AbstractTableOpLogMeta *AddTableOpLogMeta(int32_t table_id,
-                                    const AbstractRow *sample_row) {
+                                            const AbstractRow *sample_row,
+                                            size_t table_size) {
     AbstractTableOpLogMeta *table_oplog_meta;
 
     if (GlobalContext::get_naive_table_oplog_meta()) {
@@ -39,7 +40,7 @@ public:
           break;
         case RelativeMagnitude:
           table_oplog_meta
-              = new ValueTableOpLogMeta(sample_row);
+              = new ValueTableOpLogMeta(sample_row, table_size);
           break;
         default:
           LOG(FATAL) << "Unsupported update_sort_policy = "
