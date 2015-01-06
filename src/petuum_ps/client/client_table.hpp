@@ -105,6 +105,10 @@ public:
     return client_table_config_.process_cache_capacity;
   }
 
+  ProcessStorageType get_process_storage_type() const {
+    return client_table_config_.process_storage_type;
+  }
+
 private:
   const int32_t table_id_;
   const int32_t row_type_;

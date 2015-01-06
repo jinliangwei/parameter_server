@@ -48,7 +48,13 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
   if (table_oplog_meta == 0) {
     //LOG(INFO) << "Create new table_oplog_meta";
     const AbstractRow *sample_row = table->get_sample_row();
-    table_oplog_meta = oplog_meta_.AddTableOpLogMeta(table_id, sample_row, table->get_process_storage_capacity());
+
+    ProcessStorageType procss_storage_type = table->get_process_storage_type();
+    if (process_storage_type == BoundedDense) {
+      table_oplog_meta = oplog_meta_.AddTableOpLogMeta(table_id, sample_row, table->get_process_storage_capacity());
+    } else {
+      table_oplog_meta = oplog_meta_.AddTableOpLogMeta(table_id, sample_row, 0);
+    }
   }
 
   //LOG(INFO) << "table_id = " << table_id
@@ -130,7 +136,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
         MetaRowOpLog *meta_row_oplog = dynamic_cast<MetaRowOpLog*>(row_oplog);
         STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
 
-        LOG(INFO) << table_id << " " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
+        //LOG(INFO) << table_id << " " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
 
         size_t serialized_oplog_size
             = row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
@@ -219,7 +225,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
         MetaRowOpLog *meta_row_oplog = dynamic_cast<MetaRowOpLog*>(row_oplog);
         STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
 
-        LOG(INFO) << table_id << " " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
+        //LOG(INFO) << table_id << " " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
 
         size_t serialized_oplog_size
             = row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
@@ -301,7 +307,12 @@ void SSPAggrBgWorker::PrepareOpLogsNormalNoReplay(
   }
   RowOpLogSerializer *row_oplog_serializer = serializer_iter->second;
 
+  LOG(INFO) << __func__
+            << " ReadTableOpLogsIntoOpLogMeta Begin";
+
   ReadTableOpLogsIntoOpLogMeta(table_id, table);
+
+  LOG(INFO) << " ReadTableOpLogsIntoOpLogMeta End";
 
   AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
@@ -311,10 +322,14 @@ void SSPAggrBgWorker::PrepareOpLogsNormalNoReplay(
       table_id, table, clock_to_push, table_oplog_meta,
       row_oplog_serializer, &accum_num_rows);
 
+  LOG(INFO) << " ReadTableOpLogMeataUpToClockNoReplay End";
+
   ReadTableOpLogMetaUpToCapacityNoReplay(
       table_id, table, accum_table_oplog_bytes,
       accum_num_rows,
       table_oplog_meta, row_oplog_serializer);
+
+  LOG(INFO) << " ReadTableOpLogMeataUpToCapacityNoReplay End";
 
   for (const auto &server_id : server_ids_) {
     table_num_bytes_by_server_[server_id] = 0;
@@ -510,12 +525,20 @@ void SSPAggrBgWorker::PrepareBgIdleOpLogsNormalNoReplay(int32_t table_id,
   }
   RowOpLogSerializer *row_oplog_serializer = serializer_iter->second;
 
+  LOG(INFO) << __func__
+            << " ReadTableOpLogsIntoOpLogMeta Begin";
+
   ReadTableOpLogsIntoOpLogMeta(table_id, table);
+
+  LOG(INFO) << " ReadTableOpLogsIntoOpLogMeta End";
+
   AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
   ReadTableOpLogMetaUpToCapacityNoReplay(
       table_id, table, 0, 0,
       table_oplog_meta, row_oplog_serializer);
+
+  LOG(INFO) << " ReadUpToCapacity End";
 
   for (const auto &server_id : server_ids_) {
     table_num_bytes_by_server_[server_id] = 0;

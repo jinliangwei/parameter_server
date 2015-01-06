@@ -27,7 +27,8 @@ public:
                                             size_t table_size) {
     AbstractTableOpLogMeta *table_oplog_meta;
 
-    if (GlobalContext::get_naive_table_oplog_meta()) {
+    if (GlobalContext::get_naive_table_oplog_meta()
+        || table_size == 0) {
       table_oplog_meta = new NaiveTableOpLogMeta(sample_row);
     } else {
       UpdateSortPolicy update_sort_policy
