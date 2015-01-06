@@ -3,6 +3,7 @@ TESTS_LDFLAGS = $(LDFLAGS) -lgtest_main
 #include $(TESTS_MK)
 
 include $(TESTS)/petuum_ps/util/util.mk
+include $(TESTS)/petuum_ps/thread/thread.mk
 include $(TESTS)/petuum_ps/independent/independent.mk
 include $(TESTS)/petuum_ps/oplog/oplog.mk
 include $(TESTS)/petuum_ps/storage/storage.mk
