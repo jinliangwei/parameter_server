@@ -48,7 +48,7 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
   if (table_oplog_meta == 0) {
     //LOG(INFO) << "Create new table_oplog_meta";
     const AbstractRow *sample_row = table->get_sample_row();
-    table_oplog_meta = oplog_meta_.AddTableOpLogMeta(table_id, sample_row);
+    table_oplog_meta = oplog_meta_.AddTableOpLogMeta(table_id, sample_row, table->get_process_storage_capacity());
   }
 
   //LOG(INFO) << "table_id = " << table_id
