@@ -140,14 +140,16 @@ int32_t ValueTableOpLogMeta::GetAndClearNextInOrder() {
 int32_t ValueTableOpLogMeta::InitGetUptoClock(int32_t clock) {
   heap_walker_ = 0;
   clock_to_clear_ = clock;
-  heap_last_ = heap_size_ - 1;
+  heap_last_ = (heap_size_) > 0 ? heap_size_ - 1 : -1;
+  //LOG(INFO) << __func__ << " heap_size = " << heap_size_;
   return GetAndClearNextUptoClock();
 }
 
 
 int32_t ValueTableOpLogMeta::GetAndClearNextUptoClock() {
   while (heap_walker_ <= heap_last_) {
-    if (heap_[heap_walker_].clock <= clock_to_clear_)
+    int32_t clock = heap_[heap_walker_].clock;
+    if (clock >= 0 && clock <= clock_to_clear_)
       break;
     heap_walker_++;
   }

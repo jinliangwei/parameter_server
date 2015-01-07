@@ -8,7 +8,9 @@
 #include <petuum_ps/thread/context.hpp>
 #include <petuum_ps/thread/naive_table_oplog_meta.hpp>
 #include <petuum_ps/thread/random_table_oplog_meta.hpp>
+#include <petuum_ps/thread/random_table_oplog_meta_dense.hpp>
 #include <petuum_ps/thread/value_table_oplog_meta.hpp>
+#include <petuum_ps/thread/value_table_oplog_meta_approx.hpp>
 
 namespace petuum {
 
@@ -27,8 +29,7 @@ public:
                                             size_t table_size) {
     AbstractTableOpLogMeta *table_oplog_meta;
 
-    if (GlobalContext::get_naive_table_oplog_meta()
-        || table_size == 0) {
+    if (GlobalContext::get_naive_table_oplog_meta()) {
       table_oplog_meta = new NaiveTableOpLogMeta(sample_row);
     } else {
       UpdateSortPolicy update_sort_policy
@@ -36,12 +37,26 @@ public:
 
       switch(update_sort_policy) {
         case Random:
-          table_oplog_meta
-              = new RandomTableOpLogMeta(sample_row);
+          {
+            if (table_size > 0) {
+              table_oplog_meta
+                  = new RandomTableOpLogMetaDense(sample_row, table_size);
+            } else {
+              table_oplog_meta
+                  = new RandomTableOpLogMeta(sample_row);
+            }
+          }
           break;
         case RelativeMagnitude:
-          table_oplog_meta
-              = new ValueTableOpLogMeta(sample_row, table_size);
+          {
+            if (table_size == 0 || GlobalContext::get_use_aprox_sort()) {
+              table_oplog_meta
+                  = new ValueTableOpLogMetaApprox(sample_row);
+            } else {
+              table_oplog_meta
+                  = new ValueTableOpLogMeta(sample_row, table_size);
+            }
+          }
           break;
         default:
           LOG(FATAL) << "Unsupported update_sort_policy = "

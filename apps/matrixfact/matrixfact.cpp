@@ -558,7 +558,7 @@ void solve_mf(int32_t thread_id, boost::barrier* process_barrier) {
       LOG(INFO) << "Iteration " << iter+1 << "/" <<
         FLAGS_num_iterations << "... ";
 
-      //      std::cerr << "Iteration " << iter+1 << "/" <<
+      //std::cerr << "Iteration " << iter+1 << "/" <<
       //  FLAGS_num_iterations << "... " << std::endl;
     }
     int element_counter = 0;

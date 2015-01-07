@@ -47,7 +47,7 @@ private:
   size_t heap_size_;
   std::vector<int32_t> heap_index_;
   int32_t heap_walker_;
-  size_t heap_last_;
+  int32_t heap_last_;
   int32_t clock_to_clear_;
 };
 

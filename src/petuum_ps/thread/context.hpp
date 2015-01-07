@@ -153,7 +153,8 @@ public:
       int32_t row_candidate_factor,
       int32_t numa_index,
       NumaPolicy numa_policy,
-      bool naive_table_oplog_meta) {
+      bool naive_table_oplog_meta,
+      bool use_approx_sort) {
 
     num_comm_channels_per_client_
         = num_comm_channels_per_client;
@@ -192,6 +193,8 @@ public:
     numa_policy_ = numa_policy;
 
     naive_table_oplog_meta_ = naive_table_oplog_meta;
+
+    use_approx_sort_ = use_approx_sort;
 
     for (auto host_iter = host_map.begin();
          host_iter != host_map.end(); ++host_iter) {
@@ -383,6 +386,10 @@ public:
     return suppression_on_;
   }
 
+  static bool get_use_aprox_sort() {
+    return use_approx_sort_;
+  }
+
   static CommBus* comm_bus;
 
   // name node thread id - 0
@@ -441,6 +448,8 @@ private:
   static bool naive_table_oplog_meta_;
 
   static bool suppression_on_;
+
+  static bool use_approx_sort_;
 };
 
 }   // namespace petuum

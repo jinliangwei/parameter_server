@@ -49,7 +49,7 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
     //LOG(INFO) << "Create new table_oplog_meta";
     const AbstractRow *sample_row = table->get_sample_row();
 
-    ProcessStorageType procss_storage_type = table->get_process_storage_type();
+    ProcessStorageType process_storage_type = table->get_process_storage_type();
     if (process_storage_type == BoundedDense) {
       table_oplog_meta = oplog_meta_.AddTableOpLogMeta(table_id, sample_row, table->get_process_storage_capacity());
     } else {
@@ -307,12 +307,7 @@ void SSPAggrBgWorker::PrepareOpLogsNormalNoReplay(
   }
   RowOpLogSerializer *row_oplog_serializer = serializer_iter->second;
 
-  LOG(INFO) << __func__
-            << " ReadTableOpLogsIntoOpLogMeta Begin";
-
   ReadTableOpLogsIntoOpLogMeta(table_id, table);
-
-  LOG(INFO) << " ReadTableOpLogsIntoOpLogMeta End";
 
   AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
@@ -322,14 +317,10 @@ void SSPAggrBgWorker::PrepareOpLogsNormalNoReplay(
       table_id, table, clock_to_push, table_oplog_meta,
       row_oplog_serializer, &accum_num_rows);
 
-  LOG(INFO) << " ReadTableOpLogMeataUpToClockNoReplay End";
-
   ReadTableOpLogMetaUpToCapacityNoReplay(
       table_id, table, accum_table_oplog_bytes,
       accum_num_rows,
       table_oplog_meta, row_oplog_serializer);
-
-  LOG(INFO) << " ReadTableOpLogMeataUpToCapacityNoReplay End";
 
   for (const auto &server_id : server_ids_) {
     table_num_bytes_by_server_[server_id] = 0;
@@ -525,20 +516,13 @@ void SSPAggrBgWorker::PrepareBgIdleOpLogsNormalNoReplay(int32_t table_id,
   }
   RowOpLogSerializer *row_oplog_serializer = serializer_iter->second;
 
-  LOG(INFO) << __func__
-            << " ReadTableOpLogsIntoOpLogMeta Begin";
-
   ReadTableOpLogsIntoOpLogMeta(table_id, table);
-
-  LOG(INFO) << " ReadTableOpLogsIntoOpLogMeta End";
 
   AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
   ReadTableOpLogMetaUpToCapacityNoReplay(
       table_id, table, 0, 0,
       table_oplog_meta, row_oplog_serializer);
-
-  LOG(INFO) << " ReadUpToCapacity End";
 
   for (const auto &server_id : server_ids_) {
     table_num_bytes_by_server_[server_id] = 0;

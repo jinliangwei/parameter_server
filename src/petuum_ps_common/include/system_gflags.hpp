@@ -42,6 +42,7 @@ DEFINE_int32(numa_index, 0, "numa node index");
 DEFINE_string(numa_policy, "Even", "numa policy");
 DEFINE_bool(naive_table_oplog_meta, true, "naive table oplog meta");
 DEFINE_bool(suppression_on, false, "suppression on");
+DEFINE_bool(use_approx_sort, true, "use_approx_sort");
 
 namespace petuum {
 void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables) {
@@ -90,6 +91,7 @@ void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables) {
 
   config->naive_table_oplog_meta = FLAGS_naive_table_oplog_meta;
   config->suppression_on = FLAGS_suppression_on;
+  config->use_approx_sort = FLAGS_use_approx_sort;
 }
 
 }

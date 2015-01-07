@@ -63,4 +63,6 @@ NumaPolicy GlobalContext::numa_policy_;
 bool GlobalContext::naive_table_oplog_meta_;
 
 bool GlobalContext::suppression_on_;
+
+bool GlobalContext::use_approx_sort_;
 }   // namespace petuum

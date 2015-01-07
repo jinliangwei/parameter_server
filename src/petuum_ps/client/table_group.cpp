@@ -59,7 +59,8 @@ TableGroup::TableGroup(const TableGroupConfig &table_group_config,
       table_group_config.row_candidate_factor,
       table_group_config.numa_index,
       table_group_config.numa_policy,
-      table_group_config.naive_table_oplog_meta);
+      table_group_config.naive_table_oplog_meta,
+      table_group_config.use_approx_sort);
 
   NumaMgr::Init(table_group_config.numa_opt);
 
