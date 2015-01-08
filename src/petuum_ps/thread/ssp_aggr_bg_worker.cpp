@@ -390,6 +390,15 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   //LOG(INFO) << "Clock to push = " << clock_to_push
   //        << " clock has pushed = " << clock_has_pushed_;
 
+  double left_over_send_milli_sec = 0;
+
+  if (oplog_send_milli_sec_ > 0) {
+    double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
+    left_over_send_milli_sec = std::max<double>(0, oplog_send_milli_sec_ - send_elapsed_milli);
+  }
+
+  msg_send_timer_.restart();
+
   STATS_BG_ACCUM_CLOCK_END_OPLOG_SERIALIZE_BEGIN();
   BgOpLog *bg_oplog = PrepareOpLogsToSend(clock_to_push);
 
@@ -399,20 +408,11 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   size_t sent_size = SendOpLogMsgs(true);
   TrackBgOpLog(bg_oplog);
 
-  double left_over_send_milli_sec = 0;
-
-  if (oplog_send_milli_sec_ > 0) {
-    double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
-    left_over_send_milli_sec = std::max<double>(0, oplog_send_milli_sec_ - send_elapsed_milli);
-  }
-
   oplog_send_milli_sec_
       = TransTimeEstimate::EstimateTransMillisec(sent_size)
       + left_over_send_milli_sec;
 
-  msg_send_timer_.restart();
-
-    // reset suppression level
+  // reset suppression level
   if (suppression_level_ != 0 && client_clock_ % suppression_level_ == 0) {
     double comm_sec = oplog_send_milli_sec_*2;
     double window_sec = min_table_staleness_ * clock_tick_sec_ / (2.0);
