@@ -7,6 +7,7 @@ MATRIXFACT_BIN = $(MATRIXFACT_DIR)/bin
 
 matrixfact: $(MATRIXFACT_BIN)/matrixfact
 randomize: $(MATRIXFACT_BIN)/randomize
+duplicate: $(MATRIXFACT_BIN)/duplicate
 
 $(MATRIXFACT_BIN):
 	mkdir -p $(MATRIXFACT_BIN)
@@ -23,7 +24,13 @@ $(MATRIXFACT_BIN)/randomize: $(MATRIXFACT_DIR)/randomize.cpp $(PETUUM_PS_LIB) \
 	$(MATRIXFACT_DIR)/randomize.cpp \
 	$(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
 
+$(MATRIXFACT_BIN)/duplicate: $(MATRIXFACT_DIR)/duplicate.cpp $(PETUUM_PS_LIB) \
+	$(MATRIXFACT_BIN)
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
+	$(MATRIXFACT_DIR)/duplicate.cpp \
+	$(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
+
 clean:
 	rm -rf $(MATRIXFACT_BIN)
 
-.PHONY: matrixfact randomize clean
+.PHONY: matrixfact duplicate clean
