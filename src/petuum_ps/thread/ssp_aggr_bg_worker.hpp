@@ -25,7 +25,9 @@ public:
                       system_clock_mtx,
                       system_clock_cv,
                       bg_server_clock),
-      min_table_staleness_(INT_MAX) { }
+      min_table_staleness_(INT_MAX) {
+    ResetBgIdleMilli_ = &SSPAggrBgWorker::ResetBgIdleMilliNoEarlyComm;
+  }
 
   ~SSPAggrBgWorker() { }
 
@@ -36,6 +38,14 @@ protected:
   virtual long ResetBgIdleMilli();
   virtual long BgIdleWork();
   virtual long HandleClockMsg(bool clock_advanced);
+
+  void HandleEarlyCommOn();
+  void HandleEarlyCommOff();
+
+  long ResetBgIdleMilliNoEarlyComm();
+  long ResetBgIdleMilliEarlyComm();
+
+  typedef long (SSPAggrBgWorker::*ResetBgIdleMilliFunc)();
 
   void ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
                                     ClientTable *table);
@@ -101,6 +111,7 @@ protected:
   HighResolutionTimer clock_timer_;
   int32_t suppression_level_;
   double clock_tick_sec_;
+  ResetBgIdleMilliFunc ResetBgIdleMilli_;
 };
 
 }

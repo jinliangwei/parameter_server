@@ -41,6 +41,11 @@ public:
   virtual void Clock() = 0;
 
   virtual void GlobalBarrier() = 0;
+
+  virtual void TurnOnEarlyComm() = 0;
+
+  virtual void TurnOffEarlyComm() = 0;
+
 };
 
 }   // namespace petuum

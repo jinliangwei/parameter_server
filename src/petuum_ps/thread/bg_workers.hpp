@@ -31,6 +31,9 @@ public:
   static int32_t GetSystemClock();
   static void WaitSystemClock(int32_t my_clock);
 
+  static void TurnOnEarlyComm();
+  static void TurnOffEarlyComm();
+
 private:
   static BgWorkerGroup *bg_worker_group_;
 };

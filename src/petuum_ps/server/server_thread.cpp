@@ -258,6 +258,10 @@ long ServerThread::ResetServerIdleMilli() {
   return 0;
 }
 
+void ServerThread::HandleEarlyCommOn() { }
+
+void ServerThread::HandleEarlyCommOff() { }
+
 void ServerThread::SendOpLogAckMsg(int32_t bg_id, uint32_t version) { }
 
 void *ServerThread::operator() () {
@@ -279,14 +283,14 @@ void *ServerThread::operator() () {
   MsgType msg_type;
   void *msg_mem;
   bool destroy_mem = false;
-  long timeout_milli = GlobalContext::get_server_idle_milli();
+  long timeout_milli = -1;
   while(1) {
     bool received = WaitMsg_(&sender_id, &zmq_msg, timeout_milli);
     if (!received) {
       timeout_milli = ServerIdleWork();
       continue;
     } else {
-      timeout_milli = GlobalContext::get_server_idle_milli();
+      timeout_milli = ResetServerIdleMilli();
     }
 
     msg_type = MsgBase::get_msg_type(zmq_msg.data());
@@ -332,6 +336,16 @@ void *ServerThread::operator() () {
         STATS_SERVER_OPLOG_MSG_RECV_INC_ONE();
       }
       break;
+      case kEarlyCommOn:
+        {
+          HandleEarlyCommOn();
+        }
+        break;
+      case kEarlyCommOff:
+        {
+          HandleEarlyCommOff();
+        }
+        break;
     default:
       LOG(FATAL) << "Unrecognized message type " << msg_type;
     }

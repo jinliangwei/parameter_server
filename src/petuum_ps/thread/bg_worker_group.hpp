@@ -33,6 +33,9 @@ public:
   virtual int32_t GetSystemClock();
   virtual void WaitSystemClock(int32_t my_clock);
 
+  virtual void TurnOnEarlyComm();
+  virtual void TurnOffEarlyComm();
+
 protected:
   std::map<int32_t, ClientTable*> *tables_;
 

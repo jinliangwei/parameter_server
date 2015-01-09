@@ -553,6 +553,8 @@ void solve_mf(int32_t thread_id, boost::barrier* process_barrier) {
   }
   process_barrier->wait();
 
+  petuum::PSTableGroup::TurnOnEarlyComm();
+
   for (int iter = 0; iter < FLAGS_num_iterations; ++iter) {
     if (global_worker_id == 0) {
       LOG(INFO) << "Iteration " << iter+1 << "/" <<
@@ -643,6 +645,8 @@ void solve_mf(int32_t thread_id, boost::barrier* process_barrier) {
     LOG_IF(INFO, FLAGS_client_id == 0 && thread_id == 0) << "Iter " << iter+1
       << " finished. Time: " << total_timer.elapsed();
   }
+
+  petuum::PSTableGroup::TurnOffEarlyComm();
 
   // Finish propagation
   petuum::PSTableGroup::GlobalBarrier();
@@ -743,7 +747,7 @@ int main(int argc, char *argv[]) {
   table_config.thread_cache_capacity = 1;
   table_config.oplog_capacity = FLAGS_M_cache_size;
   table_config.client_send_oplog_upper_bound
-      = FLAGS_N_client_send_oplog_upper_bound;
+      = FLAGS_M_client_send_oplog_upper_bound;
   petuum::PSTableGroup::CreateTable(1, table_config);
 
   table_config.table_info.oplog_dense_serialized = true;

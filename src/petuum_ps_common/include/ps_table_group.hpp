@@ -125,6 +125,14 @@ public:
     return abstract_table_group_->GlobalBarrier();
   }
 
+  static void TurnOnEarlyComm() {
+    return abstract_table_group_->TurnOnEarlyComm();
+  }
+
+  static void TurnOffEarlyComm() {
+    return abstract_table_group_->TurnOffEarlyComm();
+  }
+
 private:
   static AbstractTableGroup *abstract_table_group_;
 };

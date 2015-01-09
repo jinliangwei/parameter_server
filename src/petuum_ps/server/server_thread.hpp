@@ -56,6 +56,9 @@ protected:
   void HandleOpLogMsg(int32_t sender_id,
                       ClientSendOpLogMsg &client_send_oplog_msg);
 
+  virtual void HandleEarlyCommOn();
+  virtual void HandleEarlyCommOff();
+
   virtual long ServerIdleWork();
   virtual long ResetServerIdleMilli();
 

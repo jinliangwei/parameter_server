@@ -27,10 +27,14 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, void *msg_mem) {
   if (is_clock) {
     int32_t server_clock = server_push_row_msg.get_clock();
 
+    //LOG(INFO) << "clock_msg from server " << server_id
+    //        << " clock = " << server_clock;
+
     int32_t new_clock = server_vector_clock_.TickUntil(sender_id, server_clock);
 
     if (new_clock) {
       int32_t new_system_clock = bg_server_clock_->Tick(my_id_);
+      //LOG(INFO) << "new_system_clock = " << new_system_clock;
 
       if (new_system_clock) {
         *system_clock_ += 1;

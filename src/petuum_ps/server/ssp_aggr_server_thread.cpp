@@ -49,6 +49,14 @@ long SSPAggrServerThread::ServerIdleWork() {
 }
 
 long SSPAggrServerThread::ResetServerIdleMilli() {
+  return (this->*ResetServerIdleMilli_)();
+}
+
+long SSPAggrServerThread::ResetServerIdleMilliNoEarlyComm() {
+  return -1;
+}
+
+long SSPAggrServerThread::ResetServerIdleMilliEarlyComm() {
   return GlobalContext::get_server_idle_milli();
 }
 
@@ -73,4 +81,22 @@ void SSPAggrServerThread::ServerPushRow(bool clock_changed) {
   //        << " row_send_milli_sec = " << row_send_milli_sec_
   //        << " left_over_send_milli_sec = " << left_over_send_milli_sec;
 }
+
+void SSPAggrServerThread::HandleEarlyCommOn() {
+  if (!early_comm_on_) {
+    ResetServerIdleMilli_ = &SSPAggrServerThread::ResetServerIdleMilliEarlyComm;
+    early_comm_on_ = true;
+    num_early_comm_off_msgs_ = 0;
+  }
+}
+
+void SSPAggrServerThread::HandleEarlyCommOff() {
+  num_early_comm_off_msgs_++;
+  if (num_early_comm_off_msgs_ == bg_worker_ids_.size()) {
+    ResetServerIdleMilli_ = &SSPAggrServerThread::ResetServerIdleMilliNoEarlyComm;
+    early_comm_on_ = false;
+    num_early_comm_off_msgs_ = 0;
+  }
+}
+
 }

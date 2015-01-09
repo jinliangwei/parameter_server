@@ -78,4 +78,12 @@ void BgWorkers::WaitSystemClock(int32_t my_clock) {
   bg_worker_group_->WaitSystemClock(my_clock);
 }
 
+void BgWorkers::TurnOnEarlyComm() {
+  bg_worker_group_->TurnOnEarlyComm();
+}
+
+void BgWorkers::TurnOffEarlyComm() {
+  bg_worker_group_->TurnOffEarlyComm();
+}
+
 }

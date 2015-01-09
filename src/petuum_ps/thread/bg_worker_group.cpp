@@ -117,4 +117,16 @@ void BgWorkerGroup::WaitSystemClock(int32_t my_clock) {
   LOG(FATAL) << "Not supported function";
 }
 
+void BgWorkerGroup::TurnOnEarlyComm() {
+  for (const auto &worker : bg_worker_vec_) {
+    worker->TurnOnEarlyComm();
+  }
+}
+
+void BgWorkerGroup::TurnOffEarlyComm() {
+  for (const auto &worker : bg_worker_vec_) {
+    worker->TurnOffEarlyComm();
+  }
+}
+
 }

@@ -33,6 +33,10 @@ enum MsgType {
   kServerPushRow = 18,
   kServerOpLogAck = 19,
   kBgHandleAppendOpLog = 20,
+  kBgEarlyCommOn = 21,
+  kBgEarlyCommOff = 22,
+  kEarlyCommOn = 23,
+  kEarlyCommOff = 24,
   kMemTransfer = 50
 };
 

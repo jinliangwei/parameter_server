@@ -5,6 +5,7 @@
 #data_filename="/l0/movielens_10m.dat"
 #data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
+#data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x2"
 data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_2K_2K_X.dat"
@@ -20,23 +21,24 @@ lambda=0
 data_format=list
 
 # Execution parameters:
-num_iterations=10
+num_iterations=32
 consistency_model="SSPAggr"
 num_worker_threads=64
 num_comm_channels_per_client=1
-table_staleness=2 # effective staleness is staleness / num_clocks_per_iter.
+table_staleness=4 # effective staleness is staleness / num_clocks_per_iter.
 N_cache_size=480190
 #N_cache_size=500000
 M_cache_size=17771
+#M_cache_size=35542
 #M_cache_size=20000
 num_clocks_per_iter=1
-num_clocks_per_eval=5
+num_clocks_per_eval=8
 row_oplog_type=0
 
 # SSPAggr parameters:
 bg_idle_milli=2
 # Total bandwidth: bandwidth_mbps * num_comm_channels_per_client * 2
-bandwidth_mbps=550
+bandwidth_mbps=480
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
 thread_oplog_batch_size=1600000
 server_idle_milli=2
@@ -47,8 +49,8 @@ append_only_buffer_capacity=$((1024*1024*4))
 append_only_buffer_pool_size=3
 bg_apply_append_oplog_freq=64
 
-N_client_send_oplog_upper_bound=100
-M_client_send_oplog_upper_bound=5000
+N_client_send_oplog_upper_bound=1000
+M_client_send_oplog_upper_bound=2000
 server_push_row_upper_bound=1000
 
 oplog_type=Dense
@@ -79,7 +81,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_8x8_mbssp_test"
+output_dir="$app_dir/output_8x8_mbssp_debug"
 output_dir="${output_dir}/${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${bandwidth_mbps}_2"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
