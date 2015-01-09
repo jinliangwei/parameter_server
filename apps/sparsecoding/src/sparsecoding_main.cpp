@@ -49,6 +49,7 @@ DEFINE_int32(num_epochs, 100, "Number of epochs"
         ", where each epoch approximately visit the whole dataset once. "
         "Default value is 0.5.");
 DEFINE_int32(minibatch_size, 1, "Minibatch size for SGD. Default value is 1."); 
+DEFINE_int32(minibatch_iters_per_update, 1, "Number of minibatch iters before updating PS. Default value is 1.");
 DEFINE_int32(num_eval_minibatch, 10, "Evaluate obj per how many minibatches. "
         "Default value is 10."); 
 DEFINE_int32(num_eval_samples, 10, "Evaluate obj by sampling how many points."

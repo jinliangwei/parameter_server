@@ -24,8 +24,8 @@ class SCEngine {
         float C_, lambda_;
 
         // minibatch and evaluate parameters
-        int num_epochs_, minibatch_size_, num_eval_minibatch_, 
-            num_iter_S_per_minibatch_,
+        int num_epochs_, minibatch_size_, minibatch_iters_per_update_,
+            num_eval_minibatch_, num_iter_S_per_minibatch_,
             num_eval_samples_, num_eval_per_client_;
 
         // optimization parameters
