@@ -43,6 +43,7 @@ num_eval_minibatch=1
 num_eval_samples=$n
 
 # System parameters:
+consistency_model="SSPAggr"
 num_worker_threads=4
 table_staleness=0
 maximum_running_time=0.0
@@ -150,6 +151,7 @@ for ip in $unique_host_list; do
       --init_S_high $init_S_high \
       --init_B_low $init_B_low \
       --init_B_high $init_B_high \
+      --consistency_model $consistency_model \
       --table_staleness $table_staleness \
       --maximum_running_time $maximum_running_time \
       --$flag_load_cache \
