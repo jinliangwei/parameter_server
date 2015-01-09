@@ -125,7 +125,7 @@ for ip in $unique_host_list; do
       --output_data_format $output_data_format \
       --output_path $output_path \
       --num_clients $num_unique_hosts \
-      --num_worker_threads $num_worker_threads \
+      --num_table_threads $num_worker_threads \
       --dictionary_size $dictionary_size \
       --m $m \
       --n $n \

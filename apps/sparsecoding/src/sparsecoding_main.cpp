@@ -1,4 +1,5 @@
 #include <petuum_ps_common/include/petuum_ps.hpp>
+#include <petuum_ps_common/include/system_gflags.hpp>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <vector>
@@ -7,14 +8,6 @@
 #include "SCEngine.hpp"
 #include "util/context.hpp"
 
-/* Petuum Parameters */
-DEFINE_string(hostfile, "", "Path to file containing server ip:port.");
-DEFINE_int32(num_clients, 1, "Total number of clients");
-DEFINE_int32(num_worker_threads, 4, "Number of app threads in this client");
-DEFINE_int32(client_id, 0, "Client ID");
-DEFINE_int32(num_comm_channels_per_client, 4, 
-        "number of comm channels per client");
- 
 /* Sparse Coding Parameters */
 // Input and Output
 DEFINE_string(data_file, "", "Input matrix.");
@@ -67,7 +60,7 @@ DEFINE_double(step_size_pow, 0.0, "Base SGD step size pow."
         " Default value is 0.0.");
 DEFINE_double(init_step_size_B, 0.0, "SGD step size for B at iteration t is "
         "init_step_size_B * (step_size_offset_B + t)^(-step_size_pow_B). "
-        "Default value is init_step_size / num_clients / num_worker_threads.");
+        "Default value is init_step_size / num_clients / num_table_threads.");
 DEFINE_double(step_size_offset_B, 100.0, "SGD step size for B at iteration t is "
         "init_step_size_B * (step_size_offset_B + t)^(-step_size_pow_B). "
         "Default value is step_size_offset.");
@@ -97,8 +90,6 @@ DEFINE_int32(table_staleness, 0, "Staleness for dictionary table."
         "Default value is 0.");
 
 /* No need to change the following */
-DEFINE_string(stats_path, "", "Statistics output file.");
-DEFINE_string(consistency_model, "SSPPush", "SSP or SSPPush or ...");
 DEFINE_int32(row_oplog_type, petuum::RowOpLogType::kDenseRowOpLog, 
         "row oplog type");
 DEFINE_bool(oplog_dense_serialized, true, "dense serialized oplog");
@@ -109,26 +100,10 @@ int main(int argc, char * argv[]) {
     google::InitGoogleLogging(argv[0]);
 
     petuum::TableGroupConfig table_group_config;
-    table_group_config.num_comm_channels_per_client
-      = FLAGS_num_comm_channels_per_client;
-    table_group_config.num_total_clients = FLAGS_num_clients;
-    // Dictionary table and loss table
-    table_group_config.num_tables = 2;
+    petuum::InitTableGroupConfig(&table_group_config, 2);
     // + 1 for main()
-    table_group_config.num_local_app_threads = FLAGS_num_worker_threads + 1;;
     table_group_config.client_id = FLAGS_client_id;
     
-    petuum::GetHostInfos(FLAGS_hostfile, &table_group_config.host_map);
-    if (FLAGS_consistency_model == "SSP") {
-        table_group_config.consistency_model = petuum::SSP;
-    } else if (FLAGS_consistency_model == "SSPPush") {
-        table_group_config.consistency_model = petuum::SSPPush;
-    } else if (FLAGS_consistency_model == "LocalOOC") {
-        table_group_config.consistency_model = petuum::LocalOOC;
-    } else {
-        LOG(FATAL) << "Unknown consistency model: " << FLAGS_consistency_model;
-    }
-
     petuum::ProcessStorageType process_storage_type;
     if (FLAGS_process_storage_type == "BoundedDense") {
         process_storage_type = petuum::BoundedDense;
@@ -138,8 +113,6 @@ int main(int argc, char * argv[]) {
         LOG(FATAL) << "Unknown process storage type " << FLAGS_process_storage_type;
     }
 
-    // Stats
-    table_group_config.stats_path = FLAGS_stats_path;
     // Configure row types
     petuum::PSTableGroup::RegisterRow<petuum::DenseRow<float> >(0);
 
@@ -177,7 +150,7 @@ int main(int argc, char * argv[]) {
     // loss table. Single column. Each column is loss in one iteration
     int max_client_n = ceil(float(FLAGS_n) / FLAGS_num_clients);
     int iter_minibatch = 
-        ceil(float(max_client_n / FLAGS_num_worker_threads) 
+        ceil(float(max_client_n / FLAGS_num_table_threads) 
                 / FLAGS_minibatch_size);
     int num_eval_per_client = 
         (FLAGS_num_epochs * iter_minibatch - 1) 
@@ -202,7 +175,7 @@ int main(int argc, char * argv[]) {
     petuum::PSTableGroup::CreateTableDone();
     LOG(INFO) << "Create Table Done!";
 
-    std::vector<std::thread> threads(FLAGS_num_worker_threads);
+    std::vector<std::thread> threads(FLAGS_num_table_threads);
     for (auto & thr: threads) {
         thr = std::thread(&sparsecoding::SCEngine::Start, std::ref(sc_engine));
     }

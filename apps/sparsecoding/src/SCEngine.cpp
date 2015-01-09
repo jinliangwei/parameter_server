@@ -41,7 +41,7 @@ namespace sparsecoding {
         // petuum parameters
         client_id_ = context.get_int32("client_id");
         num_clients_ = context.get_int32("num_clients");
-        num_worker_threads_ = context.get_int32("num_worker_threads");
+        num_worker_threads_ = context.get_int32("num_table_threads");
 
         // optimization parameters
         num_epochs_ = context.get_int32("num_epochs");
