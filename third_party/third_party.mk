@@ -3,22 +3,23 @@ THIRD_PARTY_HOST = http://www.cs.cmu.edu/~jinlianw/third_party
 BOOST_HOST = http://downloads.sourceforge.net/project/boost/boost/1.56.0
 
 third_party_core: path \
-	                gflags \
+                  gflags \
                   glog \
                   zeromq \
                   boost \
                   gperftools \
-									cuckoo \
-									leveldb \
+                  cuckoo \
+                  leveldb \
                   libconfig \
                   yaml-cpp \
-                 leveldb
+                  leveldb \
+                  snappy
 
 third_party_all: third_party_core \
                  sparsehash \
                  oprofile \
-                  gtest \
-		iftop
+								 gtest \
+								 iftop
 
 .PHONY: third_party_core third_party_all
 
