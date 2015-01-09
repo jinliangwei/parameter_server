@@ -46,6 +46,8 @@ namespace sparsecoding {
         // optimization parameters
         num_epochs_ = context.get_int32("num_epochs");
         minibatch_size_ = context.get_int32("minibatch_size");
+        minibatch_iters_per_update_ =
+            context.get_int32("minibatch_iters_per_update");
         num_eval_minibatch_ = context.get_int32("num_eval_minibatch");
         num_eval_samples_ = context.get_int32("num_eval_samples");
         init_step_size_B_ = context.get_double("init_step_size_B");
@@ -546,17 +548,21 @@ namespace sparsecoding {
                         petuum_update_cache.noalias() += 
                             step_size_B * 2.0 * Xj_inc * Sj.transpose();
                     }
-                }
-                // Update B_table
-                for (int row_id = 0; row_id < dictionary_size_; ++row_id) {
-                    petuum::UpdateBatch<float> B_update;
-                    for (int col_id = 0; col_id < m; ++col_id) {
-                        B_update.Update(col_id, 
-                                petuum_update_cache(col_id, row_id) 
-                                / minibatch_size_);
+                    if ((k + 1) % minibatch_iters_per_update_ == 0
+                            || k + 1 == minibatch_size_) {
+                        // Update B_table
+                        for (int row_id = 0; row_id < dictionary_size_; ++row_id) {
+                            petuum::UpdateBatch<float> B_update;
+                            for (int col_id = 0; col_id < m; ++col_id) {
+                                B_update.Update(col_id, 
+                                        petuum_update_cache(col_id, row_id) 
+                                        / minibatch_size_);
+                            }
+                            B_table.BatchInc(row_id, B_update);
+                        }
                     }
-                    B_table.BatchInc(row_id, B_update);
                 }
+                
                 petuum::PSTableGroup::Clock();
                 // Update B_table to normalize l2-norm to C_
                 std::vector<float> B_row_cache(m);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Input files:
 host_filename="../../machinefiles/localserver"
-data_filename=""
+data_filename="data/testdata"
 is_partitioned=false
 data_format="binary"
 input_data_format=$data_format
@@ -9,20 +9,21 @@ load_cache=false
 cache_dirname="N/A"
 
 # Ouput files:
-output_dirname=""
-log_dirname=""
+output_dirname="output"
+log_dirname="log"
 output_data_format=$data_format
 
 # Sparse Coding parameters:
 # Objective function parameters
-m=
-n=
-dictionary_size=
-c=
-lambda=
+m=100
+n=1000
+dictionary_size=100
+c=1.0
+lambda=1.0
 # Optimization parameters
-num_epochs=1000
-minibatch_size=10
+num_epochs=360
+minibatch_size=6
+minibatch_iters_per_update=2
 init_step_size=0.01
 step_size_offset=0.0
 step_size_pow=0.0
@@ -132,6 +133,7 @@ for ip in $unique_host_list; do
       --lambda $lambda \
       --num_epochs $num_epochs\
       --minibatch_size $minibatch_size \
+      --minibatch_iters_per_update $minibatch_iters_per_update \
       --num_iter_S_per_minibatch $num_iter_S_per_minibatch \
       --num_eval_minibatch $num_eval_minibatch \
       --num_eval_samples $num_eval_samples \
