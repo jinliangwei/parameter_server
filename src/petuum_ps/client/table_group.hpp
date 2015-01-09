@@ -46,6 +46,10 @@ public:
 
   void GlobalBarrier();
 
+  void TurnOnEarlyComm();
+
+  void TurnOffEarlyComm();
+
 private:
   typedef void (TableGroup::*ClockFunc) ();
   ClockFunc ClockInternal;

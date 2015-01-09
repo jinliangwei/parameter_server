@@ -9,7 +9,11 @@ class SSPAggrServerThread : public SSPPushServerThread {
 public:
   SSPAggrServerThread(int32_t my_id, pthread_barrier_t *init_barrier):
       SSPPushServerThread(my_id, init_barrier),
-      row_send_milli_sec_(0) { }
+      row_send_milli_sec_(0),
+      early_comm_on_(false),
+      num_early_comm_off_msgs_(0) {
+    ResetServerIdleMilli_ = &SSPAggrServerThread::ResetServerIdleMilliNoEarlyComm;
+  }
 
   ~SSPAggrServerThread() { }
 
@@ -19,8 +23,19 @@ protected:
   virtual long ResetServerIdleMilli();
   virtual void ServerPushRow(bool clock_changed);
 
+  void HandleEarlyCommOn();
+  void HandleEarlyCommOff();
+
+  long ResetServerIdleMilliNoEarlyComm();
+  long ResetServerIdleMilliEarlyComm();
+
+  typedef long (SSPAggrServerThread::*ResetServerIdleMilliFunc)();
+
   HighResolutionTimer msg_send_timer_;
   double row_send_milli_sec_;
+  ResetServerIdleMilliFunc ResetServerIdleMilli_;
+  bool early_comm_on_;
+  size_t num_early_comm_off_msgs_;
 };
 
 }

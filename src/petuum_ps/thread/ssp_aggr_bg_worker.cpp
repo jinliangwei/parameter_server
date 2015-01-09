@@ -33,6 +33,14 @@ void SSPAggrBgWorker::FinalizeTableStats() {
 }
 
 long SSPAggrBgWorker::ResetBgIdleMilli() {
+  return (this->*ResetBgIdleMilli_)();
+}
+
+long SSPAggrBgWorker::ResetBgIdleMilliNoEarlyComm() {
+  return -1;
+}
+
+long SSPAggrBgWorker::ResetBgIdleMilliEarlyComm() {
   return GlobalContext::get_bg_idle_milli();
 }
 
@@ -378,8 +386,10 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   int32_t clock_to_push
       = client_clock_ - suppression_level_;
 
-  if (clock_to_push > client_clock_)
+  if (clock_to_push > client_clock_) {
+    LOG(FATAL) << "suppression = " << suppression_level_;
     clock_to_push = client_clock_;
+  }
 
   if (clock_to_push < 0)
     clock_to_push = 0;
@@ -413,7 +423,7 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
       + left_over_send_milli_sec;
 
   // reset suppression level
-  if (suppression_level_ != 0 && client_clock_ % suppression_level_ == 0) {
+  if ((suppression_level_ != 0) && (client_clock_ % suppression_level_ == 0)) {
     double comm_sec = oplog_send_milli_sec_*2;
     double window_sec = min_table_staleness_ * clock_tick_sec_ / (2.0);
     double comm_clock_ticks = comm_sec / clock_tick_sec_;
@@ -427,13 +437,14 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
       if (suppression_level_ > min_table_staleness_)
         suppression_level_ = min_table_staleness_;
     }
+    LOG(INFO) << "suppression level changed to" << suppression_level_;
   }
 
   //LOG(INFO) << "HandleClock send bytes = " << sent_size
   //        << " clock_to_push = " << clock_to_push
   //        << " send milli sec = " << oplog_send_milli_sec_
   //        << " left over milli = " << left_over_send_milli_sec
-  //        << " size/4KB = " << sent_size / (4.0*k1_Ki);
+  //        << " size = " << sent_size;
 
   return oplog_send_milli_sec_;
 }
@@ -595,9 +606,30 @@ long SSPAggrBgWorker::BgIdleWork() {
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 
   //LOG(INFO) << "BgIdle send bytes = " << sent_size
-  //        << " send milli sec = " << oplog_send_milli_sec_
-  //        << " size/4KB = " << sent_size / (4.0*k1_Ki);
+  //      << " send milli sec = " << oplog_send_milli_sec_
+  //      << " size = " << sent_size;
   return oplog_send_milli_sec_;
+}
+
+void SSPAggrBgWorker::HandleEarlyCommOn() {
+  ResetBgIdleMilli_ = &SSPAggrBgWorker::ResetBgIdleMilliEarlyComm;
+  EarlyCommOnMsg msg;
+  for (const auto &server_id : server_ids_) {
+    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+        server_id, msg.get_mem(), msg.get_size());
+    CHECK_EQ(sent_size, msg.get_size());
+  }
+}
+
+void SSPAggrBgWorker::HandleEarlyCommOff() {
+  ResetBgIdleMilli_ = &SSPAggrBgWorker::ResetBgIdleMilliNoEarlyComm;
+
+  EarlyCommOffMsg msg;
+  for (const auto &server_id : server_ids_) {
+    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+        server_id, msg.get_mem(), msg.get_size());
+    CHECK_EQ(sent_size, msg.get_size());
+  }
 }
 
 }

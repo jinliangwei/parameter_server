@@ -741,6 +741,106 @@ protected:
   }
 };
 
+struct BgEarlyCommOnMsg : public NumberedMsg {
+public:
+  BgEarlyCommOnMsg() {
+    if (get_size() > PETUUM_MSG_STACK_BUFF_SIZE) {
+      own_mem_ = true;
+      use_stack_buff_ = false;
+      mem_.Alloc(get_size());
+    } else {
+      own_mem_ = false;
+      use_stack_buff_ = true;
+      mem_.Reset(stack_buff_);
+    }
+    InitMsg();
+  }
+
+  explicit BgEarlyCommOnMsg(void *msg):
+    NumberedMsg(msg) {}
+
+protected:
+  void InitMsg() {
+    NumberedMsg::InitMsg();
+    get_msg_type() = kBgEarlyCommOn;
+  }
+};
+
+struct BgEarlyCommOffMsg : public NumberedMsg {
+public:
+  BgEarlyCommOffMsg() {
+    if (get_size() > PETUUM_MSG_STACK_BUFF_SIZE) {
+      own_mem_ = true;
+      use_stack_buff_ = false;
+      mem_.Alloc(get_size());
+    } else {
+      own_mem_ = false;
+      use_stack_buff_ = true;
+      mem_.Reset(stack_buff_);
+    }
+    InitMsg();
+  }
+
+  explicit BgEarlyCommOffMsg(void *msg):
+    NumberedMsg(msg) {}
+
+protected:
+  void InitMsg() {
+    NumberedMsg::InitMsg();
+    get_msg_type() = kBgEarlyCommOff;
+  }
+};
+
+struct EarlyCommOnMsg : public NumberedMsg {
+public:
+  EarlyCommOnMsg() {
+    if (get_size() > PETUUM_MSG_STACK_BUFF_SIZE) {
+      own_mem_ = true;
+      use_stack_buff_ = false;
+      mem_.Alloc(get_size());
+    } else {
+      own_mem_ = false;
+      use_stack_buff_ = true;
+      mem_.Reset(stack_buff_);
+    }
+    InitMsg();
+  }
+
+  explicit EarlyCommOnMsg(void *msg):
+    NumberedMsg(msg) {}
+
+protected:
+  void InitMsg() {
+    NumberedMsg::InitMsg();
+    get_msg_type() = kEarlyCommOn;
+  }
+};
+
+struct EarlyCommOffMsg : public NumberedMsg {
+public:
+  EarlyCommOffMsg() {
+    if (get_size() > PETUUM_MSG_STACK_BUFF_SIZE) {
+      own_mem_ = true;
+      use_stack_buff_ = false;
+      mem_.Alloc(get_size());
+    } else {
+      own_mem_ = false;
+      use_stack_buff_ = true;
+      mem_.Reset(stack_buff_);
+    }
+    InitMsg();
+  }
+
+  explicit EarlyCommOffMsg(void *msg):
+    NumberedMsg(msg) {}
+
+protected:
+  void InitMsg() {
+    NumberedMsg::InitMsg();
+    get_msg_type() = kEarlyCommOff;
+  }
+};
+
 struct ServerRowRequestReplyMsg : public ArbitrarySizedMsg {
 public:
   explicit ServerRowRequestReplyMsg(int32_t avai_size) {

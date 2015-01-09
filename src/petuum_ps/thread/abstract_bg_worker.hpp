@@ -44,6 +44,9 @@ public:
   void ClockAllTables();
   void SendOpLogsAllTables();
 
+  virtual void TurnOnEarlyComm();
+  virtual void TurnOffEarlyComm();
+
   virtual void *operator() ();
 
 protected:
@@ -143,6 +146,9 @@ protected:
   virtual void InsertNonexistentRow(int32_t table_id,
                                     int32_t row_id, ClientTable *client_table, const void *data,
                                     size_t row_size, uint32_t version, int32_t clock);
+
+  virtual void HandleEarlyCommOn();
+  virtual void HandleEarlyCommOff();
 
   int32_t my_id_;
   int32_t my_comm_channel_idx_;

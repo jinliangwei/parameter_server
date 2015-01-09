@@ -937,6 +937,22 @@ void AbstractBgWorker::ConnectToNameNodeOrServer(int32_t server_id) {
   }
 }
 
+void AbstractBgWorker::TurnOnEarlyComm() {
+  BgEarlyCommOnMsg msg;
+  size_t sent_size = SendMsg(reinterpret_cast<MsgBase*>(&msg));
+  CHECK_EQ(sent_size, msg.get_size());
+}
+
+void AbstractBgWorker::TurnOffEarlyComm() {
+  BgEarlyCommOffMsg msg;
+  size_t sent_size = SendMsg(reinterpret_cast<MsgBase*>(&msg));
+  CHECK_EQ(sent_size, msg.get_size());
+}
+
+void AbstractBgWorker::HandleEarlyCommOn() { }
+
+void AbstractBgWorker::HandleEarlyCommOff() { }
+
 void *AbstractBgWorker::operator() () {
   STATS_REGISTER_THREAD(kBgThread);
 
@@ -968,7 +984,7 @@ void *AbstractBgWorker::operator() () {
   MsgType msg_type;
   void *msg_mem;
   bool destroy_mem = false;
-  long timeout_milli = GlobalContext::get_bg_idle_milli();
+  long timeout_milli = -1;
   PrepareBeforeInfiniteLoop();
   while (1) {
     bool received = WaitMsg_(&sender_id, &zmq_msg, timeout_milli);
@@ -1072,6 +1088,16 @@ void *AbstractBgWorker::operator() () {
         {
           BgHandleAppendOpLogMsg handle_append_oplog_msg(msg_mem);
           HandleAppendOpLogMsg(handle_append_oplog_msg.get_table_id());
+        }
+        break;
+      case kBgEarlyCommOn:
+        {
+          HandleEarlyCommOn();
+        }
+        break;
+      case kBgEarlyCommOff:
+        {
+          HandleEarlyCommOff();
         }
         break;
       default:

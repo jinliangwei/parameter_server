@@ -219,4 +219,13 @@ void TableGroup::ClockConservative() {
     BgWorkers::ClockAllTables();
   }
 }
+
+void TableGroup::TurnOnEarlyComm() {
+  BgWorkers::TurnOnEarlyComm();
+}
+
+void TableGroup::TurnOffEarlyComm() {
+  BgWorkers::TurnOffEarlyComm();
+}
+
 }
