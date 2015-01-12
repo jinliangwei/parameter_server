@@ -3,6 +3,7 @@
 #include <petuum_ps/thread/ps_msgs.hpp>
 #include <petuum_ps/thread/numa_mgr.hpp>
 #include <petuum_ps_common/util/class_register.hpp>
+#include <petuum_ps_common/include/constants.hpp>
 #include <petuum_ps/client/oplog_serializer.hpp>
 #include <petuum_ps/client/ssp_client_row.hpp>
 #include <petuum_ps_common/util/stats.hpp>
@@ -29,7 +30,11 @@ AbstractBgWorker::AbstractBgWorker(int32_t id,
     clock_has_pushed_(-1),
     comm_bus_(GlobalContext::comm_bus),
     init_barrier_(init_barrier),
-    create_table_barrier_(create_table_barrier) {
+    create_table_barrier_(create_table_barrier),
+    msg_tracker_(kMaxPendingMsgs),
+    pending_clock_send_oplog_(false),
+    clock_advanced_buffed_(false),
+    pending_shut_down_(false) {
   GlobalContext::GetServerThreadIDs(my_comm_channel_idx_, &(server_ids_));
   for (const auto &server_id : server_ids_) {
     server_table_oplog_size_map_.insert(
@@ -263,6 +268,8 @@ void AbstractBgWorker::BgServerHandshake() {
   {
     for (const auto &server_id : server_ids_) {
       ConnectToNameNodeOrServer(server_id);
+      if (server_id != 0)
+        msg_tracker_.AddEntity(server_id);
     }
   }
 
@@ -397,6 +404,13 @@ void AbstractBgWorker::HandleCreateTables() {
 }
 
 long AbstractBgWorker::HandleClockMsg(bool clock_advanced) {
+  if (!msg_tracker_.CheckSendAll()) {
+    STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK();
+    pending_clock_send_oplog_ = true;
+    clock_advanced_buffed_ = clock_advanced;
+    return 0;
+  }
+
   STATS_BG_ACCUM_CLOCK_END_OPLOG_SERIALIZE_BEGIN();
   BgOpLog *bg_oplog = PrepareOpLogsToSend();
 
@@ -410,7 +424,7 @@ long AbstractBgWorker::HandleClockMsg(bool clock_advanced) {
   return 0;
 }
 
-void AbstractBgWorker::HandleServerPushRow(int32_t sender_id, void *msg_mem) {
+void AbstractBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &server_push_row_msg) {
   LOG(FATAL) << "Consistency model = " << GlobalContext::get_consistency_model()
              << " does not support HandleServerPushRow";
 }
@@ -628,6 +642,7 @@ size_t AbstractBgWorker::SendOpLogMsgs(bool clock_advanced) {
       oplog_msg_iter->second->get_client_id() = GlobalContext::get_client_id();
       oplog_msg_iter->second->get_version() = version_;
       oplog_msg_iter->second->get_bg_clock() = clock_has_pushed_ + 1;
+      oplog_msg_iter->second->get_seq_num() = msg_tracker_.IncGetSeq(server_id);
 
       accum_size += oplog_msg_iter->second->get_size();
       MemTransfer::TransferMem(comm_bus_, server_id, oplog_msg_iter->second);
@@ -640,6 +655,7 @@ size_t AbstractBgWorker::SendOpLogMsgs(bool clock_advanced) {
       clock_oplog_msg.get_client_id() = GlobalContext::get_client_id();
       clock_oplog_msg.get_version() = version_;
       clock_oplog_msg.get_bg_clock() = clock_has_pushed_ + 1;
+      clock_oplog_msg.get_seq_num() = msg_tracker_.IncGetSeq(server_id);
 
       accum_size += clock_oplog_msg.get_size();
       MemTransfer::TransferMem(comm_bus_, server_id, &clock_oplog_msg);
@@ -953,12 +969,24 @@ void AbstractBgWorker::HandleEarlyCommOn() { }
 
 void AbstractBgWorker::HandleEarlyCommOff() { }
 
+void AbstractBgWorker::SendClientShutDownMsgs() {
+  ClientShutDownMsg msg;
+  int32_t name_node_id = GlobalContext::get_name_node_id();
+  (comm_bus_->*(comm_bus_->SendAny_))(name_node_id, msg.get_mem(),
+                                      msg.get_size());
+
+  for (const auto &server_id : server_ids_) {
+    (comm_bus_->*(comm_bus_->SendAny_))(server_id, msg.get_mem(),
+                                        msg.get_size());
+  }
+}
+
 void *AbstractBgWorker::operator() () {
   STATS_REGISTER_THREAD(kBgThread);
 
   ThreadContext::RegisterThread(my_id_);
 
-  NumaMgr::ConfigureBgWorker();
+  //NumaMgr::ConfigureBgWorker();
 
   InitCommBus();
 
@@ -1025,15 +1053,14 @@ void *AbstractBgWorker::operator() () {
           ++num_deregistered_app_threads;
           if (num_deregistered_app_threads
               == GlobalContext::get_num_app_threads()) {
-            ClientShutDownMsg msg;
-            int32_t name_node_id = GlobalContext::get_name_node_id();
-            (comm_bus_->*(comm_bus_->SendAny_))(name_node_id, msg.get_mem(),
-              msg.get_size());
 
-            for (const auto &server_id : server_ids_) {
-              (comm_bus_->*(comm_bus_->SendAny_))(server_id, msg.get_mem(),
-                                           msg.get_size());
+            if (pending_clock_send_oplog_
+                || msg_tracker_.PendingAcks()) {
+              pending_shut_down_ = true;
+              break;
             }
+
+            SendClientShutDownMsgs();
           }
         }
         break;
@@ -1062,8 +1089,13 @@ void *AbstractBgWorker::operator() () {
         break;
       case kBgClock:
         {
+          LOG(INFO) << "bg_recv_clock = " << (client_clock_ + 1)
+                    << " " << my_id_;
           timeout_milli = HandleClockMsg(true);
           ++client_clock_;
+          LOG(INFO) << "bg_sent_oplog = " << client_clock_
+                    << " " << my_id_;
+
           STATS_BG_CLOCK();
         }
         break;
@@ -1074,7 +1106,8 @@ void *AbstractBgWorker::operator() () {
         break;
       case kServerPushRow:
         {
-          HandleServerPushRow(sender_id, msg_mem);
+          ServerPushRowMsg server_push_row_msg(msg_mem);
+          HandleServerPushRow(sender_id, server_push_row_msg);
         }
         break;
       case kServerOpLogAck:
@@ -1082,6 +1115,20 @@ void *AbstractBgWorker::operator() () {
           ServerOpLogAckMsg server_oplog_ack_msg(msg_mem);
           row_request_oplog_mgr_->ServerAcknowledgeVersion(
               sender_id, server_oplog_ack_msg.get_ack_version());
+          uint64_t ack = server_oplog_ack_msg.get_ack_num();
+          msg_tracker_.RecvAck(sender_id, ack);
+          if (pending_clock_send_oplog_
+              && msg_tracker_.CheckSendAll()) {
+            pending_clock_send_oplog_ = false;
+            HandleClockMsg(clock_advanced_buffed_);
+          }
+
+          if (!pending_clock_send_oplog_
+              && !msg_tracker_.PendingAcks()
+              && pending_shut_down_) {
+            pending_shut_down_ = false;
+            SendClientShutDownMsgs();
+          }
         }
         break;
       case kBgHandleAppendOpLog:

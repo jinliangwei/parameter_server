@@ -154,12 +154,12 @@ public:
       std::vector<CandidateServerRow> *candidate_row_vector);
 
   void GetPartialTableToSend(
-    boost::unordered_map<int32_t, ServerRow*> *rows_to_send,
-    boost::unordered_map<int32_t, size_t> *client_size_map);
+      std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+      boost::unordered_map<int32_t, size_t> *client_size_map);
 
   void AppendRowsToBuffsPartial(
-    boost::unordered_map<int32_t, RecordBuff> *buffs,
-    const boost::unordered_map<int32_t, ServerRow*> &rows_to_send);
+      boost::unordered_map<int32_t, RecordBuff> *buffs,
+      const std::vector<std::pair<int32_t, ServerRow*> > &rows_to_send);
 
   void MakeSnapShotFileName(const std::string &snapshot_dir, int32_t server_id,
                             int32_t table_id, int32_t clock,

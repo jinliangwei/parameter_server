@@ -380,6 +380,13 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   if (!clock_advanced)
     return GlobalContext::get_bg_idle_milli();
 
+  if (!msg_tracker_.CheckSendAll()) {
+    STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK();
+    pending_clock_send_oplog_ = true;
+    clock_advanced_buffed_ = clock_advanced;
+    return GlobalContext::get_bg_idle_milli();
+  }
+
   clock_tick_sec_ = clock_timer_.elapsed();
   clock_timer_.restart();
 
@@ -565,6 +572,11 @@ long SSPAggrBgWorker::BgIdleWork() {
     //        << " oplog_send_milli_sec_ = " << oplog_send_milli_sec_;
     if (oplog_send_milli_sec_ > send_elapsed_milli + 1)
       return (oplog_send_milli_sec_ - send_elapsed_milli);
+  }
+
+  if (!msg_tracker_.CheckSendAll()) {
+    STATS_BG_ACCUM_WAITS_ON_ACK_IDLE();
+    return GlobalContext::get_bg_idle_milli();
   }
 
   STATS_BG_IDLE_INVOKE_INC_ONE();

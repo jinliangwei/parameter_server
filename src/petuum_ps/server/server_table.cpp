@@ -94,7 +94,7 @@ void ServerTable::SortCandidateVectorImportance(
 }
 
 void ServerTable::GetPartialTableToSend(
-    boost::unordered_map<int32_t, ServerRow*> *rows_to_send,
+    std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
     boost::unordered_map<int32_t, size_t> *client_size_map) {
 
   size_t num_rows_threshold = table_info_.server_push_row_upper_bound;
@@ -129,7 +129,7 @@ void ServerTable::GetPartialTableToSend(
   for (auto vec_iter = candidate_row_vector.begin();
        vec_iter != candidate_row_vector.end(); vec_iter++) {
 
-    (*rows_to_send).insert(
+    (*rows_to_send).push_back(
         std::make_pair(vec_iter->row_id, vec_iter->server_row_ptr));
 
     vec_iter->server_row_ptr->AccumSerializedSizePerClient(client_size_map);
@@ -141,36 +141,34 @@ void ServerTable::GetPartialTableToSend(
 
 void ServerTable::AppendRowsToBuffsPartial(
     boost::unordered_map<int32_t, RecordBuff> *buffs,
-    const boost::unordered_map<int32_t, ServerRow*> &rows_to_send) {
+    const std::vector<std::pair<int32_t, ServerRow*> > &rows_to_send) {
 
   tmp_row_buff_ = new uint8_t[tmp_row_buff_size_];
 
-  for (auto row_iter = rows_to_send.cbegin(); row_iter != rows_to_send.cend();
-       ++row_iter) {
-    if (row_iter->second->NoClientSubscribed())
-      continue;
+  for (const auto &row_pair : rows_to_send) {
+    int32_t row_id = row_pair.first;
+    ServerRow *row = row_pair.second;
+    if (row->NoClientSubscribed()
+        || !row->IsDirty()) {
+      LOG(FATAL) << "row " << row_id << " should not be sent!";
+    }
 
-    if (!row_iter->second->IsDirty())
-      continue;
+    STATS_SERVER_ACCUM_IMPORTANCE(table_id_, row->get_importance(), true);
 
-    //LOG(INFO) << table_id_ << " " << row_iter_->first << " " << row_iter_->second.get_importance();
+    row->ResetDirty();
+    ResetImportance_(row);
 
-    STATS_SERVER_ACCUM_IMPORTANCE(table_id_, row_iter->second->get_importance(), true);
-
-    row_iter->second->ResetDirty();
-    ResetImportance_(row_iter->second);
-
-    curr_row_size_ = row_iter->second->SerializedSize();
+    curr_row_size_ = row->SerializedSize();
     if (curr_row_size_ > tmp_row_buff_size_) {
       delete[] tmp_row_buff_;
       tmp_row_buff_size_ = curr_row_size_;
       tmp_row_buff_ = new uint8_t[curr_row_size_];
     }
 
-    curr_row_size_ = row_iter->second->Serialize(tmp_row_buff_);
+    curr_row_size_ = row->Serialize(tmp_row_buff_);
 
-    row_iter->second->AppendRowToBuffs(
-        buffs, tmp_row_buff_, curr_row_size_, row_iter->first);
+    row->AppendRowToBuffs(
+        buffs, tmp_row_buff_, curr_row_size_, row_id);
   }
 
   delete[] tmp_row_buff_;

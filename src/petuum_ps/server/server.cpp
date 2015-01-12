@@ -16,7 +16,8 @@ Server::Server() {}
 Server::~Server() {}
 
 void Server::Init(int32_t server_id,
-                  const std::vector<int32_t> &bg_ids) {
+                  const std::vector<int32_t> &bg_ids,
+                  MsgTracker *msg_tracker) {
   for (auto iter = bg_ids.cbegin(); iter != bg_ids.cend(); iter++){
     bg_clock_.AddClock(*iter, 0);
     bg_version_map_[*iter] = -1;
@@ -26,6 +27,7 @@ void Server::Init(int32_t server_id,
    server_id_ = server_id;
 
    accum_oplog_count_ = 0;
+   msg_tracker_ = msg_tracker;
  }
 
  void Server::CreateTable(int32_t table_id, TableInfo &table_info){
@@ -117,11 +119,11 @@ void Server::Init(int32_t server_id,
  void Server::ApplyOpLogUpdateVersion(
      const void *oplog, size_t oplog_size, int32_t bg_thread_id,
      uint32_t version) {
-   CHECK_EQ(bg_version_map_[bg_thread_id] + 1, version);
+   CHECK_EQ(bg_version_map_[bg_thread_id] + 1, version)
+       << "bg_thread_id = " << bg_thread_id;
    bg_version_map_[bg_thread_id] = version;
 
-   if (oplog_size == 0)
-     return;
+   if (oplog_size == 0) return;
 
    SerializedOpLogReader oplog_reader(oplog, tables_);
    bool to_read = oplog_reader.Restart();
@@ -220,7 +222,7 @@ void Server::Init(int32_t server_id,
         int32_t bg_id = GlobalContext::get_bg_thread_id(client_id,
                                                         comm_channel_idx);
         PushMsgSend(bg_id, msg_map[client_id], false && clock_changed,
-                    GetBgVersion(bg_id), GetMinClock());
+                    GetBgVersion(bg_id), GetMinClock(), msg_tracker_);
         memset((msg_map[client_id])->get_data(), 0, push_row_msg_data_size_);
         record_buff.ResetOffset();
         table_id_ptr = record_buff.GetMemPtrInt32();
@@ -242,7 +244,7 @@ void Server::Init(int32_t server_id,
       int32_t bg_id = GlobalContext::get_bg_thread_id(failed_client_id,
                                                       comm_channel_idx);
       PushMsgSend(bg_id, msg_map[failed_client_id], false && clock_changed,
-                  GetBgVersion(bg_id), GetMinClock());
+                  GetBgVersion(bg_id), GetMinClock(), msg_tracker_);
       memset((msg_map[failed_client_id])->get_data(), 0,
              push_row_msg_data_size_);
       record_buff.ResetOffset();
@@ -264,7 +266,7 @@ void Server::Init(int32_t server_id,
                                                           comm_channel_idx);
 
           PushMsgSend(bg_id, msg_map[client_id], false && clock_changed,
-                      GetBgVersion(bg_id), GetMinClock());
+                      GetBgVersion(bg_id), GetMinClock(), msg_tracker_);
           memset((msg_map[client_id])->get_data(), 0, push_row_msg_data_size_);
           record_buff.ResetOffset();
         } else {
@@ -283,7 +285,7 @@ void Server::Init(int32_t server_id,
       int32_t bg_id = GlobalContext::get_bg_thread_id(client_id,
                                                       comm_channel_idx);
       PushMsgSend(bg_id, msg_map[client_id], true && clock_changed,
-                  GetBgVersion(bg_id), GetMinClock());
+                  GetBgVersion(bg_id), GetMinClock(), msg_tracker_);
       continue;
     }
     *table_end_ptr = GlobalContext::get_serialized_table_end();
@@ -293,7 +295,7 @@ void Server::Init(int32_t server_id,
     int32_t bg_id = GlobalContext::get_bg_thread_id(client_id,
                                                     comm_channel_idx);
     PushMsgSend(bg_id, msg_map[client_id], true && clock_changed,
-                GetBgVersion(bg_id), GetMinClock());
+                GetBgVersion(bg_id), GetMinClock(), msg_tracker_);
     delete msg_map[client_id];
   }
   return accum_send_bytes;
@@ -305,9 +307,10 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
   boost::unordered_map<int32_t, ServerPushRowMsg*> msg_map;
   boost::unordered_map<int32_t, size_t> client_buff_size;
   boost::unordered_map<int32_t,
-                       boost::unordered_map<int32_t, ServerRow*> >
+                       std::vector<std::pair<int32_t, ServerRow*> > >
       table_rows_to_send;
 
+  bool has_to_send = false;
   accum_oplog_count_ = 0;
 
   size_t accum_send_bytes = 0;
@@ -327,12 +330,15 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
 
     table_rows_to_send.insert(std::make_pair(
         table_id,
-        boost::unordered_map<int32_t, ServerRow*>()));
+        std::vector<std::pair<int32_t, ServerRow*> >()));
 
     table_pair.second.GetPartialTableToSend(
         &(table_rows_to_send[table_id]),
         &client_buff_size);
+    if (table_rows_to_send[table_id].size() > 0) has_to_send = true;
   }
+
+  if (!has_to_send) return 0;
 
   size_t num_tables = tables_.size();
 
@@ -404,7 +410,7 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
 
     int32_t bg_id = GlobalContext::get_bg_thread_id(client_id,
                                                     comm_channel_idx);
-    PushMsgSend(bg_id, msg, false, GetBgVersion(bg_id), GetMinClock());
+    PushMsgSend(bg_id, msg, false, GetBgVersion(bg_id), GetMinClock(), msg_tracker_);
 
     VLOG(0) << "Send server push row size = " << msg->get_avai_size()
             << " to bg id = " << bg_id

@@ -30,7 +30,7 @@ public:
 
 protected:
   virtual void CreateRowRequestOpLogMgr();
-  virtual void HandleServerPushRow(int32_t sender_id, void *msg_mem);
+  virtual void HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &server_push_row_msg);
   void ApplyServerPushedRow(uint32_t version, void *mem, size_t mem_size);
 
   virtual ClientRow *CreateClientRow(int32_t clock, AbstractRow *row_data);

@@ -21,7 +21,7 @@ protected:
   virtual void SetWaitMsg();
   virtual long ServerIdleWork();
   virtual long ResetServerIdleMilli();
-  virtual void ServerPushRow(bool clock_changed);
+  virtual void ServerPushRow();
 
   void HandleEarlyCommOn();
   void HandleEarlyCommOff();

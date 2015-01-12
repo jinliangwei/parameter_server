@@ -8,6 +8,8 @@
 #include <petuum_ps/server/server.hpp>
 #include <petuum_ps_common/util/thread.hpp>
 #include <petuum_ps/thread/context.hpp>
+#include <petuum_ps_common/thread/msg_tracker.hpp>
+#include <petuum_ps_common/include/constants.hpp>
 
 namespace petuum {
 class ServerThread : public Thread {
@@ -17,7 +19,10 @@ public:
       bg_worker_ids_(GlobalContext::get_num_clients()),
       num_shutdown_bgs_(0),
       comm_bus_(GlobalContext::comm_bus),
-      init_barrier_(init_barrier) { }
+      init_barrier_(init_barrier),
+      msg_tracker_(kMaxPendingMsgs),
+      pending_clock_push_row_(false),
+      pending_shut_down_(false) { }
 
   virtual ~ServerThread() { }
 
@@ -39,7 +44,7 @@ protected:
   virtual void SetWaitMsg();
 
   virtual void InitServer();
-  virtual void ServerPushRow(bool clock_changed) { }
+  virtual void ServerPushRow() { }
   virtual void RowSubscribe(ServerRow *server_row, int32_t client_id) { }
 
   void SetUpCommBus();
@@ -59,10 +64,17 @@ protected:
   virtual void HandleEarlyCommOn();
   virtual void HandleEarlyCommOff();
 
+  virtual void HandleBgServerPushRowAck(
+      int32_t bg_id, BgServerPushRowAckMsg &msg);
+
   virtual long ServerIdleWork();
   virtual long ResetServerIdleMilli();
 
-  virtual void SendOpLogAckMsg(int32_t bg_id, uint32_t version);
+  virtual void SendOpLogAckMsg(int32_t bg_id, uint32_t version,
+                               uint64_t seq);
+  void SendServerShutDownAcks();
+
+  void ShutDownServer();
 
   virtual void *operator() ();
 
@@ -73,6 +85,10 @@ protected:
   CommBus* const comm_bus_;
 
   pthread_barrier_t *init_barrier_;
+
+  MsgTracker msg_tracker_;
+  bool pending_clock_push_row_;
+  bool pending_shut_down_;
 };
 
 }

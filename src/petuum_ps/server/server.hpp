@@ -10,6 +10,7 @@
 #include <petuum_ps_common/include/abstract_row.hpp>
 #include <petuum_ps_common/include/constants.hpp>
 #include <petuum_ps_common/util/vector_clock.hpp>
+#include <petuum_ps_common/thread/msg_tracker.hpp>
 #include <petuum_ps/server/server_table.hpp>
 #include <petuum_ps/thread/ps_msgs.hpp>
 
@@ -33,7 +34,8 @@ public:
   ~Server();
 
   void Init(int32_t server_id,
-            const std::vector<int32_t> &bg_ids);
+            const std::vector<int32_t> &bg_ids,
+            MsgTracker *msg_tracker);
 
   void CreateTable(int32_t table_id, TableInfo &table_info);
   ServerRow *FindCreateRow(int32_t table_id, int32_t row_id);
@@ -49,7 +51,8 @@ public:
 
   typedef void (*PushMsgSendFunc)(int32_t bg_id, ServerPushRowMsg *msg,
                                   bool is_last, int32_t version,
-                                  int32_t server_min_clock);
+                                  int32_t server_min_clock,
+                                  MsgTracker *msg_tracker);
   size_t CreateSendServerPushRowMsgs(PushMsgSendFunc PushMsgSender,
                                      bool clock_changed = true);
 
@@ -70,12 +73,13 @@ private:
   // latest oplog version that I have received from a bg thread
   std::map<int32_t, uint32_t> bg_version_map_;
   // Assume a single row does not exceed this size!
-  static const size_t kPushRowMsgSizeInit = 4*k1_Mi;
+  static const size_t kPushRowMsgSizeInit = 8*k1_Mi;
   size_t push_row_msg_data_size_;
 
   int32_t server_id_;
 
   size_t accum_oplog_count_;
+  MsgTracker *msg_tracker_;
 };
 
 }  // namespace petuum

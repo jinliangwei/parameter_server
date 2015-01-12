@@ -9,8 +9,7 @@ void SSPPushBgWorker::CreateRowRequestOpLogMgr() {
   row_request_oplog_mgr_ = new SSPPushRowRequestOpLogMgr(server_ids_);
 }
 
-void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, void *msg_mem) {
-  ServerPushRowMsg server_push_row_msg(msg_mem);
+void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &server_push_row_msg) {
   uint32_t version = server_push_row_msg.get_version();
   row_request_oplog_mgr_->ServerAcknowledgeVersion(sender_id, version);
 
@@ -24,13 +23,23 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, void *msg_mem) {
       server_push_row_msg.get_size());
   STATS_BG_ACCUM_PUSH_ROW_MSG_RECEIVED_INC_ONE();
 
+  if (!is_clock)
+    LOG(INFO) << "handle_server_push_row, is_clock = " << is_clock
+              << " from " << sender_id
+              << " size = " << server_push_row_msg.get_size()
+              << " " << my_id_;
+
   if (is_clock) {
     int32_t server_clock = server_push_row_msg.get_clock();
 
-    //LOG(INFO) << "clock_msg from server " << server_id
-    //        << " clock = " << server_clock;
-
     int32_t new_clock = server_vector_clock_.TickUntil(sender_id, server_clock);
+
+    LOG(INFO) << "handle_server_push_row, is_clock = " << is_clock
+              << " clock = " << server_clock
+              << " new clock = " << new_clock
+              << " from " << sender_id
+              << " size = " << server_push_row_msg.get_size()
+              << " " << my_id_;
 
     if (new_clock) {
       int32_t new_system_clock = bg_server_clock_->Tick(my_id_);
@@ -43,6 +52,16 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, void *msg_mem) {
       }
     }
   }
+
+  uint64_t seq = server_push_row_msg.get_seq_num();
+
+  BgServerPushRowAckMsg ack_msg;
+  ack_msg.get_ack_num() = seq;
+
+  size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+     sender_id, ack_msg.get_mem(), ack_msg.get_size());
+  CHECK_EQ(sent_size, ack_msg.get_size());
+
 }
 
 void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,

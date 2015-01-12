@@ -657,6 +657,40 @@ protected:
   }
 };
 
+struct BgServerPushRowAckMsg : public NumberedMsg {
+public:
+  BgServerPushRowAckMsg() {
+    if (get_size() > PETUUM_MSG_STACK_BUFF_SIZE) {
+      own_mem_ = true;
+      use_stack_buff_ = false;
+      mem_.Alloc(get_size());
+    } else {
+      own_mem_ = false;
+      use_stack_buff_ = true;
+      mem_.Reset(stack_buff_);
+    }
+    InitMsg();
+  }
+
+  explicit BgServerPushRowAckMsg (void *msg):
+  NumberedMsg(msg) { }
+
+  size_t get_size() {
+    return NumberedMsg::get_size() + sizeof(uint32_t);
+  }
+
+  uint32_t &get_ack_version() {
+    return *(reinterpret_cast<uint32_t*>(
+        mem_.get_mem() + NumberedMsg::get_size()));
+  }
+
+protected:
+  void InitMsg() {
+    NumberedMsg::InitMsg();
+    get_msg_type() = kBgServerPushRowAck;
+  }
+};
+
 struct BgClockMsg : public NumberedMsg {
 public:
   BgClockMsg() {

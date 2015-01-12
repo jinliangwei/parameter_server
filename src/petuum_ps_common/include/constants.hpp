@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 namespace petuum {
 
 const size_t kNumBitsPerByte = 8;
@@ -9,4 +11,5 @@ const float kCuckooExpansionFactor = 1.428;
 
 const size_t kOneThousand = 1000;
 
+const uint64_t kMaxPendingMsgs = 100;
 }

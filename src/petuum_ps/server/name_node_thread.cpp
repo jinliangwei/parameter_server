@@ -72,7 +72,7 @@ void NameNodeThread::InitNameNode() {
   }
 
   CHECK_EQ(num_bgs, GlobalContext::get_num_total_comm_channels());
-  server_obj_.Init(0, bg_worker_ids_);
+  server_obj_.Init(0, bg_worker_ids_, 0);
 
   ConnectServerMsg connect_server_msg;
   SendToAllBgThreads(reinterpret_cast<MsgBase*>(&connect_server_msg));

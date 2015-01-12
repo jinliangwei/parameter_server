@@ -238,6 +238,12 @@
 #define STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, importance, row_sent)  \
   Stats::BgAccumImportance(table_id, importance, row_sent)
 
+#define STATS_BG_ACCUM_WAITS_ON_ACK_IDLE() \
+  Stats::BgAccumWaitsOnAckIdle();
+
+#define STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK() \
+  Stats::BgAccumWaitsOnAckClock();
+
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() \
   Stats::ServerAccumPushRowBegin()
 
@@ -282,6 +288,12 @@
 
 #define STATS_SERVER_ACCUM_IMPORTANCE(table_id, importance, row_sent)    \
   Stats::ServerAccumImportance(table_id, importance, row_sent)
+
+#define STATS_SERVER_ACCUM_WAITS_ON_ACK_IDLE() \
+  Stats::ServerAccumWaitsOnAckIdle();
+
+#define STATS_SERVER_ACCUM_WAITS_ON_ACK_CLOCK() \
+  Stats::ServerAccumWaitsOnAckClock();
 
 #define STATS_PRINT() \
   Stats::PrintStats()
@@ -383,6 +395,9 @@
 #define STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, row_sent) ((void) 0)
 #define STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, importance, row_sent) ((void) 0)
 
+#define STATS_BG_ACCUM_WAITS_ON_ACK_IDLE() ((void) 0)
+#define STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK() ((void) 0)
+
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() ((void) 0)
 #define STATS_SERVER_ACCUM_PUSH_ROW_END() ((void) 0)
 #define STATS_SERVER_ACCUM_APPLY_OPLOG_BEGIN() ((void) 0)
@@ -400,6 +415,9 @@
 
 #define STATS_SERVER_ACCUM_IDLE_ROW_SENT_BYTES(num_bytes) ((void) 0)
 #define STATS_SERVER_ACCUM_IMPORTANCE(table_id, importance, row_sent) ((void) 0)
+
+#define STATS_SERVER_ACCUM_WAITS_ON_ACK_IDLE() ((void) 0)
+#define STATS_SERVER_ACCUM_WAITS_ON_ACK_CLOCK() ((void) 0)
 
 #define STATS_PRINT() ((void) 0)
 #endif
@@ -604,6 +622,9 @@ struct BgThreadStats {
   std::unordered_map<int32_t, std::vector<size_t> >
   table_accum_num_rows_sent;
 
+  std::vector<size_t> accum_num_waits_on_ack_idle;
+  std::vector<size_t> accum_num_waits_on_ack_clock;
+
   BgThreadStats():
     accum_clock_end_oplog_serialize_sec(0.0),
     accum_total_oplog_serialize_sec(0.0),
@@ -629,7 +650,9 @@ struct BgThreadStats {
     accum_idle_send_bytes_mb(0.0),
     accum_handle_append_oplog_sec(0),
     num_row_oplog_created(0),
-    num_row_oplog_recycled(0) { }
+    num_row_oplog_recycled(0),
+    accum_num_waits_on_ack_idle(1, 0),
+    accum_num_waits_on_ack_clock(1, 0) { }
 };
 
 struct ServerThreadStats {
@@ -665,6 +688,9 @@ struct ServerThreadStats {
   std::unordered_map<int32_t, std::vector<size_t> >
   table_accum_num_rows_sent;
 
+  std::vector<size_t> accum_num_waits_on_ack_idle;
+  std::vector<size_t> accum_num_waits_on_ack_clock;
+
   ServerThreadStats():
     accum_apply_oplog_sec(0.0),
     accum_push_row_sec(0.0),
@@ -678,7 +704,9 @@ struct ServerThreadStats {
     accum_num_idle_invoke(0),
     accum_num_idle_send(0),
     accum_idle_send_sec(0.0),
-    accum_idle_send_bytes_mb(0.0) { }
+    accum_idle_send_bytes_mb(0.0),
+    accum_num_waits_on_ack_idle(1, 0),
+    accum_num_waits_on_ack_clock(1, 0) { }
 };
 
 struct NameNodeThreadStats {
@@ -798,6 +826,9 @@ public:
   static void BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog, bool row_sent);
   static void BgAccumImportance(int32_t table_id, double importance, bool row_sent);
 
+  static void BgAccumWaitsOnAckIdle();
+  static void BgAccumWaitsOnAckClock();
+
   static void ServerAccumPushRowBegin();
   static void ServerAccumPushRowEnd();
 
@@ -817,6 +848,9 @@ public:
   static void ServerAccumIdleSendEnd();
   static void ServerAccumIdleRowSentBytes(size_t num_bytes);
   static void ServerAccumImportance(int32_t table_id, double importance, bool row_sent);
+
+  static void ServerAccumWaitsOnAckIdle();
+  static void ServerAccumWaitsOnAckClock();
 
   static void PrintStats();
 private:
@@ -933,6 +967,9 @@ private:
   static std::unordered_map<int32_t, std::vector<double> > bg_table_accum_importance_;
   static std::unordered_map<int32_t, std::vector<size_t> > bg_table_accum_num_rows_sent_;
 
+  static std::vector<size_t> bg_accum_num_waits_on_ack_idle_;
+  static std::vector<size_t> bg_accum_num_waits_on_ack_clock_;
+
   // Server thread stats
   static double server_accum_apply_oplog_sec_;
 
@@ -954,6 +991,9 @@ private:
 
   static std::unordered_map<int32_t, std::vector<double> > server_table_accum_importance_;
   static std::unordered_map<int32_t, std::vector<size_t> > server_table_accum_num_rows_sent_;
+
+  static std::vector<size_t> server_accum_num_waits_on_ack_idle_;
+  static std::vector<size_t> server_accum_num_waits_on_ack_clock_;
 };
 
 }   // namespace petuum

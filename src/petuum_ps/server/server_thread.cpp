@@ -5,7 +5,7 @@
 #include <petuum_ps_common/util/stats.hpp>
 #include <petuum_ps_common/thread/mem_transfer.hpp>
 #include <petuum_ps/thread/numa_mgr.hpp>
-
+#include <unistd.h>
 namespace petuum {
 
 bool ServerThread::WaitMsgBusy(int32_t *sender_id, zmq::message_t *zmq_msg,
@@ -113,9 +113,10 @@ void ServerThread::InitServer() {
     int32_t bg_id = GetConnection(&is_client, &client_id);
     CHECK(is_client);
     bg_worker_ids_[num_bgs] = bg_id;
+    msg_tracker_.AddEntity(bg_id);
   }
 
-  server_obj_.Init(my_id_, bg_worker_ids_);
+  server_obj_.Init(my_id_, bg_worker_ids_, &msg_tracker_);
   ClientStartMsg client_start_msg;
   SendToAllBgThreads(reinterpret_cast<MsgBase*>(&client_start_msg));
 }
@@ -125,15 +126,12 @@ bool ServerThread::HandleShutDownMsg() {
   // reply to each bg with a ShutDownReply message
   ++num_shutdown_bgs_;
   if (num_shutdown_bgs_ == GlobalContext::get_num_clients()) {
-    ServerShutDownAckMsg shut_down_ack_msg;
-    size_t msg_size = shut_down_ack_msg.get_size();
-    int i;
-    for (i = 0; i < GlobalContext::get_num_clients(); ++i) {
-      int32_t bg_id = bg_worker_ids_[i];
-      size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(bg_id,
-        shut_down_ack_msg.get_mem(), msg_size);
-      CHECK_EQ(msg_size, sent_size);
+    if (pending_clock_push_row_
+        || msg_tracker_.PendingAcks()) {
+      pending_shut_down_ = true;
+      return false;
     }
+    SendServerShutDownAcks();
     return true;
   }
   return false;
@@ -207,6 +205,7 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
 
   uint32_t version = client_send_oplog_msg.get_version();
   int32_t bg_clock = client_send_oplog_msg.get_bg_clock();
+  uint64_t seq = client_send_oplog_msg.get_seq_num();
 
   STATS_SERVER_ADD_PER_CLOCK_OPLOG_SIZE(client_send_oplog_msg.get_size());
 
@@ -216,14 +215,22 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
       sender_id, version);
   STATS_SERVER_ACCUM_APPLY_OPLOG_END();
 
-  //LOG(INFO) << "is_clock = " << is_clock
-  //        << " bg_clock = " << bg_clock;
+  if (!is_clock)
+    LOG(INFO) << "server_recv_oplog, is_clock = " << is_clock
+              << " from " << sender_id
+              << " size = " << client_send_oplog_msg.get_size()
+              << " " << my_id_;
 
   bool clock_changed = false;
   if (is_clock) {
     clock_changed = server_obj_.ClockUntil(sender_id, bg_clock);
+    LOG(INFO)  << "server_recv_oplog, is_clock = " << is_clock
+               << " clock = " << bg_clock
+               << " from " << sender_id
+               << " size = " << client_send_oplog_msg.get_size()
+               << " clock changed = " << clock_changed
+               << " " << my_id_;
     if (clock_changed) {
-      //LOG(INFO) << "Clock has changed";
       std::vector<ServerRowRequest> requests;
       server_obj_.GetFulfilledRowRequests(&requests);
       for (auto request_iter = requests.begin();
@@ -244,10 +251,11 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
   }
 
   if (clock_changed) {
-    ServerPushRow(clock_changed);
-  } else {
-    SendOpLogAckMsg(sender_id, server_obj_.GetBgVersion(sender_id));
+    ServerPushRow();
   }
+
+  SendOpLogAckMsg(sender_id, server_obj_.GetBgVersion(sender_id),
+                  seq);
 }
 
 long ServerThread::ServerIdleWork() {
@@ -262,13 +270,44 @@ void ServerThread::HandleEarlyCommOn() { }
 
 void ServerThread::HandleEarlyCommOff() { }
 
-void ServerThread::SendOpLogAckMsg(int32_t bg_id, uint32_t version) { }
+void ServerThread::HandleBgServerPushRowAck(int32_t bg_id,
+                                            BgServerPushRowAckMsg &msg) { }
+
+void ServerThread::SendOpLogAckMsg(int32_t bg_id, uint32_t version,
+                                   uint64_t seq) {
+  ServerOpLogAckMsg server_oplog_ack_msg;
+  server_oplog_ack_msg.get_ack_version() = version;
+  server_oplog_ack_msg.get_ack_num() = seq;
+
+  size_t sent_size = (GlobalContext::comm_bus->*(
+      GlobalContext::comm_bus->SendAny_))(
+          bg_id, server_oplog_ack_msg.get_mem(),
+          server_oplog_ack_msg.get_size());
+  CHECK_EQ(sent_size, server_oplog_ack_msg.get_size());
+}
+
+void ServerThread::SendServerShutDownAcks() {
+  ServerShutDownAckMsg shut_down_ack_msg;
+  size_t msg_size = shut_down_ack_msg.get_size();
+  int i;
+  for (i = 0; i < GlobalContext::get_num_clients(); ++i) {
+    int32_t bg_id = bg_worker_ids_[i];
+    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+        bg_id, shut_down_ack_msg.get_mem(), msg_size);
+    CHECK_EQ(msg_size, sent_size);
+  }
+}
+
+void ServerThread::ShutDownServer() {
+  comm_bus_->ThreadDeregister();
+  STATS_DEREGISTER_THREAD();
+}
 
 void *ServerThread::operator() () {
 
   ThreadContext::RegisterThread(my_id_);
 
-  NumaMgr::ConfigureServerThread();
+  //NumaMgr::ConfigureServerThread();
 
   STATS_REGISTER_THREAD(kServerThread);
 
@@ -280,7 +319,7 @@ void *ServerThread::operator() () {
 
   zmq::message_t zmq_msg;
   int32_t sender_id;
-  MsgType msg_type;
+  MsgType msg_type = kNonExist;
   void *msg_mem;
   bool destroy_mem = false;
   long timeout_milli = -1;
@@ -306,35 +345,35 @@ void *ServerThread::operator() () {
     }
 
     switch (msg_type) {
-    case kClientShutDown:
-      {
-	bool shutdown = HandleShutDownMsg();
-	if (shutdown) {
-	  comm_bus_->ThreadDeregister();
-	  STATS_DEREGISTER_THREAD();
-	  return 0;
-	}
-	break;
+      case kClientShutDown:
+        {
+          bool shutdown = HandleShutDownMsg();
+          if (shutdown) {
+            CHECK(!msg_tracker_.PendingAcks());
+            ShutDownServer();
+            return 0;
+          }
+          break;
+        }
+      case kCreateTable:
+        {
+          CreateTableMsg create_table_msg(msg_mem);
+          HandleCreateTable(sender_id, create_table_msg);
+          break;
       }
-    case kCreateTable:
-      {
-	CreateTableMsg create_table_msg(msg_mem);
-	HandleCreateTable(sender_id, create_table_msg);
-	break;
-      }
-    case kRowRequest:
-      {
-	RowRequestMsg row_request_msg(msg_mem);
-	HandleRowRequest(sender_id, row_request_msg);
-      }
-      break;
-    case kClientSendOpLog:
-      {
-	ClientSendOpLogMsg client_send_oplog_msg(msg_mem);
+      case kRowRequest:
+        {
+          RowRequestMsg row_request_msg(msg_mem);
+          HandleRowRequest(sender_id, row_request_msg);
+        }
+        break;
+      case kClientSendOpLog:
+        {
+          ClientSendOpLogMsg client_send_oplog_msg(msg_mem);
 
-	HandleOpLogMsg(sender_id, client_send_oplog_msg);
-        STATS_SERVER_OPLOG_MSG_RECV_INC_ONE();
-      }
+          HandleOpLogMsg(sender_id, client_send_oplog_msg);
+          STATS_SERVER_OPLOG_MSG_RECV_INC_ONE();
+        }
       break;
       case kEarlyCommOn:
         {
@@ -344,6 +383,22 @@ void *ServerThread::operator() () {
       case kEarlyCommOff:
         {
           HandleEarlyCommOff();
+        }
+        break;
+      case kBgServerPushRowAck:
+        {
+          BgServerPushRowAckMsg msg(msg_mem);
+          HandleBgServerPushRowAck(sender_id, msg);
+
+          if (!pending_clock_push_row_
+              && !msg_tracker_.PendingAcks()
+              && pending_shut_down_) {
+            pending_shut_down_ = false;
+            CHECK(!msg_tracker_.PendingAcks());
+            SendServerShutDownAcks();
+            ShutDownServer();
+            return 0;
+          }
         }
         break;
     default:

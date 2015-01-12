@@ -101,18 +101,26 @@ TableGroup::~TableGroup() {
   BgWorkers::AppThreadDeregister();
   ServerThreads::ShutDown();
 
-  if (GlobalContext::am_i_name_node_client())
+  //LOG(INFO) << "ShutDown Server Threads " << GlobalContext::get_client_id();
+
+  if (GlobalContext::am_i_name_node_client()) {
+    //LOG(INFO) << "ShutDown NameNode " << GlobalContext::get_client_id();
     NameNode::ShutDown();
+  }
 
   BgWorkers::ShutDown();
+  //LOG(INFO) << "ShutDown Bg Threads " << GlobalContext::get_client_id();
   GlobalContext::comm_bus->ThreadDeregister();
-
-  delete GlobalContext::comm_bus;
   for(auto iter = tables_.begin(); iter != tables_.end(); iter++){
     delete iter->second;
   }
+
   STATS_DEREGISTER_THREAD();
   STATS_PRINT();
+
+  //LOG(INFO) << "Before Delete CommBus " << GlobalContext::get_client_id();
+  delete GlobalContext::comm_bus;
+  //LOG(INFO) << "After Delete CommBus " << GlobalContext::get_client_id();
 }
 
 bool TableGroup::CreateTable(int32_t table_id,
@@ -215,7 +223,7 @@ void TableGroup::ClockConservative() {
   }
   int clock = vector_clock_.Tick(ThreadContext::get_id());
   if (clock != 0) {
-    //LOG(INFO) << "New clock = " << clock;
+    LOG(INFO) << "new_clock = " << clock << " " << ThreadContext::get_id();
     BgWorkers::ClockAllTables();
   }
 }

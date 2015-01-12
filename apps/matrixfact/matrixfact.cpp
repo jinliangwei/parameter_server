@@ -559,9 +559,6 @@ void solve_mf(int32_t thread_id, boost::barrier* process_barrier) {
     if (global_worker_id == 0) {
       LOG(INFO) << "Iteration " << iter+1 << "/" <<
         FLAGS_num_iterations << "... ";
-
-      //std::cerr << "Iteration " << iter+1 << "/" <<
-      //  FLAGS_num_iterations << "... " << std::endl;
     }
     int element_counter = 0;
     float step_size = 0.;
@@ -642,7 +639,7 @@ void solve_mf(int32_t thread_id, boost::barrier* process_barrier) {
     }
     CHECK_EQ((iter+1)*FLAGS_num_clocks_per_iter, clock);
     CHECK_EQ(clock / FLAGS_num_clocks_per_eval, obj_eval_counter);
-    LOG_IF(INFO, FLAGS_client_id == 0 && thread_id == 0) << "Iter " << iter+1
+    LOG_IF(INFO, global_worker_id == 0) << "Iter " << iter+1
       << " finished. Time: " << total_timer.elapsed();
   }
 
@@ -668,8 +665,6 @@ void solve_mf(int32_t thread_id, boost::barrier* process_barrier) {
     }
     LOG(INFO) << "Summary Stats = \n" << ss.str();
   }
-
-  petuum::PSTableGroup::GlobalBarrier();
 
   // Output results to disk
   if (global_worker_id == 0) {
@@ -784,5 +779,7 @@ int main(int argc, char *argv[]) {
   if (FLAGS_client_id == 0) {
     LOG(INFO) << "total runtime = " << total_timer.elapsed() << "s";
   }
+
+  LOG(INFO) << "exiting " << FLAGS_client_id;
   return 0;
 }

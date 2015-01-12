@@ -17,6 +17,7 @@
 #include <petuum_ps/client/client_table.hpp>
 #include <petuum_ps/thread/append_only_row_oplog_buffer.hpp>
 #include <petuum_ps/thread/row_oplog_serializer.hpp>
+#include <petuum_ps_common/thread/msg_tracker.hpp>
 
 namespace petuum {
 class AbstractBgWorker : public Thread {
@@ -130,7 +131,7 @@ protected:
   /* Handles Row Requests -- END */
 
   // Handles server pushed rows
-  virtual void HandleServerPushRow(int32_t sender_id, void *msg_mem);
+  virtual void HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &server_push_row_msg);
 
   /* Helper Functions */
   size_t SendMsg(MsgBase *msg);
@@ -149,6 +150,8 @@ protected:
 
   virtual void HandleEarlyCommOn();
   virtual void HandleEarlyCommOff();
+
+  void SendClientShutDownMsgs();
 
   int32_t my_id_;
   int32_t my_comm_channel_idx_;
@@ -176,6 +179,11 @@ protected:
   std::unordered_map<int32_t, int32_t> append_only_buff_proc_count_;
 
   std::unordered_map<int32_t, RowOpLogSerializer*> row_oplog_serializer_map_;
+
+  MsgTracker msg_tracker_;
+  bool pending_clock_send_oplog_;
+  bool clock_advanced_buffed_;
+  bool pending_shut_down_;
 };
 
 }

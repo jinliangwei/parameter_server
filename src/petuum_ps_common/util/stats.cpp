@@ -84,6 +84,9 @@ std::vector<size_t> Stats::bg_num_row_oplog_recycled_;
 std::unordered_map<int32_t, std::vector<double> > Stats::bg_table_accum_importance_;
 std::unordered_map<int32_t, std::vector<size_t> > Stats::bg_table_accum_num_rows_sent_;
 
+std::vector<size_t> Stats::bg_accum_num_waits_on_ack_idle_(0);
+std::vector<size_t> Stats::bg_accum_num_waits_on_ack_clock_(0);
+
 double Stats::server_accum_apply_oplog_sec_ = 0.0;
 double Stats::server_accum_push_row_sec_ = 0.0;
 
@@ -103,6 +106,9 @@ std::vector<double> Stats::server_accum_idle_send_bytes_mb_;
 
 std::unordered_map<int32_t, std::vector<double> > Stats::server_table_accum_importance_;
 std::unordered_map<int32_t, std::vector<size_t> > Stats::server_table_accum_num_rows_sent_;
+
+std::vector<size_t> Stats::server_accum_num_waits_on_ack_idle_(0);
+std::vector<size_t> Stats::server_accum_num_waits_on_ack_clock_(0);
 
 void Stats::Init(const TableGroupConfig &table_group_config) {
   table_group_config_ = table_group_config;
@@ -397,6 +403,24 @@ void Stats::DeregisterBgThread() {
       (table_iter->second)[i] += (table_pair.second)[i];
     }
   }
+
+  if (bg_accum_num_waits_on_ack_idle_.size() == 0) {
+    bg_accum_num_waits_on_ack_idle_ = stats.accum_num_waits_on_ack_idle;
+  } else {
+    for (int i = 0; i < stats.accum_num_waits_on_ack_idle.size(); ++i) {
+      bg_accum_num_waits_on_ack_idle_[i]
+          = stats.accum_num_waits_on_ack_idle[i];
+    }
+  }
+
+  if (bg_accum_num_waits_on_ack_clock_.size() == 0) {
+    bg_accum_num_waits_on_ack_clock_ = stats.accum_num_waits_on_ack_clock;
+  } else {
+    for (int i = 0; i < stats.accum_num_waits_on_ack_clock.size(); ++i) {
+      bg_accum_num_waits_on_ack_clock_[i]
+          = stats.accum_num_waits_on_ack_clock[i];
+    }
+  }
 }
 
 void Stats::DeregisterServerThread() {
@@ -472,6 +496,24 @@ void Stats::DeregisterServerThread() {
 
     for (int i = 0; i < table_pair.second.size(); ++i) {
       (table_iter->second)[i] += (table_pair.second)[i];
+    }
+  }
+
+  if (server_accum_num_waits_on_ack_idle_.size() == 0) {
+    server_accum_num_waits_on_ack_idle_ = stats.accum_num_waits_on_ack_idle;
+  } else {
+    for (int i = 0; i < stats.accum_num_waits_on_ack_idle.size(); ++i) {
+      bg_accum_num_waits_on_ack_idle_[i]
+          = stats.accum_num_waits_on_ack_idle[i];
+    }
+  }
+
+  if (server_accum_num_waits_on_ack_clock_.size() == 0) {
+    server_accum_num_waits_on_ack_clock_ = stats.accum_num_waits_on_ack_clock;
+  } else {
+    for (int i = 0; i < stats.accum_num_waits_on_ack_clock.size(); ++i) {
+      server_accum_num_waits_on_ack_clock_[i]
+          = stats.accum_num_waits_on_ack_clock[i];
     }
   }
 }
@@ -851,6 +893,9 @@ void Stats::BgClock() {
   ++(stats.clock_num);
   stats.per_clock_oplog_sent_kb.push_back(0.0);
   stats.per_clock_server_push_row_recv_kb.push_back(0.0);
+  stats.accum_num_waits_on_ack_idle.push_back(0);
+  stats.accum_num_waits_on_ack_clock.push_back(0);
+
   for (auto &table_pair : stats.table_accum_importance) {
     table_pair.second.push_back(0.0);
   }
@@ -980,6 +1025,14 @@ void Stats::BgAccumImportance(int32_t table_id, double importance, bool row_sent
     num_rows_iter->second.back() += 1;
 }
 
+void Stats::BgAccumWaitsOnAckIdle() {
+  (bg_thread_stats_->accum_num_waits_on_ack_idle.back())++;
+}
+
+void Stats::BgAccumWaitsOnAckClock() {
+  (bg_thread_stats_->accum_num_waits_on_ack_clock.back())++;
+}
+
 void Stats::ServerAccumApplyOpLogBegin() {
   server_thread_stats_->apply_oplog_timer.restart();
 }
@@ -1006,6 +1059,8 @@ void Stats::ServerClock() {
   ++server_thread_stats_->clock_num;
   server_thread_stats_->per_clock_oplog_recv_kb.push_back(0.0);
   server_thread_stats_->per_clock_push_row_kb.push_back(0.0);
+  server_thread_stats_->accum_num_waits_on_ack_idle.push_back(0);
+  server_thread_stats_->accum_num_waits_on_ack_clock.push_back(0);
 
   for (auto &table_pair : server_thread_stats_->table_accum_importance) {
     table_pair.second.push_back(0.0);
@@ -1090,6 +1145,14 @@ void Stats::ServerAccumImportance(int32_t table_id, double importance, bool row_
 
   if (row_sent)
     num_rows_iter->second.back() += 1;
+}
+
+void Stats::ServerAccumWaitsOnAckIdle() {
+  (server_thread_stats_->accum_num_waits_on_ack_idle.back())++;
+}
+
+void Stats::ServerAccumWaitsOnAckClock() {
+  (server_thread_stats_->accum_num_waits_on_ack_clock.back())++;
 }
 
 template<typename T>
@@ -1447,6 +1510,14 @@ void Stats::PrintStats() {
 
   yaml_out << YAML::EndMap;
 
+  yaml_out << YAML::Key << "bg_accum_num_waits_on_ack_idle"
+           << YAML::Value;
+  YamlPrintSequence(&yaml_out, bg_accum_num_waits_on_ack_idle_);
+
+  yaml_out << YAML::Key << "bg_accum_num_waits_on_ack_clock"
+           << YAML::Value;
+  YamlPrintSequence(&yaml_out, bg_accum_num_waits_on_ack_clock_);
+
   yaml_out << YAML::EndMap;
 
   yaml_out << YAML::BeginMap
@@ -1517,6 +1588,14 @@ void Stats::PrintStats() {
   }
 
   yaml_out << YAML::EndMap;
+
+  yaml_out << YAML::Key << "server_accum_num_waits_on_ack_idle"
+           << YAML::Value;
+  YamlPrintSequence(&yaml_out, server_accum_num_waits_on_ack_idle_);
+
+  yaml_out << YAML::Key << "server_accum_num_waits_on_ack_clock"
+           << YAML::Value;
+  YamlPrintSequence(&yaml_out, server_accum_num_waits_on_ack_clock_);
 
   yaml_out << YAML::EndMap;
 

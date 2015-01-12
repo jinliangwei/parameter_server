@@ -37,7 +37,9 @@ enum MsgType {
   kBgEarlyCommOff = 22,
   kEarlyCommOn = 23,
   kEarlyCommOff = 24,
-  kMemTransfer = 50
+  kBgServerPushRowAck = 25,
+  kMemTransfer = 50,
+  kNonExist = 100
 };
 
 // Represent a message over wire that is very easy to serialize.
@@ -135,18 +137,18 @@ public:
   explicit NumberedMsg(void *msg):
     MsgBase(msg) {}
 
-  uint32_t &get_seq_num() {
-    return *(reinterpret_cast<uint32_t*>(mem_.get_mem()
+  uint64_t &get_seq_num() {
+    return *(reinterpret_cast<uint64_t*>(mem_.get_mem()
     + MsgBase::get_size()));
   }
 
-  uint32_t &get_ack_num() {
-    return *(reinterpret_cast<uint32_t*>(mem_.get_mem() + MsgBase::get_size()
-      + sizeof(uint32_t)));
+  uint64_t &get_ack_num() {
+    return *(reinterpret_cast<uint64_t*>(mem_.get_mem() + MsgBase::get_size()
+      + sizeof(uint64_t)));
   }
 
   virtual size_t get_size() {
-    return (MsgBase::get_size() + sizeof(uint32_t) + sizeof(uint32_t));
+    return (MsgBase::get_size() + sizeof(uint64_t) + sizeof(uint64_t));
   }
 };
 

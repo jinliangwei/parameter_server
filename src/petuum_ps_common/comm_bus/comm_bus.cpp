@@ -82,6 +82,9 @@ void CommBus::SetUpRouterSocket(zmq::socket_t *sock, int32_t id,
     ZMQUtil::ZMQSetSockOpt(sock, ZMQ_RCVBUF, &(num_bytes_recv_buff),
         sizeof(num_bytes_recv_buff));
   }
+
+  int linger = -1;
+  ZMQUtil::ZMQSetSockOpt(sock, ZMQ_LINGER, &(linger), sizeof(int));
 }
 
 void CommBus::ThreadRegister(const Config &config) {
