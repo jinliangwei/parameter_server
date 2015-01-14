@@ -2,9 +2,9 @@
 
 TOOLS=build/tools
 
-DB_PATH=examples/cifar10/cifar10_train_leveldb
+DB_PATH=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/caffe/data/ilsvrc12_val_leveldb_sub
 BACKEND=leveldb
-NUM_PARTITIONS=2
+NUM_PARTITIONS=8
 
 echo "Partitioning '$DB_PATH'"
 

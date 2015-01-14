@@ -23,23 +23,23 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &s
       server_push_row_msg.get_size());
   STATS_BG_ACCUM_PUSH_ROW_MSG_RECEIVED_INC_ONE();
 
-  if (!is_clock)
-    LOG(INFO) << "handle_server_push_row, is_clock = " << is_clock
-              << " from " << sender_id
-              << " size = " << server_push_row_msg.get_size()
-              << " " << my_id_;
+  //if (!is_clock)
+  //LOG(INFO) << "handle_server_push_row, is_clock = " << is_clock
+  //          << " from " << sender_id
+  //          << " size = " << server_push_row_msg.get_size()
+  //          << " " << my_id_;
 
   if (is_clock) {
     int32_t server_clock = server_push_row_msg.get_clock();
 
     int32_t new_clock = server_vector_clock_.TickUntil(sender_id, server_clock);
 
-    LOG(INFO) << "handle_server_push_row, is_clock = " << is_clock
-              << " clock = " << server_clock
-              << " new clock = " << new_clock
-              << " from " << sender_id
-              << " size = " << server_push_row_msg.get_size()
-              << " " << my_id_;
+    //LOG(INFO) << "handle_server_push_row, is_clock = " << is_clock
+    //        << " clock = " << server_clock
+    //        << " new clock = " << new_clock
+    //        << " from " << sender_id
+    //        << " size = " << server_push_row_msg.get_size()
+    //        << " " << my_id_;
 
     if (new_clock) {
       int32_t new_system_clock = bg_server_clock_->Tick(my_id_);

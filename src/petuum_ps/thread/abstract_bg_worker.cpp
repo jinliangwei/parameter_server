@@ -1089,12 +1089,12 @@ void *AbstractBgWorker::operator() () {
         break;
       case kBgClock:
         {
-          LOG(INFO) << "bg_recv_clock = " << (client_clock_ + 1)
-                    << " " << my_id_;
+          //LOG(INFO) << "bg_recv_clock = " << (client_clock_ + 1)
+          //        << " " << my_id_;
           timeout_milli = HandleClockMsg(true);
           ++client_clock_;
-          LOG(INFO) << "bg_sent_oplog = " << client_clock_
-                    << " " << my_id_;
+          //LOG(INFO) << "bg_sent_oplog = " << client_clock_
+          //        << " " << my_id_;
 
           STATS_BG_CLOCK();
         }

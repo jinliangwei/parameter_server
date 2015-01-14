@@ -9,21 +9,22 @@ progname=caffe_main
 prog_path=${app_dir}/build/tools/${progname}
 
 host_filename="${app_dir}/../../machinefiles/localserver"
+#host_filename="${app_dir}/../../machinefiles/servers"
 host_file=$(readlink -f $host_filename)
 
-dataset=cifar10
+dataset=imagenet_sub
 
 ##=====================================
 ## Parameters
 ##=====================================
 
 # Input files:
-solver_filename="${app_dir}/examples/cifar10/cifar10_quick_solver.prototxt"
- # Uncomment if (re-)start training from a snapshot
+solver_filename="${app_dir}/examples/bvlc_alexnet/solver.prototxt"
+# Uncomment if (re-)start training from a snapshot
 #snapshot_filename="${app_dir}/examples/cifar10/cifar10_quick_iter_4000.solverstate"
 
 # System parameters:
-num_app_threads=64
+num_app_threads=32
 staleness=0
 loss_table_staleness=20
 num_comm_channels_per_client=1

@@ -215,21 +215,21 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
       sender_id, version);
   STATS_SERVER_ACCUM_APPLY_OPLOG_END();
 
-  if (!is_clock)
-    LOG(INFO) << "server_recv_oplog, is_clock = " << is_clock
-              << " from " << sender_id
-              << " size = " << client_send_oplog_msg.get_size()
-              << " " << my_id_;
+  //if (!is_clock)
+  //  LOG(INFO) << "server_recv_oplog, is_clock = " << is_clock
+  //          << " from " << sender_id
+  //          << " size = " << client_send_oplog_msg.get_size()
+  //          << " " << my_id_;
 
   bool clock_changed = false;
   if (is_clock) {
     clock_changed = server_obj_.ClockUntil(sender_id, bg_clock);
-    LOG(INFO)  << "server_recv_oplog, is_clock = " << is_clock
-               << " clock = " << bg_clock
-               << " from " << sender_id
-               << " size = " << client_send_oplog_msg.get_size()
-               << " clock changed = " << clock_changed
-               << " " << my_id_;
+    //LOG(INFO)  << "server_recv_oplog, is_clock = " << is_clock
+    //         << " clock = " << bg_clock
+    //         << " from " << sender_id
+    //         << " size = " << client_send_oplog_msg.get_size()
+    //         << " clock changed = " << clock_changed
+    //         << " " << my_id_;
     if (clock_changed) {
       std::vector<ServerRowRequest> requests;
       server_obj_.GetFulfilledRowRequests(&requests);

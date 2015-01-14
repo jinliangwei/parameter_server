@@ -18,10 +18,10 @@
 namespace caffe {
 
 template <typename Dtype>
-Solver<Dtype>::Solver(const SolverParameter& param, 
+Solver<Dtype>::Solver(const SolverParameter& param,
     const map<string, vector<int> >* layer_blobs_global_idx_ptr,
     const int thread_id) : net_(),
-    layer_blobs_global_idx_ptr_(layer_blobs_global_idx_ptr), 
+    layer_blobs_global_idx_ptr_(layer_blobs_global_idx_ptr),
     thread_id_(thread_id) {
   Init(param);
 }
@@ -30,7 +30,7 @@ template <typename Dtype>
 Solver<Dtype>::Solver(const string& param_file,
     const map<string, vector<int> >* layer_blobs_global_idx_ptr,
     const int thread_id) : net_(),
-    layer_blobs_global_idx_ptr_(layer_blobs_global_idx_ptr), 
+    layer_blobs_global_idx_ptr_(layer_blobs_global_idx_ptr),
     thread_id_(thread_id) {
   SolverParameter param;
   ReadProtoFromTextFile(param_file, &param);
@@ -106,17 +106,17 @@ void Solver<Dtype>::InitTrainNet() {
   // Set up blobs' corresponding PS tables
   // output blobs
   string train_net_output_name("train_net_outputs");
-  CHECK(layer_blobs_global_idx_ptr_->find(train_net_output_name) 
+  CHECK(layer_blobs_global_idx_ptr_->find(train_net_output_name)
       != layer_blobs_global_idx_ptr_->end());
   net_->set_table(
       layer_blobs_global_idx_ptr_->at(train_net_output_name)[0]);
   // layer parameter blobs
-  map<string, vector<int> >::const_iterator it 
+  map<string, vector<int> >::const_iterator it
       = layer_blobs_global_idx_ptr_->begin();
   const bool reg = (thread_id_ == 0);
   for (; it != layer_blobs_global_idx_ptr_->end(); ++it) {
     string name_temp = it->first;
-    if (boost::starts_with(name_temp, "test_net_outputs_") 
+    if (boost::starts_with(name_temp, "test_net_outputs_")
         || !name_temp.compare(train_net_output_name)) { continue; }
     const shared_ptr<Layer<Dtype> > layer = net_->layer_by_name(it->first);
     if (client_id_ == 0 && thread_id_ == 0) {
@@ -213,13 +213,13 @@ void Solver<Dtype>::InitTestNets() {
     test_nets_[i]->set_table(
         layer_blobs_global_idx_ptr_->at(test_net_output_name.str())[0]);
     // layer parameter blobs
-    map<string, vector<int> >::const_iterator it 
+    map<string, vector<int> >::const_iterator it
       = layer_blobs_global_idx_ptr_->begin();
     for (; it != layer_blobs_global_idx_ptr_->end(); ++it) {
       string name_temp = it->first;
-      if (boost::starts_with(name_temp, "test_net_outputs_") 
+      if (boost::starts_with(name_temp, "test_net_outputs_")
           || name_temp == "train_net_outputs") { continue; }
-      const shared_ptr<Layer<Dtype> > layer 
+      const shared_ptr<Layer<Dtype> > layer
         = test_nets_[i]->layer_by_name(name_temp);
       layer->SetUpBlobGlobalTable(it->second, false, false);
     }
@@ -234,7 +234,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   }
   PreSolve();
 
-  // Register net output tables  
+  // Register net output tables
   if (thread_id_ == 0) {
     const int num_rows_train_net_outputs
         = (param_.max_iter() - 0) / param_.display() + 5;
@@ -263,7 +263,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // Remember the initial iter_ value; will be non-zero if we loaded from a
   // resume_file above.
   const int start_iter = iter_;
-  
+
   display_counter_ = 0;
   test_counter_ = 0;
   // for display
@@ -286,7 +286,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
         iter_ % param_.snapshot() == 0) {
       Snapshot();
     }
-    
+
     if (param_.test_interval() && iter_ % param_.test_interval() == 0
         && (iter_ > 0 || param_.test_initialization())) {
       TestAll();
@@ -299,11 +299,11 @@ void Solver<Dtype>::Solve(const char* resume_file) {
       if (client_id_ == 0 && thread_id_ == 0) {
         float time_elapsed = total_timer_.elapsed();
         /// Print the results of client 0 thread 0
-        LOG(INFO) << "Iteration " << iter_ << ", loss: " << loss 
-            << ", time: " << time_elapsed; 
-        net_->table()->Inc(display_counter_, caffe::kColIdxOutputTableIter, 
+        LOG(INFO) << "Iteration " << iter_ << ", loss: " << loss
+            << ", time: " << time_elapsed;
+        net_->table()->Inc(display_counter_, caffe::kColIdxOutputTableIter,
             iter_);
-        net_->table()->Inc(display_counter_, caffe::kColIdxOutputTableTime, 
+        net_->table()->Inc(display_counter_, caffe::kColIdxOutputTableTime,
             time_elapsed);
       }
 
@@ -322,9 +322,9 @@ void Solver<Dtype>::Solve(const char* resume_file) {
             if (loss_weight) {
               loss_msg_stream << " (* " << loss_weight
                               << " = " << loss_weight * result_vec[k] << " loss)";
-            }   
+            }
             LOG(INFO) << "    Train net output #"
-                << (score_idx - caffe::kNumFixedCols) << ": " << output_name 
+                << (score_idx - caffe::kNumFixedCols) << ": " << output_name
                 << " = " << result_vec[k] << loss_msg_stream.str();
           }
 
@@ -342,6 +342,8 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     net_->Update();
 
     petuum::PSTableGroup::Clock();
+
+    LOG(INFO) << "Iteration " << iter_ << "Done";
   }
   // Always save a snapshot after optimization, unless overridden by setting
   // snapshot_after_train := false.
@@ -360,10 +362,10 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     if (client_id_ == 0 && thread_id_ == 0) {
       float time_elapsed = total_timer_.elapsed();
       net_->table()->Inc(display_counter_, caffe::kColIdxOutputTableIter, iter_);
-      net_->table()->Inc(display_counter_, caffe::kColIdxOutputTableTime, 
+      net_->table()->Inc(display_counter_, caffe::kColIdxOutputTableTime,
           time_elapsed);
-      LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss 
-                << ", time: " << time_elapsed; 
+      LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss
+                << ", time: " << time_elapsed;
     }
     ++display_counter_;
   }
@@ -393,7 +395,7 @@ void Solver<Dtype>::Test(const int test_net_id) {
   vector<Blob<Dtype>*> bottom_vec;
   const shared_ptr<Net<Dtype> >& test_net = test_nets_[test_net_id];
   Dtype loss = 0;
-  const int num_test_iters 
+  const int num_test_iters
       = (param_.test_iter(test_net_id) + num_threads_ - 1) / num_threads_;
   //const int num_test_iters = param_.test_iter(test_net_id);
   for (int i = 0; i < num_test_iters; ++i) {
@@ -425,7 +427,7 @@ void Solver<Dtype>::Test(const int test_net_id) {
     LOG(INFO) << "Iteration " << iter_
               << ", Testing net (#" << test_net_id << ")";
     test_net->table()->Inc(test_counter_, caffe::kColIdxOutputTableIter, iter_);
-    test_net->table()->Inc(test_counter_, caffe::kColIdxOutputTableTime, 
+    test_net->table()->Inc(test_counter_, caffe::kColIdxOutputTableTime,
         total_timer_.elapsed());
   }
   if (param_.test_compute_loss()) {
@@ -504,11 +506,11 @@ void Solver<Dtype>::Restore(const char* state_file) {
   char thread_id_str_buffer[kBufferSize];
   snprintf(client_id_str_buffer, kBufferSize, ".%d", client_id_);
   snprintf(thread_id_str_buffer, kBufferSize, ".%d", thread_id_);
-  string s_state_file = string(state_file) + string(client_id_str_buffer) 
+  string s_state_file = string(state_file) + string(client_id_str_buffer)
       + thread_id_str_buffer;
   if (!CheckFileExistence(s_state_file)) {
     // use the state snapshot of thread 0
-    s_state_file = string(state_file) + string(client_id_str_buffer) + ".0"; 
+    s_state_file = string(state_file) + string(client_id_str_buffer) + ".0";
   }
   SolverState state;
   ReadProtoFromBinaryFile(s_state_file, &state);
@@ -540,7 +542,7 @@ void Solver<Dtype>::PrintNetOutputs(const string& filename) {
 }
 
 template <typename Dtype>
-void Solver<Dtype>::PrintOutputBlobs(shared_ptr<Net<Dtype> >& net, 
+void Solver<Dtype>::PrintOutputBlobs(shared_ptr<Net<Dtype> >& net,
     const bool train, std::ofstream& outfile) {
   // cache
   int count_temp = 0;
@@ -561,13 +563,13 @@ void Solver<Dtype>::PrintOutputBlobs(shared_ptr<Net<Dtype> >& net,
   int num_lines = train ? display_counter_ : test_counter_;
   for (int display_iter = 0; display_iter < num_lines; ++display_iter) {
     petuum::RowAccessor row_acc;
-    const auto& output_row = net->table()->template 
+    const auto& output_row = net->table()->template
         Get<petuum::DenseRow<Dtype> >(display_iter, &row_acc);
     output_row.CopyToVector(&output_cache);
-    outfile 
+    outfile
         << output_cache[caffe::kColIdxOutputTableIter]
         << "," << output_cache[caffe::kColIdxOutputTableTime]
-        << ","<< output_cache[caffe::kColIdxOutputTableLoss] 
+        << ","<< output_cache[caffe::kColIdxOutputTableLoss]
         / (num_clients_ * num_threads_) << ",";
     int score_idx = caffe::kNumFixedCols;
     for (int j = 0; j < output_blobs.size(); ++j) {
@@ -743,7 +745,7 @@ void SGDSolver<Dtype>::SnapshotSolverState(SolverState* state) {
 template <typename Dtype>
 void SGDSolver<Dtype>::RestoreSolverState(const SolverState& state) {
   CHECK_EQ(state.history_size(), history_.size())
-      << "Incorrect length of history blobs. client " << this->client_id_ 
+      << "Incorrect length of history blobs. client " << this->client_id_
       << " thread " << this->thread_id_;
   if (this->client_id_ == 0 && this->thread_id_ == 0) {
     LOG(INFO) << "SGDSolver: restoring history";

@@ -1,0 +1,16 @@
+net: "/tank/projects/biglearning/jinlianw/parameter_server.git/apps/caffe/examples/bvlc_alexnet/train_val.prototxt"
+test_iter: 400 #1000
+test_interval: 200 #1000
+base_lr: 0.0001
+lr_policy: "step"
+gamma: 0.1
+stepsize: 20000 #!!!
+display: 100
+max_iter: 2000 #450000
+momentum: 0.9
+weight_decay: 0.0005
+snapshot: 100000
+snapshot_after_train: false
+snapshot_prefix: "/tank/projects/biglearning/jinlianw/examples/bvlc_alexnet/alexnet_train"
+solver_mode: CPU
+random_seed: 1701

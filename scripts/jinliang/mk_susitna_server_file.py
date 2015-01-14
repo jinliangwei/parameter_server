@@ -11,7 +11,7 @@ network="deth" # 1Gb Ethernet
 servers_file="machinefiles/servers"
 # dib Infiniband
 
-port_num = 10000
+port_num = 11000
 num_nodes_per_host = 1
 max_num_threads_per_node = 1000
 
