@@ -42,7 +42,7 @@ void Solver<Dtype>::Init(const SolverParameter& param) {
   util::Context& context = util::Context::get_instance();
   client_id_ = context.get_int32("client_id");
   // #worker threads
-  num_threads_ = context.get_int32("num_app_threads");
+  num_threads_ = context.get_int32("num_table_threads");
   num_clients_ = context.get_int32("num_clients");
 
   if (client_id_ == 0 && thread_id_ == 0) {
@@ -342,8 +342,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     net_->Update();
 
     petuum::PSTableGroup::Clock();
-
-    LOG(INFO) << "Iteration " << iter_ << "Done";
+    //LOG(INFO) << "Iteration " << iter_ << "Done";
   }
   // Always save a snapshot after optimization, unless overridden by setting
   // snapshot_after_train := false.

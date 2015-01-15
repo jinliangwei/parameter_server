@@ -5,10 +5,10 @@
 #include <string>
 #include <vector>
 #include <thread>
-#include <petuum_ps_common/include/petuum_ps.hpp>
 
 #include "caffe/caffe.hpp"
 #include "caffe/caffe_engine.hpp"
+#include <petuum_ps_common/include/system_gflags_declare.hpp>
 
 using caffe::Blob;
 using caffe::Caffe;
@@ -19,32 +19,32 @@ using caffe::Timer;
 using caffe::vector;
 
 // Petuum Parameters
-DEFINE_string(hostfile, "",
-    "Path to file containing server ip:port.");
-DEFINE_int32(num_clients, 1, 
-    "Total number of clients");
-DEFINE_int32(num_app_threads, 1, 
-    "Number of app threads in this client");
-DEFINE_int32(client_id, 0, 
-    "Client ID");
-DEFINE_string(consistency_model, "SSPPush", 
-    "SSP or SSPPush");
-DEFINE_string(stats_path, "", 
-    "Statistics output file");
-DEFINE_int32(num_comm_channels_per_client, 1,
-    "number of comm channels per client");
-DEFINE_int32(staleness, 0, 
-    "staleness for weight tables.");
-DEFINE_int32(loss_table_staleness, 1000, 
+//DEFINE_string(hostfile, "",
+//  "Path to file containing server ip:port.");
+//DEFINE_int32(num_clients, 1,
+//    "Total number of clients");
+//DEFINE_int32(num_app_threads, 1,
+//  "Number of app threads in this client");
+//DEFINE_int32(client_id, 0,
+//    "Client ID");
+//DEFINE_string(consistency_model, "SSPPush",
+//   "SSP or SSPPush");
+//DEFINE_string(stats_path, "",
+//    "Statistics output file");
+//DEFINE_int32(num_comm_channels_per_client, 1,
+//   "number of comm channels per client");
+//DEFINE_int32(staleness, 0,
+//    "staleness for weight tables.");
+DEFINE_int32(loss_table_staleness, 1000,
     "staleness for loss tables.");
-DEFINE_int32(row_oplog_type, petuum::RowOpLogType::kDenseRowOpLog,
-    "row oplog type");
-DEFINE_bool(oplog_dense_serialized, true, 
-    "True to not squeeze out the 0's in dense oplog.");
-DEFINE_string(process_storage_type, "BoundedDense", 
-    "process storage type");
-DEFINE_int32(num_rows_per_table, 1, 
-    "Number of rows per parameter table.");
+//DEFINE_int32(row_oplog_type, petuum::RowOpLogType::kDenseRowOpLog,
+//    "row oplog type");
+//DEFINE_bool(oplog_dense_serialized, true,
+//    "True to not squeeze out the 0's in dense oplog.");
+//DEFINE_string(process_storage_type, "BoundedDense",
+//    "process storage type");
+DEFINE_int32(num_rows_per_table, 1,
+             "Number of rows per parameter table.");
 
 // Caffe Parameters
 DEFINE_int32(gpu, -1,
@@ -141,13 +141,13 @@ int train() {
 
   LOG(INFO) << "Initializing PS environment";
   shared_ptr<caffe::CaffeEngine<float> >
-      caffe_engine(new caffe::CaffeEngine<float>(solver_param)); 
+      caffe_engine(new caffe::CaffeEngine<float>(solver_param));
 
   petuum::PSTableGroup::CreateTableDone();
-  LOG(INFO) << "Starting NN with " << FLAGS_num_app_threads << " threads "
+  LOG(INFO) << "Starting NN with " << FLAGS_num_table_threads << " threads "
       << "on client " << FLAGS_client_id;
-  
-  std::vector<std::thread> threads(FLAGS_num_app_threads); 
+
+  std::vector<std::thread> threads(FLAGS_num_table_threads);
   for (auto& thr : threads) {
     thr = std::thread(&caffe::CaffeEngine<float>::Start, std::ref(*caffe_engine));
   }

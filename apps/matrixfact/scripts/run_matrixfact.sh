@@ -3,17 +3,17 @@
 # Input files:
 #data_filename="/l0/netflix.dat.list.gl"
 #data_filename="/l0/movielens_10m.dat"
-#data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
+data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x2"
-data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
+#data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
-host_filename="../../machinefiles/servers"
-#host_filename="../../machinefiles/localserver"
+#host_filename="../../machinefiles/servers"
+host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=3500
+K=20
 init_step_size=5e-5
 step_dec=0.985
 use_step_dec=true # false to use power decay.
@@ -21,7 +21,7 @@ lambda=0
 data_format=list
 
 # Execution parameters:
-num_iterations=80
+num_iterations=32
 consistency_model="SSPAggr"
 num_worker_threads=64
 num_comm_channels_per_client=1
@@ -38,7 +38,7 @@ row_oplog_type=0
 # SSPAggr parameters:
 bg_idle_milli=2
 # Total bandwidth: bandwidth_mbps * num_comm_channels_per_client * 2
-bandwidth_mbps=250
+bandwidth_mbps=100
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
 thread_oplog_batch_size=1600000
 server_idle_milli=2
@@ -60,7 +60,7 @@ no_oplog_replay=true
 numa_opt=false
 numa_policy=Even
 naive_table_oplog_meta=false
-suppression_on=false
+suppression_on=true
 use_approx_sort=false
 
 # Find other Petuum paths by using the script's path
@@ -148,7 +148,11 @@ for ip in $host_list; do
     --numa_policy ${numa_policy} \
     --naive_table_oplog_meta=${naive_table_oplog_meta} \
     --suppression_on=${suppression_on} \
+<<<<<<< HEAD
     --use_approx_sort=${use_approx_sort} \
+=======
+    --use_approx_sort=${use_approx_sort}\
+>>>>>>> 417f70dcc7a9644e74e5f0bc6d316ebf4bb4f530
     --table_staleness $table_staleness \
     --row_type 0 \
     --row_oplog_type ${row_oplog_type} \

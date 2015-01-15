@@ -22,7 +22,6 @@ Context::Context() {
     ctx_[flag.name] = flag.is_default ? flag.default_value : flag.current_value;
   }
 
-  num_app_threads_ = get_int32("num_app_threads");
   num_rows_per_table_ = get_int32("num_rows_per_table");
 }
 

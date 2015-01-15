@@ -28,7 +28,7 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       "new_height and new_width to be set at the same time.";
   util::Context& context = util::Context::get_instance();
   const int client_id = context.get_int32("client_id");
-  const int num_threads = context.get_int32("num_app_threads");
+  const int num_threads = context.get_int32("num_table_threads");
   string filename;
   int label;
   // Read the file with filenames and labels
@@ -44,12 +44,12 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
     int thread_global_idx = client_id * num_threads + this->thread_id_;
     // Distribute files to threads
     while (infile >> filename >> label) {
-      if (file_idx % tot_num_threads == thread_global_idx) { 
+      if (file_idx % tot_num_threads == thread_global_idx) {
         lines_.push_back(std::make_pair(filename, label));
       }
       file_idx++;
     }
-  } else { 
+  } else {
     // Read from client-specific files
     std::ostringstream client_source;
     client_source << source << "_" << client_id;

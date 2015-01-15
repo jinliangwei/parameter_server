@@ -41,17 +41,6 @@ private:\
 // is executed we will see a fatal log.
 #define NOT_IMPLEMENTED LOG(FATAL) << "Not Implemented Yet"
 
-/* TODO: remove this
-// Petuum Parameters
-DECLARE_string(hostfile);
-DECLARE_int32(num_clients);
-DECLARE_int32(num_app_threads);
-DECLARE_int32(client_id);
-DECLARE_string(consistency_model);
-DECLARE_string(stats_path);
-DECLARE_int32(num_comm_channels_per_client);
-DECLARE_int32(staleness);
-*/
 namespace caffe {
 
 // We will use the boost shared_ptr instead of the new C++11 one mainly
@@ -130,9 +119,9 @@ class Caffe {
   inline static Brew mode() { return Get().mode_; }
   // Returns the phase: TRAIN or TEST.
   // hzt-phases
-  inline static Phase phase(const int thread_id) { 
+  inline static Phase phase(const int thread_id) {
     CHECK(Get().phases_ != NULL);
-    return Get().phases_[thread_id]; 
+    return Get().phases_[thread_id];
   }
   // The setters for the variables
   // Sets the mode. It is recommended that you don't change the mode halfway
@@ -141,8 +130,8 @@ class Caffe {
   // it personally but better to note it here in the header file.
   inline static void set_mode(Brew mode) { Get().mode_ = mode; }
   // hzt-phases: Initializes the phases.
-  inline static void initialize_phases(const int num_threads) { 
-    Get().phases_ = new Phase[num_threads]; 
+  inline static void initialize_phases(const int num_threads) {
+    Get().phases_ = new Phase[num_threads];
     for (int tidx = 0; tidx < num_threads; ++tidx) {
       set_phase(Caffe::TRAIN, tidx);
     }
@@ -151,7 +140,7 @@ class Caffe {
   // hzt-phases
   inline static void set_phase(Phase phase, const int thread_id) {
     CHECK(Get().phases_ != NULL);
-    Get().phases_[thread_id] = phase; 
+    Get().phases_[thread_id] = phase;
   }
   // Sets the random seed of both boost and curand
   static void set_random_seed(const unsigned int seed);

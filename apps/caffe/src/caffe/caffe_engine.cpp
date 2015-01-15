@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include <petuum_ps_common/include/petuum_ps.hpp>
+#include <petuum_ps_common/include/table_gflags_declare.hpp>
+#include <petuum_ps_common/include/init_table_config.hpp>
 
 #include "caffe/net.hpp"
 #include "caffe/proto/caffe.pb.h"
@@ -32,16 +34,16 @@ CaffeEngine<Dtype>::CaffeEngine(const string& param_file)
 }
 
 template <typename Dtype>
-CaffeEngine<Dtype>::CaffeEngine(const NetParameter& net_param) : 
+CaffeEngine<Dtype>::CaffeEngine(const NetParameter& net_param) :
     net_(), num_tables_(0), thread_counter_(0) {
   util::Context& context = util::Context::get_instance();
-  const int num_threads = context.get_int32("num_app_threads");
+  const int num_threads = context.get_int32("num_table_threads");
   Caffe::initialize_phases(num_threads);
 
   net_param_ = net_param;
   net_.reset(new Net<Dtype>(0, 0));
   // create ps tables for train net parameter blobs
-  num_tables_ += net_->InitPS(net_param, true, 0, 
+  num_tables_ += net_->InitPS(net_param, true, 0,
                               &layer_blobs_global_idx_);
 
   // delete net_
@@ -56,7 +58,7 @@ void CaffeEngine<Dtype>::Init(const SolverParameter& param) {
   }
   util::Context& context = util::Context::get_instance();
   loss_table_staleness_ = context.get_int32("loss_table_staleness");
-  const int num_threads = context.get_int32("num_app_threads");
+  const int num_threads = context.get_int32("num_table_threads");
   Caffe::initialize_phases(num_threads);
 
   // Scaffolding code
@@ -100,12 +102,12 @@ void CaffeEngine<Dtype>::InitPSForTrainNet(const int num_additional_tables) {
   // set as train net
   net_.reset(new Net<Dtype>(0, -1));
   // create ps tables for train net parameter blobs
-  num_tables_ += net_->InitPS(net_param, true, num_additional_tables, 
+  num_tables_ += net_->InitPS(net_param, true, num_additional_tables,
                               &layer_blobs_global_idx_);
   // create ps table for train net outputs
   string train_net_output_name("train_net_outputs");
   CreatePSTableForNetOutputs(net_, train_net_output_name, param_.display());
-  
+
   // delete net_
   net_.reset();
 }
@@ -120,7 +122,7 @@ void CaffeEngine<Dtype>::InitPSForTestNets(const int num_test_net_instances) {
     CHECK_GT(param_.test_interval(), 0);
   }
   util::Context& context = util::Context::get_instance();
-  context.test_dbs().resize(num_test_net_instances); 
+  context.test_dbs().resize(num_test_net_instances);
   int test_net_id = 0;
   vector<NetParameter> net_params(num_test_net_instances);
   for (int i = 0; i < param_.test_net_param_size(); ++i, ++test_net_id) {
@@ -152,8 +154,8 @@ void CaffeEngine<Dtype>::InitPSForTestNets(const int num_test_net_instances) {
     // set test net id
     net_.reset(new Net<Dtype>(0, i));
     num_tables_ += net_->InitPS(net_params[i], false, 0, NULL);
-   
-    // create ps tables for test nets outputs  
+
+    // create ps tables for test nets outputs
     ostringstream test_net_output_name;
     test_net_output_name << "test_net_outputs_" << i;
     CreatePSTableForNetOutputs(net_, test_net_output_name.str(), true);
@@ -168,19 +170,17 @@ void CaffeEngine<Dtype>::CreatePSTableForNetOutputs(
     shared_ptr<Net<Dtype> > net, string name, bool display) {
   CHECK(layer_blobs_global_idx_.find(name) == layer_blobs_global_idx_.end());
 
-  util::Context& context = util::Context::get_instance();
-  int row_oplog_type = context.get_int32("row_oplog_type");
-  bool oplog_dense_serialized = context.get_bool("oplog_dense_serialized");
   petuum::ClientTableConfig table_config;
+
+  petuum::InitTableConfig(&table_config);
   table_config.table_info.row_type = caffe::kDenseRowDtypeID;
-  table_config.table_info.row_oplog_type = row_oplog_type;
-  table_config.table_info.oplog_dense_serialized 
-      = oplog_dense_serialized;
-  table_config.table_info.table_staleness = loss_table_staleness_;
   table_config.process_cache_capacity = 1000;
+  table_config.thread_cache_capacity = 1;
   table_config.oplog_capacity = table_config.process_cache_capacity;
-  table_config.process_storage_type = petuum::BoundedDense;
-  int count = 0; 
+  table_config.process_storage_type = petuum::BoundedSparse;
+  table_config.oplog_type = petuum::Sparse;
+
+  int count = 0;
   if (display) {
     const vector<Blob<Dtype>*>& output = net->output_blobs();
     for (int j = 0; j < output.size(); ++j) {
@@ -234,8 +234,8 @@ void CaffeEngine<Dtype>::Start() {
   string net_outputs_prefix = context.get_string("net_outputs");
 
   shared_ptr<caffe::Solver<Dtype> >
-    solver(caffe::GetSolver<Dtype>(param_, &layer_blobs_global_idx_, 
-           thread_id)); 
+    solver(caffe::GetSolver<Dtype>(param_, &layer_blobs_global_idx_,
+           thread_id));
 
   //petuum::PSTableGroup::GlobalBarrier();
 
@@ -253,7 +253,7 @@ void CaffeEngine<Dtype>::Start() {
   } else {
     solver->Solve();
   }
-  
+
   petuum::PSTableGroup::GlobalBarrier();
   if (client_id == 0 && thread_id == 0) {
     solver->PrintNetOutputs(net_outputs_prefix + ".netoutputs");
@@ -268,10 +268,10 @@ void CaffeEngine<Dtype>::StartExtractingFeature() {
   petuum::PSTableGroup::RegisterThread();
 
   int thread_id = thread_counter_++;
-  
+
   FeatureExtractor<float> extractor(&layer_blobs_global_idx_, thread_id);
   extractor.ExtractFeatures(net_param_);
-  
+
   petuum::PSTableGroup::DeregisterThread();
 }
 

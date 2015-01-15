@@ -143,7 +143,7 @@ template <typename Dtype>
 void DataLayer<Dtype>::InitializeDB() {
   util::Context& context = util::Context::get_instance();
   const int num_clients = context.get_int32("num_clients");
-  const int num_threads = context.get_int32("num_app_threads");
+  const int num_threads = context.get_int32("num_table_threads");
   const int client_id = context.get_int32("client_id");
   shared_file_system_ = this->layer_param_.data_param().shared_file_system();
 
@@ -154,20 +154,20 @@ void DataLayer<Dtype>::InitializeDB() {
     skip_cnt = client_id * num_threads + this->thread_id_;
     step_size_ = num_clients * num_threads;
   } else {
-    source << this->layer_param_.data_param().source() 
+    source << this->layer_param_.data_param().source()
         << "_" << client_id;
-    skip_cnt = this->thread_id_; 
+    skip_cnt = this->thread_id_;
     step_size_ = num_threads;
   }
 
   switch (this->layer_param_.data_param().backend()) {
   case DataParameter_DB_LEVELDB:
     {
-    CHECK(!shared_file_system_ || num_clients <= 1) 
+    CHECK(!shared_file_system_ || num_clients <= 1)
         << "Cannot share leveldb among multiple clients.";
 
     shared_ptr<leveldb::DB>& global_db = util::Context::global_db(this->net_id_);
-    
+
     if (!global_db) { // initialize global_db (main thread)
       leveldb::DB* db_temp;
       leveldb::Options options = GetLevelDBOptions();
@@ -177,7 +177,7 @@ void DataLayer<Dtype>::InitializeDB() {
       }
       leveldb::Status status = leveldb::DB::Open(
           options, source.str(), &db_temp);
-      CHECK(status.ok()) << "Failed to open leveldb " << source.str() 
+      CHECK(status.ok()) << "Failed to open leveldb " << source.str()
           << std::endl << status.ToString();
       db_.reset(db_temp);
       global_db = db_;

@@ -15,6 +15,8 @@
 #include "caffe/util/upgrade_proto.hpp"
 #include "caffe/context.hpp"
 #include <petuum_ps_common/include/petuum_ps.hpp>
+#include <petuum_ps_common/include/system_gflags_declare.hpp>
+#include <petuum_ps_common/include/init_table_group_config.hpp>
 
 namespace caffe {
 
@@ -106,7 +108,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     if (client_id_ == 0 && thread_id_ == 0) {
       LOG(INFO) << "Setting up " << layer_names_[layer_id];
     }
-    layers_[layer_id]->SetUp(bottom_vecs_[layer_id], &top_vecs_[layer_id], 
+    layers_[layer_id]->SetUp(bottom_vecs_[layer_id], &top_vecs_[layer_id],
         net_id_, thread_id_);
     for (int top_id = 0; top_id < top_vecs_[layer_id].size(); ++top_id) {
       if (blob_loss_weights_.size() <= top_id_vecs_[layer_id][top_id]) {
@@ -247,7 +249,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
 
 // Basically copied from Init()
 template <typename Dtype>
-const int Net<Dtype>::InitPS(const NetParameter& in_param, 
+const int Net<Dtype>::InitPS(const NetParameter& in_param,
     bool create_ps_tables, int num_additional_tables,
     map<string, vector<int> >* layer_name_to_blob_global_idx) {
   // Filter layers based on their include/exclude rules and
@@ -258,31 +260,8 @@ const int Net<Dtype>::InitPS(const NetParameter& in_param,
   NetParameter param;
   InsertSplits(filtered_param, &param);
   if (create_ps_tables) {
-    util::Context& context = util::Context::get_instance();
     petuum::TableGroupConfig table_group_config;
-    table_group_config.num_comm_channels_per_client
-        = context.get_int32("num_comm_channels_per_client");
-    table_group_config.num_total_clients = context.get_int32("num_clients");
-    // + 1 for main() thread.
-    table_group_config.num_local_app_threads 
-        = context.get_int32("num_app_threads") + 1;
-    table_group_config.client_id = context.get_int32("client_id");
-    table_group_config.stats_path = context.get_string("stats_path");
-    petuum::GetHostInfos(context.get_string("hostfile"), 
-        &table_group_config.host_map);
-    string consistency_model = context.get_string("consistency_model");
-    if (std::string("SSP").compare(consistency_model) == 0) {
-      table_group_config.consistency_model = petuum::SSP;
-    } else if (
-      std::string("SSPPush").compare(consistency_model) == 0) {
-      table_group_config.consistency_model = petuum::SSPPush;
-    } else if (
-      std::string("LocalOOC").compare(consistency_model) == 0) {
-      table_group_config.consistency_model = petuum::LocalOOC;
-    } else {
-      LOG(FATAL) << "Unkown consistency model: " << consistency_model;
-    }
-  
+
     // go through all layers to count num_tables
     int num_tables = 0;
     for (int layer_id = 0; layer_id < param.layers_size(); ++layer_id) {
@@ -290,8 +269,8 @@ const int Net<Dtype>::InitPS(const NetParameter& in_param,
       num_tables += GetNumGlobalTables(layer_param);
     }
     num_tables += num_additional_tables;
-    table_group_config.num_tables = num_tables;
-  
+    petuum::InitTableGroupConfig(&table_group_config, num_tables);
+
     petuum::PSTableGroup::RegisterRow<petuum::DenseRow<Dtype> >
       (kDenseRowDtypeID);
     // Use false to not let main thread access table API.
@@ -305,27 +284,27 @@ const int Net<Dtype>::InitPS(const NetParameter& in_param,
       << "Incorrect input blob dimension specifications.";
   for (int input_id = 0; input_id < param.input_size(); ++input_id) {
     const int layer_id = -1;
-    PseudoAppendTop(param, layer_id, input_id, &available_blobs, 
+    PseudoAppendTop(param, layer_id, input_id, &available_blobs,
         &blob_name_to_idx);
   }
-  // For each layer, set up their input and output, 
-  // create PS table if necessary. 
+  // For each layer, set up their input and output,
+  // create PS table if necessary.
   bottom_vecs_.resize(param.layers_size());
   top_vecs_.resize(param.layers_size());
   int table_id = 0;
   for (int layer_id = 0; layer_id < param.layers_size(); ++layer_id) {
     const LayerParameter& layer_param = param.layers(layer_id);
     layers_.push_back(shared_ptr<Layer<Dtype> >(GetLayer<Dtype>(layer_param)));
-    layer_names_.push_back(layer_param.name()); 
+    layer_names_.push_back(layer_param.name());
     // Figure out this layer's input and output
     for (int bottom_id = 0; bottom_id < layer_param.bottom_size();
          ++bottom_id) {
-      PseudoAppendBottom(param, layer_id, bottom_id, &available_blobs, 
+      PseudoAppendBottom(param, layer_id, bottom_id, &available_blobs,
                          &blob_name_to_idx);
     }
     int num_top = layer_param.top_size();
     for (int top_id = 0; top_id < num_top; ++top_id) {
-      PseudoAppendTop(param, layer_id, top_id, &available_blobs, 
+      PseudoAppendTop(param, layer_id, top_id, &available_blobs,
 	    &blob_name_to_idx);
     }
     // If the layer specifies that AutoTopBlobs() -> true and the LayerParameter
@@ -343,8 +322,8 @@ const int Net<Dtype>::InitPS(const NetParameter& in_param,
       }
     }
     // After this layer is connected, Set it up and create ps tables.
-    layers_[layer_id]->SetUp(bottom_vecs_[layer_id], &top_vecs_[layer_id], 
-        net_id_, thread_id_, create_ps_tables, &table_id, 
+    layers_[layer_id]->SetUp(bottom_vecs_[layer_id], &top_vecs_[layer_id],
+        net_id_, thread_id_, create_ps_tables, &table_id,
         layer_name_to_blob_global_idx);
 
     const int blobs_lr_size = layer_param.blobs_lr_size();
@@ -658,8 +637,8 @@ void Net<Dtype>::PseudoAppendTop(const NetParameter& param, const int layer_id,
 }
 
 template <typename Dtype>
-int Net<Dtype>::PseudoAppendBottom(const NetParameter& param, const int layer_id, 
-    const int bottom_id, set<string>* available_blobs, 
+int Net<Dtype>::PseudoAppendBottom(const NetParameter& param, const int layer_id,
+    const int bottom_id, set<string>* available_blobs,
     map<string, int>* blob_name_to_idx) {
   const LayerParameter& layer_param = param.layers(layer_id);
   const string& blob_name = layer_param.bottom(bottom_id);
@@ -842,7 +821,7 @@ void Net<Dtype>::UpdateDebugInfo(const int param_id) {
       LOG(INFO) << "    [Update] Layer " << layer_name
           << ", param " << param_display_name
           << " data: " << data_abs_val_mean << "; diff: " << diff_abs_val_mean;
-    } 
+    }
   } else {
     const string& owner_layer_name =
         layer_names_[param_layer_indices_[param_owner].first];
@@ -910,7 +889,7 @@ void Net<Dtype>::Reshape() {
 }
 
 template <typename Dtype>
-void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param, 
+void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param,
     const bool init_ps_tables) {
   int num_source_layers = param.layers_size();
   for (int i = 0; i < num_source_layers; ++i) {
@@ -947,7 +926,7 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param,
 }
 
 template <typename Dtype>
-void Net<Dtype>::CopyTrainedLayersFrom(const string trained_filename, 
+void Net<Dtype>::CopyTrainedLayersFrom(const string trained_filename,
     const bool init_ps_tables) {
   NetParameter param;
   ReadNetParamsFromBinaryFileOrDie(trained_filename, &param);
@@ -976,7 +955,7 @@ void Net<Dtype>::ToProto(NetParameter* param, bool write_diff) {
 }
 
 template <typename Dtype>
-void Net<Dtype>::Update() {   
+void Net<Dtype>::Update() {
   // First, accumulate the diffs of any shared parameters into their owner's
   // diff. (Assumes that the learning rate, weight decay, etc. have already been
   // accounted for in the current diff.)
@@ -1026,7 +1005,7 @@ void Net<Dtype>::RegisterNetOutputPSTable(const int num_rows) {
   // register rows of loss tables
   for (int ridx = 0; ridx < num_rows; ++ridx) {
     outputs_global_table_.GetAsyncForced(ridx);
-  }   
+  }
 }
 
 template <typename Dtype>
