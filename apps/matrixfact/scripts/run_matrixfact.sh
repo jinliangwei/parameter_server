@@ -21,10 +21,10 @@ lambda=0
 data_format=list
 
 # Execution parameters:
-num_iterations=32
-consistency_model="SSPPush"
+num_iterations=80
+consistency_model="SSPAggr"
 num_worker_threads=64
-num_comm_channels_per_client=2
+num_comm_channels_per_client=1
 table_staleness=4 # effective staleness is staleness / num_clocks_per_iter.
 N_cache_size=480190
 #N_cache_size=500000
@@ -38,7 +38,7 @@ row_oplog_type=0
 # SSPAggr parameters:
 bg_idle_milli=2
 # Total bandwidth: bandwidth_mbps * num_comm_channels_per_client * 2
-bandwidth_mbps=450
+bandwidth_mbps=250
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
 thread_oplog_batch_size=1600000
 server_idle_milli=2
@@ -81,7 +81,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_jan_11_8x1_comm_debug"
+output_dir="$app_dir/output_jan_14_8x1_mbssp_exp"
 output_dir="${output_dir}/${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${bandwidth_mbps}_${num_iterations}_${num_comm_channels_per_client}"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
@@ -103,7 +103,7 @@ for ip in $unique_host_list; do
     killall -q $progname
 done
 echo "All done!"
-# exit
+exit
 
 mkdir -p $log_dir
 
@@ -122,7 +122,7 @@ for ip in $host_list; do
 
   cmd="rm -rf ${log_path}; mkdir -p ${log_path}; \
     ASAN_OPTIONS=verbosity=1:malloc_context_size=256 \
-    GLOG_logtostderr=false \
+    GLOG_logtostderr=true \
     GLOG_log_dir=$log_path \
     GLOG_v=-1 \
     GLOG_minloglevel=0 \
@@ -148,7 +148,7 @@ for ip in $host_list; do
     --numa_policy ${numa_policy} \
     --naive_table_oplog_meta=${naive_table_oplog_meta} \
     --suppression_on=${suppression_on} \
-    --use_approx_sort=${use_approx_sort}
+    --use_approx_sort=${use_approx_sort} \
     --table_staleness $table_staleness \
     --row_type 0 \
     --row_oplog_type ${row_oplog_type} \
