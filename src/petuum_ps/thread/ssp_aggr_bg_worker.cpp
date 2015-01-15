@@ -22,6 +22,7 @@ void SSPAggrBgWorker::PrepareBeforeInfiniteLoop() {
   } else {
     suppression_level_ = 0;
   }
+  LOG(INFO) << "suppression level init to " << supression_level_;
 }
 
 void SSPAggrBgWorker::FinalizeTableStats() {
@@ -394,7 +395,7 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
       = client_clock_ - suppression_level_;
 
   if (clock_to_push > client_clock_) {
-    LOG(FATAL) << "suppression = " << suppression_level_;
+    LOG(FATAL) << "suppression_level = " << suppression_level_;
     clock_to_push = client_clock_;
   }
 

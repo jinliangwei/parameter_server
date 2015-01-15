@@ -159,6 +159,10 @@ void ServerThread::HandleCreateTable(int32_t sender_id,
   table_info.dense_row_oplog_capacity
       = create_table_msg.get_dense_row_oplog_capacity();
   server_obj_.CreateTable(table_id, table_info);
+
+  min_table_staleness_
+      = std::min(min_table_staleness_,
+                 table_info.table_staleness);
 }
 
 void ServerThread::HandleRowRequest(int32_t sender_id,
@@ -251,6 +255,7 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
   }
 
   if (clock_changed) {
+    ClockNotice();
     ServerPushRow();
   }
 
@@ -303,6 +308,10 @@ void ServerThread::ShutDownServer() {
   STATS_DEREGISTER_THREAD();
 }
 
+void ServerThread::PrepareBeforeInfiniteLoop() { }
+
+void ServerThread::ClockNotice() { }
+
 void *ServerThread::operator() () {
 
   ThreadContext::RegisterThread(my_id_);
@@ -323,6 +332,7 @@ void *ServerThread::operator() () {
   void *msg_mem;
   bool destroy_mem = false;
   long timeout_milli = -1;
+  PrepareBeforeInfiniteLoop();
   while(1) {
     bool received = WaitMsg_(&sender_id, &zmq_msg, timeout_milli);
     if (!received) {

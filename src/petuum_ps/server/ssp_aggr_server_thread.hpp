@@ -11,7 +11,9 @@ public:
       SSPPushServerThread(my_id, init_barrier),
       row_send_milli_sec_(0),
       early_comm_on_(false),
-      num_early_comm_off_msgs_(0) {
+      num_early_comm_off_msgs_(0),
+      suppression_level_(0),
+      last_clock_sent_(0) {
     ResetServerIdleMilli_ = &SSPAggrServerThread::ResetServerIdleMilliNoEarlyComm;
   }
 
@@ -29,6 +31,9 @@ protected:
   long ResetServerIdleMilliNoEarlyComm();
   long ResetServerIdleMilliEarlyComm();
 
+  void PrepareBeforeInfiniteLoop();
+  void ClockNotice();
+
   typedef long (SSPAggrServerThread::*ResetServerIdleMilliFunc)();
 
   HighResolutionTimer msg_send_timer_;
@@ -36,6 +41,11 @@ protected:
   ResetServerIdleMilliFunc ResetServerIdleMilli_;
   bool early_comm_on_;
   size_t num_early_comm_off_msgs_;
+
+  HighResolutionTimer clock_timer_;
+  double clock_tick_sec_;
+  int32_t suppression_level_;
+  int32_t last_clock_sent_;
 };
 
 }

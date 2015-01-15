@@ -11,8 +11,10 @@
 #include <boost/thread/barrier.hpp>
 
 #include <petuum_ps_common/include/petuum_ps.hpp>
-#include <petuum_ps_common/include/system_gflags.hpp>
-#include <petuum_ps_common/include/table_gflags.hpp>
+#include <petuum_ps_common/include/system_gflags_declare.hpp>
+#include <petuum_ps_common/include/table_gflags_declare.hpp>
+#include <petuum_ps_common/include/init_table_config.hpp>
+#include <petuum_ps_common/include/init_table_group_config.hpp>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 

@@ -1,7 +1,7 @@
 # reduce the learning rate after 8 epochs (4000 iters) by a factor of 10
 
 # The train/test net protocol buffer definition
-net: "/tank/projects/biglearning/jinlianw/parameter_server.git/apps/caffe/examples/cifar10/cifar10_quick_train_test.prototxt"
+net: "/home/jinliang/parameter_server.git/apps/caffe/examples/cifar10/cifar10_quick_train_test.prototxt"
 # test_iter specifies how many forward passes the test should carry out.
 # In the case of MNIST, we have test batch size 100 and 100 test iterations,
 # covering the full 10,000 testing images.
@@ -17,10 +17,10 @@ lr_policy: "fixed"
 # Display every 100 iterations
 display: 100
 # The maximum number of iterations
-max_iter: 1000
+max_iter: 100
 # snapshot intermediate results
 snapshot: 8000
-snapshot_prefix: "/tank/projects/biglearning/jinlianw/parameter_server.git/apps/caffe/examples/cifar10/cifar10_quick"
+snapshot_prefix: "/home/jinliang/parameter_server.git/apps/caffe/examples/cifar10/cifar10_quick"
 # solver mode: CPU or GPU
 solver_mode: CPU
 # specify random_seed to reproduce results

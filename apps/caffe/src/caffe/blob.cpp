@@ -4,6 +4,8 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/context.hpp"
 #include <petuum_ps_common/include/petuum_ps.hpp>
+#include <petuum_ps_common/include/table_gflags_declare.hpp>
+#include <petuum_ps_common/include/init_table_config.hpp>
 
 namespace caffe {
 
@@ -24,8 +26,8 @@ void Blob<Dtype>::Reshape(const int num, const int channels, const int height,
     data_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
     diff_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
   }
-  
-  CHECK(data_) << " count " << count_ << " "<< num_ << " " << channels_ 
+
+  CHECK(data_) << " count " << count_ << " "<< num_ << " " << channels_
                << " " << height_ << " " << width_ << " capacity " << capacity_;
   //MULTIROW
   if(blob_mode_ == BlobProto_BlobMode_GLOBAL) {
@@ -35,10 +37,10 @@ void Blob<Dtype>::Reshape(const int num, const int channels, const int height,
 }
 
 template <typename Dtype>
-void Blob<Dtype>::ReshapeWithoutAllocation(const int num, const int channels, 
+void Blob<Dtype>::ReshapeWithoutAllocation(const int num, const int channels,
     const int height, const int width) {
   // call Reshap() directly since SyncedMemory allocates memory lazily
-  Reshape(num, channels, height, width);    
+  Reshape(num, channels, height, width);
 }
 
 template <typename Dtype>
@@ -48,7 +50,7 @@ void Blob<Dtype>::ReshapeLike(const Blob<Dtype>& other) {
 
 template <typename Dtype>
 void Blob<Dtype>::ReshapeWithoutAllocationLike(const Blob<Dtype>& other) {
-  ReshapeWithoutAllocation(other.num(), other.channels(), other.height(), 
+  ReshapeWithoutAllocation(other.num(), other.channels(), other.height(),
       other.width());
 }
 
@@ -56,33 +58,22 @@ template <typename Dtype>
 void Blob<Dtype>::CreatePSTable() {
   CHECK_GE(global_id_, 0);
   CHECK_GE(count_, 0);
-  
+
   util::Context& context = util::Context::get_instance();
-  int staleness = context.get_int32("staleness");
-  int row_oplog_type = context.get_int32("row_oplog_type");
-  bool oplog_dense_serialized = context.get_bool("oplog_dense_serialized");
-  const string& process_storage_type 
-      = context.get_string("process_storage_type");
   int num_rows_per_table = context.num_rows_per_table();
-  // Creating PS tables 
+  // Creating PS tables
   petuum::ClientTableConfig table_config;
+  petuum::InitTableConfig(&table_config);
   table_config.table_info.row_type = caffe::kDenseRowDtypeID;
-  table_config.table_info.row_oplog_type = row_oplog_type;
-  table_config.table_info.oplog_dense_serialized 
-      = oplog_dense_serialized;
-  table_config.table_info.table_staleness = staleness;
-  global_table_row_capacity_ = (count_ + num_rows_per_table - 1) / num_rows_per_table;
-  table_config.table_info.row_capacity = global_table_row_capacity_;
   table_config.process_cache_capacity = num_rows_per_table;
-  table_config.table_info.dense_row_oplog_capacity = global_table_row_capacity_;
   table_config.oplog_capacity = table_config.process_cache_capacity;
-  if (process_storage_type == "BoundedDense") {
-    table_config.process_storage_type = petuum::BoundedDense;
-  } else if (process_storage_type == "BoundedSparse") {
-    table_config.process_storage_type = petuum::BoundedSparse;
-  } else {
-    LOG(FATAL) << "Unknown process storage type " << process_storage_type;
-  }
+  table_config.thread_cache_capacity = 1;
+  global_table_row_capacity_
+      = (count_ + num_rows_per_table - 1) / num_rows_per_table;
+  table_config.table_info.row_capacity = global_table_row_capacity_;
+  table_config.table_info.dense_row_oplog_capacity
+      = global_table_row_capacity_;
+
   petuum::PSTableGroup::CreateTable(global_id_, table_config);
 }
 
@@ -100,7 +91,7 @@ Blob<Dtype>::Blob(const int num, const int channels, const int height,
 
 template <typename Dtype>
 const Dtype* Blob<Dtype>::cpu_data() const {
-  if (blob_mode_ == BlobProto_BlobMode_GLOBAL 
+  if (blob_mode_ == BlobProto_BlobMode_GLOBAL
       && data_->head() == SyncedMemory::UNINITIALIZED) {
     // load data from PS table
     Dtype* data_temp = ReadPSTable();
@@ -142,7 +133,7 @@ const Dtype* Blob<Dtype>::gpu_diff() const {
 
 template <typename Dtype>
 Dtype* Blob<Dtype>::mutable_cpu_data() {
-  if (blob_mode_ == BlobProto_BlobMode_GLOBAL 
+  if (blob_mode_ == BlobProto_BlobMode_GLOBAL
         && data_->head() == SyncedMemory::UNINITIALIZED) {
     // load data from PS table
     Dtype* data_temp = ReadPSTable();
@@ -231,7 +222,7 @@ void Blob<Dtype>::UpdatePSTable() {
   // flush diff_
   const Dtype* update = static_cast<const Dtype*>(diff_->cpu_data());
   int update_idx = 0;
-  
+
   for (int r = 0; r < util::Context::num_rows_per_table(); ++r) {
     petuum::UpdateBatch<Dtype> update_batch(global_table_row_capacity_);
     for (int i = 0; i < global_table_row_capacity_; ++i) {
@@ -248,7 +239,7 @@ void Blob<Dtype>::UpdatePSTable() {
 template <typename Dtype>
 Dtype* Blob<Dtype>::ReadPSTable() const {
   CHECK(global_table_ptr_);
-  
+
   void* data_temp;
   CaffeMallocHost(&data_temp, capacity_ * sizeof(Dtype));
   Dtype* data = (Dtype*)data_temp;
@@ -270,7 +261,7 @@ Dtype* Blob<Dtype>::ReadPSTable() const {
       if (data_idx >= count_) { break; }
     }
     if (data_idx >= count_) { break; }
-  } 
+  }
 
   for (int r_idx = 0; r_idx < util::Context::num_rows_per_table(); ++r_idx) {
     vector<Dtype>().swap(row_caches[r_idx]);
@@ -450,4 +441,3 @@ template class Blob<int>;
 template class Blob<unsigned int>;
 
 }  // namespace caffe
-

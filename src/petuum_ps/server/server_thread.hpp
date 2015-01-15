@@ -22,7 +22,8 @@ public:
       init_barrier_(init_barrier),
       msg_tracker_(kMaxPendingMsgs),
       pending_clock_push_row_(false),
-      pending_shut_down_(false) { }
+      pending_shut_down_(false),
+      min_table_staleness_(INT_MAX) { }
 
   virtual ~ServerThread() { }
 
@@ -78,6 +79,9 @@ protected:
 
   virtual void *operator() ();
 
+  virtual void PrepareBeforeInfiniteLoop();
+  virtual void ClockNotice();
+
   int32_t my_id_;
   std::vector<int32_t> bg_worker_ids_;
   Server server_obj_;
@@ -89,6 +93,8 @@ protected:
   MsgTracker msg_tracker_;
   bool pending_clock_push_row_;
   bool pending_shut_down_;
+
+  int32_t min_table_staleness_;
 };
 
 }
