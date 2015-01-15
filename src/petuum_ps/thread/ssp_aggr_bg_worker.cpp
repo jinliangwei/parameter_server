@@ -22,7 +22,7 @@ void SSPAggrBgWorker::PrepareBeforeInfiniteLoop() {
   } else {
     suppression_level_ = 0;
   }
-  LOG(INFO) << "suppression level init to " << supression_level_;
+  LOG(INFO) << "suppression level init to " << suppression_level_;
 }
 
 void SSPAggrBgWorker::FinalizeTableStats() {

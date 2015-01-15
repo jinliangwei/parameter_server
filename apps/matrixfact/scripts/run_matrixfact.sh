@@ -9,11 +9,11 @@ data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
-#host_filename="../../machinefiles/servers"
-host_filename="../../machinefiles/localserver"
+host_filename="../../machinefiles/servers"
+#host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=20
+K=500
 init_step_size=5e-5
 step_dec=0.985
 use_step_dec=true # false to use power decay.
@@ -81,7 +81,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_jan_14_8x1_mbssp_exp"
+output_dir="$app_dir/output_jan_14_8x1_suppression_test"
 output_dir="${output_dir}/${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${bandwidth_mbps}_${num_iterations}_${num_comm_channels_per_client}"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
@@ -103,7 +103,7 @@ for ip in $unique_host_list; do
     killall -q $progname
 done
 echo "All done!"
-exit
+# exit
 
 mkdir -p $log_dir
 
@@ -148,11 +148,7 @@ for ip in $host_list; do
     --numa_policy ${numa_policy} \
     --naive_table_oplog_meta=${naive_table_oplog_meta} \
     --suppression_on=${suppression_on} \
-<<<<<<< HEAD
     --use_approx_sort=${use_approx_sort} \
-=======
-    --use_approx_sort=${use_approx_sort}\
->>>>>>> 417f70dcc7a9644e74e5f0bc6d316ebf4bb4f530
     --table_staleness $table_staleness \
     --row_type 0 \
     --row_oplog_type ${row_oplog_type} \
