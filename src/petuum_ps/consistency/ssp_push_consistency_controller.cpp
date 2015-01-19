@@ -20,7 +20,7 @@ SSPPushConsistencyController::SSPPushConsistencyController(
 
 void SSPPushConsistencyController::GetAsyncForced(int32_t row_id) {
   // Look for row_id in process_storage_.
-  int32_t stalest_clock = std::max(0, ThreadContext::get_clock() - staleness_);
+  int32_t stalest_clock = 0;
 
   if (pending_async_get_cnt_.get() == 0) {
     pending_async_get_cnt_.reset(new size_t);
@@ -38,7 +38,7 @@ void SSPPushConsistencyController::GetAsyncForced(int32_t row_id) {
 
 void SSPPushConsistencyController::GetAsync(int32_t row_id) {
   // Look for row_id in process_storage_.
-  int32_t stalest_clock = std::max(0, ThreadContext::get_clock() - staleness_);
+  int32_t stalest_clock = 0;
 
   if (process_storage_.Find(row_id))
     return;
@@ -76,7 +76,9 @@ ClientRow *SSPPushConsistencyController::Get(int32_t row_id,
 
   if (ThreadContext::GetCachedSystemClock() < stalest_clock) {
     int32_t system_clock = BgWorkers::GetSystemClock();
-    if(system_clock < stalest_clock) {
+    if (system_clock < stalest_clock) {
+      //LOG(INFO) << "system_clock = " << system_clock
+      //        << " stalest_clock = " << stalest_clock;
       STATS_APP_ACCUM_SSPPUSH_GET_COMM_BLOCK_BEGIN(table_id_);
       BgWorkers::WaitSystemClock(stalest_clock);
       STATS_APP_ACCUM_SSPPUSH_GET_COMM_BLOCK_END(table_id_);

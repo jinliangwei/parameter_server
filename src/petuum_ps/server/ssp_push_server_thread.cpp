@@ -10,10 +10,11 @@ void SSPPushServerThread::SendServerPushRowMsg(
     int32_t version, int32_t server_min_clock,
     MsgTracker *msg_tracker) {
 
+  //if (last_msg)
   //LOG(INFO) << "server_send_push_row, is_clock = " << last_msg
-  //        << " clock = " << server_min_clock
-  //        << " to = " << bg_id
-  //        << " " << ThreadContext::get_id();
+  //          << " clock = " << server_min_clock
+  //         << " to = " << bg_id
+  //          << " " << ThreadContext::get_id();
 
   msg->get_version() = version;
   msg->get_seq_num() = msg_tracker->IncGetSeq(bg_id);

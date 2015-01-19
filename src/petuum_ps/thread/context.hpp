@@ -154,7 +154,8 @@ public:
       int32_t numa_index,
       NumaPolicy numa_policy,
       bool naive_table_oplog_meta,
-      bool use_approx_sort) {
+      bool use_approx_sort,
+      bool suppression_on) {
 
     num_comm_channels_per_client_
         = num_comm_channels_per_client;
@@ -195,6 +196,8 @@ public:
     naive_table_oplog_meta_ = naive_table_oplog_meta;
 
     use_approx_sort_ = use_approx_sort;
+
+    suppression_on_ = suppression_on;
 
     for (auto host_iter = host_map.begin();
          host_iter != host_map.end(); ++host_iter) {

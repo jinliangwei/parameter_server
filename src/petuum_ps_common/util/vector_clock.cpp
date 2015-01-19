@@ -36,12 +36,12 @@ int32_t VectorClock::Tick(int32_t id)
 }
 
 int32_t VectorClock::TickUntil(int32_t id, int32_t clock) {
-  int32_t curr_clock = get_clock(id);
+  int32_t curr_clock = VectorClock::get_clock(id);
   int32_t num_ticks = clock - curr_clock;
   int32_t new_clock = 0;
 
   for (int32_t i = 0; i < num_ticks; ++i) {
-    int32_t clock_changed = Tick(id);
+    int32_t clock_changed = VectorClock::Tick(id);
     if (clock_changed)
       new_clock = clock_changed;
   }

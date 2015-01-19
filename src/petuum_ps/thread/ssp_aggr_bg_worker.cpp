@@ -13,16 +13,7 @@ void SSPAggrBgWorker::PrepareBeforeInfiniteLoop() {
   msg_send_timer_.restart();
   clock_timer_.restart();
 
-  if (GlobalContext::get_suppression_on()) {
-    if (min_table_staleness_ <= 2) {
-      suppression_level_ = 0;
-    } else {
-      suppression_level_ = 2;
-    }
-  } else {
-    suppression_level_ = 0;
-  }
-  LOG(INFO) << "suppression level init to " << suppression_level_;
+  //LOG(INFO) << "suppression level init to " << suppression_level_;
 }
 
 void SSPAggrBgWorker::FinalizeTableStats() {
@@ -381,29 +372,31 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   if (!clock_advanced)
     return GlobalContext::get_bg_idle_milli();
 
+  if (!pending_clock_send_oplog_) {
+    clock_tick_sec_ = clock_timer_.elapsed();
+    clock_timer_.restart();
+  }
+
   if (!msg_tracker_.CheckSendAll()) {
     STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK();
     pending_clock_send_oplog_ = true;
     clock_advanced_buffed_ = clock_advanced;
-    return GlobalContext::get_bg_idle_milli();
+    return ResetBgIdleMilli();
   }
 
-  clock_tick_sec_ = clock_timer_.elapsed();
-  clock_timer_.restart();
-
-  int32_t clock_to_push
-      = client_clock_ - suppression_level_;
-
-  if (clock_to_push > client_clock_) {
-    LOG(FATAL) << "suppression_level = " << suppression_level_;
-    clock_to_push = client_clock_;
+  if (suppression_level_ > 0
+      && clock_has_pushed_ >= (client_clock_ - suppression_level_)) {
+    //LOG(INFO) << "clock_has_pushed = " << clock_has_pushed_
+    //        << " client_clock = " << client_clock_;
+    return ResetBgIdleMilli();
   }
 
-  if (clock_to_push < 0)
-    clock_to_push = 0;
+  CHECK(client_clock_ > clock_has_pushed_)
+      << "client_clock = " << client_clock_
+      << " clock_has_pushed_ = " << clock_has_pushed_;
 
-  if (clock_to_push > clock_has_pushed_)
-    clock_has_pushed_ = clock_to_push;
+  int32_t clock_to_push = client_clock_;
+  clock_has_pushed_ = clock_to_push;
 
   //LOG(INFO) << "Clock to push = " << clock_to_push
   //        << " clock has pushed = " << clock_has_pushed_;
@@ -431,21 +424,27 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
       + left_over_send_milli_sec;
 
   // reset suppression level
-  if ((suppression_level_ != 0) && (client_clock_ % suppression_level_ == 0)) {
+  if ((suppression_level_ > 0)) {
     double comm_sec = oplog_send_milli_sec_*2;
-    double window_sec = min_table_staleness_ * clock_tick_sec_ / (2.0);
+    double window_sec = min_table_staleness_ * clock_tick_sec_;
     double comm_clock_ticks = comm_sec / clock_tick_sec_;
     if (comm_clock_ticks < 1) comm_clock_ticks = 1;
     int32_t comm_clock_ticks_int = (int32_t) comm_clock_ticks;
 
     if (comm_clock_ticks_int <= 1 || comm_sec < window_sec) {
-      suppression_level_ = min_table_staleness_ - comm_clock_ticks_int;
+      suppression_level_ = min_table_staleness_ - comm_clock_ticks_int - 2;
     } else {
       suppression_level_ = comm_clock_ticks_int;
-      if (suppression_level_ > min_table_staleness_)
-        suppression_level_ = min_table_staleness_;
     }
-    LOG(INFO) << "suppression level changed to" << suppression_level_;
+
+    if ((suppression_level_ >= min_table_staleness_)
+        || (suppression_level_ <= 0))
+      suppression_level_ = min_table_staleness_ - 2;
+
+    suppression_level_ = 2;
+
+    CHECK(suppression_level_ > 0) << "min_table_staleness = " << min_table_staleness_;
+    LOG(INFO) << "suppression level changed to " << suppression_level_;
   }
 
   //LOG(INFO) << "HandleClock send bytes = " << sent_size
@@ -625,6 +624,16 @@ long SSPAggrBgWorker::BgIdleWork() {
 }
 
 void SSPAggrBgWorker::HandleEarlyCommOn() {
+  if (GlobalContext::get_suppression_on()) {
+    if (min_table_staleness_ <= 2) {
+      suppression_level_ = 0;
+    } else {
+      suppression_level_ = 1;
+    }
+  } else {
+    suppression_level_ = 0;
+  }
+
   ResetBgIdleMilli_ = &SSPAggrBgWorker::ResetBgIdleMilliEarlyComm;
   EarlyCommOnMsg msg;
   for (const auto &server_id : server_ids_) {

@@ -3,25 +3,27 @@
 # Input files:
 #data_filename="/l0/netflix.dat.list.gl"
 #data_filename="/l0/movielens_10m.dat"
-data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
+#data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x2"
-#data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
+data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 host_filename="../../machinefiles/servers"
 #host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=500
-init_step_size=5e-5
-step_dec=0.985
+K=3500
+#init_step_size=5e-5
+#step_dec=0.985
+init_step_size=2.5e-4
+step_dec=0.995
 use_step_dec=true # false to use power decay.
 lambda=0
 data_format=list
 
 # Execution parameters:
-num_iterations=32
+num_iterations=80
 consistency_model="SSPAggr"
 num_worker_threads=64
 num_comm_channels_per_client=1
@@ -38,7 +40,7 @@ row_oplog_type=0
 # SSPAggr parameters:
 bg_idle_milli=2
 # Total bandwidth: bandwidth_mbps * num_comm_channels_per_client * 2
-bandwidth_mbps=100
+bandwidth_mbps=470
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
 thread_oplog_batch_size=1600000
 server_idle_milli=2
@@ -60,7 +62,7 @@ no_oplog_replay=true
 numa_opt=false
 numa_policy=Even
 naive_table_oplog_meta=false
-suppression_on=true
+suppression_on=false
 use_approx_sort=false
 
 # Find other Petuum paths by using the script's path
@@ -81,8 +83,8 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_jan_14_8x1_suppression_test"
-output_dir="${output_dir}/${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${bandwidth_mbps}_${num_iterations}_${num_comm_channels_per_client}"
+output_dir="$app_dir/output_jan_15_8x1_mbssp_debug"
+output_dir="${output_dir}/${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${bandwidth_mbps}_${num_iterations}_${num_comm_channels_per_client}_${suppression_on}_fixed_${init_step_size}_${step_dec}"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
   echo $output_dir

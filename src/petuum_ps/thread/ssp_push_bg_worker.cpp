@@ -42,11 +42,12 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &s
     //        << " " << my_id_;
 
     if (new_clock) {
-      int32_t new_system_clock = bg_server_clock_->Tick(my_id_);
+      int32_t new_system_clock = bg_server_clock_->TickUntil(
+          my_id_, new_clock);
       //LOG(INFO) << "new_system_clock = " << new_system_clock;
 
       if (new_system_clock) {
-        *system_clock_ += 1;
+        *system_clock_ = new_system_clock;
         std::unique_lock<std::mutex> lock(*system_clock_mtx_);
         system_clock_cv_->notify_all();
       }

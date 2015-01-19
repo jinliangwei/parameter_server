@@ -1093,6 +1093,7 @@ void *AbstractBgWorker::operator() () {
           //        << " " << my_id_;
           timeout_milli = HandleClockMsg(true);
           ++client_clock_;
+          //LOG(INFO) << client_clock_ << " " << my_id_;
           //LOG(INFO) << "bg_sent_oplog = " << client_clock_
           //        << " " << my_id_;
 

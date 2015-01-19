@@ -2,6 +2,7 @@
 #include <cassert>
 #include <boost/thread.hpp>   // pthread status code
 #include <pthread.h>
+#include <glog/logging.h>
 
 namespace petuum {
 
@@ -19,6 +20,7 @@ SharedMutex::~SharedMutex() {
 
 void SharedMutex::lock() {
   int status = pthread_rwlock_wrlock(&rw_lock_);
+  CHECK_EQ(status, 0);
   assert(status == 0);
 }
 

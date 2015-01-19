@@ -163,6 +163,10 @@ void ServerThread::HandleCreateTable(int32_t sender_id,
   min_table_staleness_
       = std::min(min_table_staleness_,
                  table_info.table_staleness);
+
+  //LOG(INFO) << "table_info.table_staleness = "
+  //        << table_info.table_staleness
+  //        << " table_id = " << create_table_msg.get_table_id();
 }
 
 void ServerThread::HandleRowRequest(int32_t sender_id,
