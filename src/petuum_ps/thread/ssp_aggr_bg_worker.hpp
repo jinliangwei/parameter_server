@@ -27,7 +27,8 @@ public:
                       bg_server_clock),
       min_table_staleness_(INT_MAX),
       suppression_level_(0),
-      clock_tick_sec_(0) {
+    clock_tick_sec_(0),
+    suppression_on_(false) {
     ResetBgIdleMilli_ = &SSPAggrBgWorker::ResetBgIdleMilliNoEarlyComm;
   }
 
@@ -114,6 +115,8 @@ protected:
   int32_t suppression_level_;
   double clock_tick_sec_;
   ResetBgIdleMilliFunc ResetBgIdleMilli_;
+
+  bool suppression_on_;
 };
 
 }

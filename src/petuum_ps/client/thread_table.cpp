@@ -12,11 +12,21 @@ namespace petuum {
 
 ThreadTable::ThreadTable(
     const AbstractRow *sample_row, int32_t row_oplog_type,
-    size_t dense_row_oplog_capacity) :
+    size_t dense_row_oplog_capacity):
     oplog_index_(GlobalContext::get_num_comm_channels_per_client()),
     sample_row_(sample_row),
-    update_count_(0),
     dense_row_oplog_capacity_(dense_row_oplog_capacity) {
+
+  {
+    int32_t my_id = ThreadContext::get_id();
+    int32_t my_client_id = GlobalContext::get_client_id();
+    int32_t thread_id_min = GlobalContext::get_thread_id_min(my_client_id);
+    int32_t my_index = my_id - thread_id_min;
+    size_t num_table_threads = GlobalContext::get_num_table_threads();
+    update_count_
+        = (GlobalContext::get_thread_oplog_batch_size() / num_table_threads)
+        * my_index;
+  }
 
   ApplyThreadOpLog_ = &ThreadTable::ApplyThreadOpLogSSP;
 

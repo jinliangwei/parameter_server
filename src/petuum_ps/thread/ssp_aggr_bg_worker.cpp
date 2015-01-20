@@ -12,8 +12,6 @@ void SSPAggrBgWorker::SetWaitMsg() {
 void SSPAggrBgWorker::PrepareBeforeInfiniteLoop() {
   msg_send_timer_.restart();
   clock_timer_.restart();
-
-  //LOG(INFO) << "suppression level init to " << suppression_level_;
 }
 
 void SSPAggrBgWorker::FinalizeTableStats() {
@@ -384,10 +382,11 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
     return ResetBgIdleMilli();
   }
 
-  if (suppression_level_ > 0
+  if (suppression_on_
       && clock_has_pushed_ >= (client_clock_ - suppression_level_)) {
     //LOG(INFO) << "clock_has_pushed = " << clock_has_pushed_
-    //        << " client_clock = " << client_clock_;
+    //        << " client_clock = " << client_clock_
+    //        << " clock msg suppressed";
     return ResetBgIdleMilli();
   }
 
@@ -411,9 +410,11 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   msg_send_timer_.restart();
 
   STATS_BG_ACCUM_CLOCK_END_OPLOG_SERIALIZE_BEGIN();
+  HighResolutionTimer serialize_timer;
   BgOpLog *bg_oplog = PrepareOpLogsToSend(clock_to_push);
 
   CreateOpLogMsgs(bg_oplog);
+  double serialize_sec = serialize_timer.elapsed();
   STATS_BG_ACCUM_CLOCK_END_OPLOG_SERIALIZE_END();
 
   size_t sent_size = SendOpLogMsgs(true);
@@ -424,26 +425,22 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
       + left_over_send_milli_sec;
 
   // reset suppression level
-  if ((suppression_level_ > 0)) {
+  if (suppression_on_) {
+    // num seconds to send updates and fetch up-to-date parameters
     double comm_sec = oplog_send_milli_sec_*2;
-    double window_sec = min_table_staleness_ * clock_tick_sec_;
+    double construct_comm_sec = serialize_sec + comm_sec;
     double comm_clock_ticks = comm_sec / clock_tick_sec_;
-    if (comm_clock_ticks < 1) comm_clock_ticks = 1;
-    int32_t comm_clock_ticks_int = (int32_t) comm_clock_ticks;
+    int32_t construct_comm_clock_ticks = (int32_t) (construct_comm_sec / clock_tick_sec_) + 1;
+    // round down
+    int32_t suppression_level_min = (int32_t) comm_clock_ticks;
+    int32_t suppression_level_max = min_table_staleness_ - 1 - construct_comm_clock_ticks;
 
-    if (comm_clock_ticks_int <= 1 || comm_sec < window_sec) {
-      suppression_level_ = min_table_staleness_ - comm_clock_ticks_int - 2;
-    } else {
-      suppression_level_ = comm_clock_ticks_int;
-    }
+    if (suppression_level_max > suppression_level_min)
+      suppression_level_ = suppression_level_max;
+    else
+      suppression_level_ = suppression_level_min;
 
-    if ((suppression_level_ >= min_table_staleness_)
-        || (suppression_level_ <= 0))
-      suppression_level_ = min_table_staleness_ - 2;
-
-    suppression_level_ = 2;
-
-    CHECK(suppression_level_ > 0) << "min_table_staleness = " << min_table_staleness_;
+    CHECK(suppression_level_ >= 0) << "min_table_staleness = " << min_table_staleness_;
     LOG(INFO) << "suppression level changed to " << suppression_level_;
   }
 
@@ -628,7 +625,8 @@ void SSPAggrBgWorker::HandleEarlyCommOn() {
     if (min_table_staleness_ <= 2) {
       suppression_level_ = 0;
     } else {
-      suppression_level_ = 1;
+      suppression_level_ = 0;
+      suppression_on_ = true;
     }
   } else {
     suppression_level_ = 0;
