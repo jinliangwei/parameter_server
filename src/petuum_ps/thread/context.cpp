@@ -48,7 +48,8 @@ UpdateSortPolicy GlobalContext::update_sort_policy_;
 
 long GlobalContext::bg_idle_milli_;
 
-double GlobalContext::bandwidth_mbps_;
+double GlobalContext::client_bandwidth_mbps_;
+double GlobalContext::server_bandwidth_mbps_;
 
 size_t GlobalContext::thread_oplog_batch_size_;
 

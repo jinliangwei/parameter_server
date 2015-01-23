@@ -19,7 +19,8 @@ DECLARE_string(hostfile);
 DECLARE_string(consistency_model);
 
 // SSPAggr Configs -- client side
-DECLARE_uint64(bandwidth_mbps);
+DECLARE_uint64(client_bandwidth_mbps);
+DECLARE_uint64(server_bandwidth_mbps);
 DECLARE_uint64(bg_idle_milli);
 
 DECLARE_uint64(thread_oplog_batch_size);

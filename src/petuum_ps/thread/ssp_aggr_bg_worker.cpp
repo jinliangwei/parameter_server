@@ -368,7 +368,7 @@ BgOpLog *SSPAggrBgWorker::PrepareOpLogsToSend(int32_t clock_to_push) {
 
 long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   if (!clock_advanced)
-    return GlobalContext::get_bg_idle_milli();
+    return ResetBgIdleMilli();
 
   if (!pending_clock_send_oplog_) {
     clock_tick_sec_ = clock_timer_.elapsed();
@@ -382,6 +382,21 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
     return ResetBgIdleMilli();
   }
 
+  if (client_clock_ <= clock_has_pushed_) {
+    if (suppression_on_) {
+      LOG(ERROR) << "client_clock > clock_has_pushed failed"
+                 << " client_clock = " << client_clock_
+                 << " clock_has_pushed_ = " << clock_has_pushed_
+                 << " my_id = " << my_id_;
+    } else {
+      LOG(ERROR) << "client_clock > clock_has_pushed failed"
+                 << " client_clock = " << client_clock_
+                 << " clock_has_pushed_ = " << clock_has_pushed_
+                 << " my_id = " << my_id_;
+      client_clock_ = clock_has_pushed_ + 1;
+    }
+  }
+
   if (suppression_on_
       && clock_has_pushed_ >= (client_clock_ - suppression_level_)) {
     //LOG(INFO) << "clock_has_pushed = " << clock_has_pushed_
@@ -389,10 +404,6 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
     //        << " clock msg suppressed";
     return ResetBgIdleMilli();
   }
-
-  CHECK(client_clock_ > clock_has_pushed_)
-      << "client_clock = " << client_clock_
-      << " clock_has_pushed_ = " << clock_has_pushed_;
 
   int32_t clock_to_push = client_clock_;
   clock_has_pushed_ = clock_to_push;
@@ -420,8 +431,11 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   size_t sent_size = SendOpLogMsgs(true);
   TrackBgOpLog(bg_oplog);
 
+  //LOG(INFO) << "sent size = " << sent_size;
+
   oplog_send_milli_sec_
-      = TransTimeEstimate::EstimateTransMillisec(sent_size)
+      = TransTimeEstimate::EstimateTransMillisec(
+          sent_size, GlobalContext::get_client_bandwidth_mbps())
       + left_over_send_milli_sec;
 
   // reset suppression level
@@ -431,9 +445,14 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
     double construct_comm_sec = serialize_sec + comm_sec;
     double comm_clock_ticks = comm_sec / clock_tick_sec_;
     int32_t construct_comm_clock_ticks = (int32_t) (construct_comm_sec / clock_tick_sec_) + 1;
+    int32_t comm_clock_ticks_int = (comm_clock_ticks > (min_table_staleness_ - 1))
+                                   ? (min_table_staleness_ - 1) : comm_clock_ticks;
+    int32_t construct_comm_clock_ticks_int =
+        (construct_comm_clock_ticks > (min_table_staleness_ - 1))
+        ? (min_table_staleness_ - 1) : construct_comm_clock_ticks;
     // round down
-    int32_t suppression_level_min = (int32_t) comm_clock_ticks;
-    int32_t suppression_level_max = min_table_staleness_ - 1 - construct_comm_clock_ticks;
+    int32_t suppression_level_min = comm_clock_ticks_int;
+    int32_t suppression_level_max = min_table_staleness_ - 1 - construct_comm_clock_ticks_int;
 
     if (suppression_level_max > suppression_level_min)
       suppression_level_ = suppression_level_max;
@@ -608,7 +627,8 @@ long SSPAggrBgWorker::BgIdleWork() {
   TrackBgOpLog(bg_oplog);
 
   oplog_send_milli_sec_
-      = TransTimeEstimate::EstimateTransMillisec(sent_size);
+      = TransTimeEstimate::EstimateTransMillisec(
+          sent_size, GlobalContext::get_server_bandwidth_mbps());
 
   STATS_BG_ACCUM_IDLE_SEND_END();
 
@@ -629,6 +649,7 @@ void SSPAggrBgWorker::HandleEarlyCommOn() {
       suppression_on_ = true;
     }
   } else {
+    suppression_on_ = false;
     suppression_level_ = 0;
   }
 

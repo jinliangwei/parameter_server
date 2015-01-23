@@ -147,7 +147,8 @@ public:
       const std::string &resume_dir,
       UpdateSortPolicy update_sort_policy,
       long bg_idle_milli,
-      double bandwidth_mbps,
+      double client_bandwidth_mbps,
+      double server_bandwidth_mbps,
       size_t thread_oplog_batch_size,
       long server_idle_milli,
       int32_t row_candidate_factor,
@@ -182,7 +183,8 @@ public:
     update_sort_policy_ = update_sort_policy;
     bg_idle_milli_ = bg_idle_milli;
 
-    bandwidth_mbps_ = bandwidth_mbps;
+    client_bandwidth_mbps_ = client_bandwidth_mbps;
+    server_bandwidth_mbps_ = server_bandwidth_mbps;
     thread_oplog_batch_size_ = thread_oplog_batch_size;
 
     server_idle_milli_ = server_idle_milli;
@@ -361,8 +363,12 @@ public:
     return bg_idle_milli_;
   }
 
-  static double get_bandwidth_mbps() {
-    return bandwidth_mbps_;
+  static double get_client_bandwidth_mbps() {
+    return client_bandwidth_mbps_;
+  }
+
+  static double get_server_bandwidth_mbps() {
+    return server_bandwidth_mbps_;
   }
 
   static size_t get_thread_oplog_batch_size() {
@@ -436,7 +442,8 @@ private:
   static UpdateSortPolicy update_sort_policy_;
   static long bg_idle_milli_;
 
-  static double bandwidth_mbps_;
+  static double client_bandwidth_mbps_;
+  static double server_bandwidth_mbps_;
 
   static size_t thread_oplog_batch_size_;
 

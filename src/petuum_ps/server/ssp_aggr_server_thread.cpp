@@ -35,7 +35,8 @@ long SSPAggrServerThread::ServerIdleWork() {
       STATS_SERVER_IDLE_SEND_INC_ONE();
       STATS_SERVER_ACCUM_IDLE_ROW_SENT_BYTES(sent_bytes);
 
-      row_send_milli_sec_ = TransTimeEstimate::EstimateTransMillisec(sent_bytes);
+      row_send_milli_sec_ = TransTimeEstimate::EstimateTransMillisec(
+          sent_bytes, GlobalContext::get_server_bandwidth_mbps());
 
       //LOG(INFO) << "ServerIdle send bytes = " << sent_bytes
       //        << " bw = " << GlobalContext::get_bandwidth_mbps()
@@ -82,7 +83,8 @@ void SSPAggrServerThread::ServerPushRow() {
     left_over_send_milli_sec = std::max<double>(0, row_send_milli_sec_ - send_elapsed_milli);
   }
 
-  row_send_milli_sec_ = TransTimeEstimate::EstimateTransMillisec(sent_bytes)
+  row_send_milli_sec_ = TransTimeEstimate::EstimateTransMillisec(
+      sent_bytes, GlobalContext::get_server_bandwidth_mbps())
                         + left_over_send_milli_sec;
   msg_send_timer_.restart();
 

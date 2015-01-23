@@ -26,9 +26,10 @@ public:
                       system_clock_cv,
                       bg_server_clock),
       min_table_staleness_(INT_MAX),
+      oplog_send_milli_sec_(0),
       suppression_level_(0),
-    clock_tick_sec_(0),
-    suppression_on_(false) {
+      clock_tick_sec_(0),
+      suppression_on_(false) {
     ResetBgIdleMilli_ = &SSPAggrBgWorker::ResetBgIdleMilliNoEarlyComm;
   }
 

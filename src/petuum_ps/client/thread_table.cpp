@@ -26,6 +26,7 @@ ThreadTable::ThreadTable(
     update_count_
         = (GlobalContext::get_thread_oplog_batch_size() / num_table_threads)
         * my_index;
+    //LOG(INFO) << "update count = " << update_count_;
   }
 
   ApplyThreadOpLog_ = &ThreadTable::ApplyThreadOpLogSSP;

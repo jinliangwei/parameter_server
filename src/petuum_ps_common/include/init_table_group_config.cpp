@@ -29,7 +29,8 @@ void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables) {
   config->update_sort_policy = GetUpdateSortPolicy(FLAGS_update_sort_policy);
 
   config->bg_idle_milli = FLAGS_bg_idle_milli;
-  config->bandwidth_mbps = FLAGS_bandwidth_mbps;
+  config->client_bandwidth_mbps = FLAGS_client_bandwidth_mbps;
+  config->server_bandwidth_mbps = FLAGS_server_bandwidth_mbps;
   config->thread_oplog_batch_size = FLAGS_thread_oplog_batch_size;
   config->row_candidate_factor = FLAGS_row_candidate_factor;
   config->server_idle_milli = FLAGS_server_idle_milli;

@@ -1092,7 +1092,7 @@ void *AbstractBgWorker::operator() () {
           //LOG(INFO) << "bg_recv_clock = " << (client_clock_ + 1)
           //        << " " << my_id_;
           timeout_milli = HandleClockMsg(true);
-          ++client_clock_;
+          client_clock_ += 1;
           //LOG(INFO) << client_clock_ << " " << my_id_;
           //LOG(INFO) << "bg_sent_oplog = " << client_clock_
           //        << " " << my_id_;

@@ -73,7 +73,8 @@ struct TableGroupConfig {
       resume_clock(-1),
       update_sort_policy(Random),
       bg_idle_milli(2),
-      bandwidth_mbps(40),
+      client_bandwidth_mbps(40),
+      server_bandwidth_mbps(40),
       thread_oplog_batch_size(100*1000*1000),
       row_candidate_factor(5),
       numa_opt(false),
@@ -142,7 +143,8 @@ struct TableGroupConfig {
   long bg_idle_milli;
 
   // Bandwidth in Megabits per second
-  double bandwidth_mbps;
+  double client_bandwidth_mbps;
+  double server_bandwidth_mbps;
 
   size_t thread_oplog_batch_size;
 

@@ -7,9 +7,10 @@ namespace petuum {
 
 class TransTimeEstimate {
 public:
-  static double EstimateTransMillisec(size_t accum_sent_bytes) {
+  static double EstimateTransMillisec(size_t accum_sent_bytes,
+                                      double bandwidth_mbps) {
     return (accum_sent_bytes * kNumBitsPerByte)
-        / GlobalContext::get_bandwidth_mbps() / kOneThousand;
+        / bandwidth_mbps / kOneThousand;
   }
 };
 
