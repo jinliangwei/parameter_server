@@ -1,5 +1,8 @@
 #include <petuum_ps_common/include/petuum_ps.hpp>
-#include <petuum_ps_common/include/system_gflags.hpp>
+#include <petuum_ps_common/include/system_gflags_declare.hpp>
+#include <petuum_ps_common/include/table_gflags_declare.hpp>
+#include <petuum_ps_common/include/init_table_config.hpp>
+#include <petuum_ps_common/include/init_table_group_config.hpp>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <vector>
@@ -85,16 +88,6 @@ DEFINE_double(init_B_low, 0.0, "Initial value for B are drawed uniformly from "
 DEFINE_double(init_B_high, 0.0, "Initial value for B are drawed uniformly from "
         "init_B_low to init_B_high");
 
-/* Misc */
-DEFINE_int32(table_staleness, 0, "Staleness for dictionary table."
-        "Default value is 0.");
-
-/* No need to change the following */
-DEFINE_int32(row_oplog_type, petuum::RowOpLogType::kDenseRowOpLog, 
-        "row oplog type");
-DEFINE_bool(oplog_dense_serialized, true, "dense serialized oplog");
-DEFINE_string(process_storage_type, "BoundedDense", "process storage type");
-
 int main(int argc, char * argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
@@ -104,15 +97,6 @@ int main(int argc, char * argv[]) {
     // + 1 for main()
     table_group_config.client_id = FLAGS_client_id;
     
-    petuum::ProcessStorageType process_storage_type;
-    if (FLAGS_process_storage_type == "BoundedDense") {
-        process_storage_type = petuum::BoundedDense;
-    } else if (FLAGS_process_storage_type == "BoundedSparse") {
-        process_storage_type = petuum::BoundedSparse;
-    } else {
-        LOG(FATAL) << "Unknown process storage type " << FLAGS_process_storage_type;
-    }
-
     // Configure row types
     petuum::PSTableGroup::RegisterRow<petuum::DenseRow<float> >(0);
 
@@ -125,24 +109,21 @@ int main(int argc, char * argv[]) {
     LOG(INFO) << "Data loaded!";
     STATS_APP_LOAD_DATA_END();
 
+    petuum::ClientTableConfig table_config;
+    petuum::InitTableConfig(&table_config);
+    
     // Create PS table
     //
     // B_table (dictionary_size by number of rows in input matrix)
-    petuum::ClientTableConfig table_config;
-    table_config.table_info.row_type = 0;
-    table_config.table_info.table_staleness = FLAGS_table_staleness;
     table_config.table_info.row_capacity = FLAGS_m;
     // Assume all rows put into memory
     table_config.process_cache_capacity = 
         (FLAGS_dictionary_size == 0? FLAGS_n: FLAGS_dictionary_size);
     table_config.table_info.row_oplog_type = FLAGS_row_oplog_type;
-    table_config.table_info.oplog_dense_serialized = 
-        FLAGS_oplog_dense_serialized;
     table_config.table_info.dense_row_oplog_capacity = 
         table_config.table_info.row_capacity;
     table_config.thread_cache_capacity = 1;
     table_config.oplog_capacity = table_config.process_cache_capacity;
-    table_config.process_storage_type = process_storage_type;
 
     CHECK(petuum::PSTableGroup::CreateTable(0, table_config)) 
         << "Failed to create dictionary table";
@@ -155,19 +136,15 @@ int main(int argc, char * argv[]) {
     int num_eval_per_client = 
         (FLAGS_num_epochs * iter_minibatch - 1) 
           / FLAGS_num_eval_minibatch + 1;
-    table_config.table_info.row_type = 0;
     table_config.table_info.table_staleness = 99;
     table_config.table_info.row_capacity = 1;
     table_config.process_cache_capacity = 
         num_eval_per_client * FLAGS_num_clients * 2;
     table_config.table_info.row_oplog_type = FLAGS_row_oplog_type;
-    table_config.table_info.oplog_dense_serialized = 
-        FLAGS_oplog_dense_serialized;
     table_config.table_info.dense_row_oplog_capacity = 
         table_config.table_info.row_capacity;
     table_config.thread_cache_capacity = 1;
     table_config.oplog_capacity = table_config.process_cache_capacity;
-    table_config.process_storage_type = process_storage_type;
 
     CHECK(petuum::PSTableGroup::CreateTable(1, table_config))
         << "Failed to create loss table";
