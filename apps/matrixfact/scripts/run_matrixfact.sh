@@ -9,24 +9,32 @@
 data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
-host_filename="../../machinefiles/servers"
-#host_filename="../../machinefiles/localserver"
+#host_filename="../../machinefiles/servers"
+host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=3500
-#init_step_size=5e-5
+K=4
+# works for SSPPush
+#init_step_size=4e-5
 #step_dec=0.985
+ works for SSPAggr 1GbE
 init_step_size=2.5e-4
 step_dec=0.995
+#works for SSPAggr 40GbE
+#init_step_size=4.8e-4
+#step_dec=0.995
+#single machine
+#init_step_size=8e-3
+#step_dec=0.995
 use_step_dec=true # false to use power decay.
 lambda=0
 data_format=list
 
 # Execution parameters:
-num_iterations=80
+num_iterations=5
 consistency_model="SSPAggr"
 num_worker_threads=64
-num_comm_channels_per_client=1
+num_comm_channels_per_client=2
 table_staleness=4 # effective staleness is staleness / num_clocks_per_iter.
 N_cache_size=480190
 #N_cache_size=500000
@@ -40,7 +48,8 @@ row_oplog_type=0
 # SSPAggr parameters:
 bg_idle_milli=2
 # Total bandwidth: bandwidth_mbps * num_comm_channels_per_client * 2
-bandwidth_mbps=470
+client_bandwidth_mbps=250
+server_bandwidth_mbps=250
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
 thread_oplog_batch_size=1600000
 server_idle_milli=2
@@ -51,7 +60,7 @@ append_only_buffer_capacity=$((1024*1024*4))
 append_only_buffer_pool_size=3
 bg_apply_append_oplog_freq=64
 
-N_client_send_oplog_upper_bound=1000
+N_client_send_oplog_upper_bound=500
 M_client_send_oplog_upper_bound=2000
 server_push_row_upper_bound=500
 
@@ -83,8 +92,10 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_jan_15_8x1_mbssp_debug"
-output_dir="${output_dir}/${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${bandwidth_mbps}_${num_iterations}_${num_comm_channels_per_client}_${suppression_on}_fixed_${init_step_size}_${step_dec}"
+output_dir="$app_dir/output_debug_jan_25_1x1_mbssp"
+output_dir="${output_dir}/${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
+output_dir="${output_dir}_${num_iterations}_${thread_oplog_batch_size}_${suppression_on}_fixed_${init_step_size}_${step_dec}_${num_comm_channels_per_client}"
+output_dir="${output_dir}_${server_push_row_upper_bound}"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
   echo $output_dir
@@ -103,6 +114,7 @@ echo "Killing previous instances of '$progname' on servers, please wait..."
 for ip in $unique_host_list; do
   ssh $ssh_options $ip \
     killall -q $progname
+  echo $ip
 done
 echo "All done!"
 # exit
@@ -139,7 +151,8 @@ for ip in $host_list; do
     --client_id $client_id \
     --hostfile ${host_file} \
     --consistency_model $consistency_model \
-    --bandwidth_mbps $bandwidth_mbps \
+    --client_bandwidth_mbps $client_bandwidth_mbps \
+    --server_bandwidth_mbps $server_bandwidth_mbps \
     --bg_idle_milli $bg_idle_milli \
     --thread_oplog_batch_size $thread_oplog_batch_size \
     --row_candidate_factor ${row_candidate_factor}

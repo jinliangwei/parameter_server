@@ -407,6 +407,12 @@ void Stats::DeregisterBgThread() {
   if (bg_accum_num_waits_on_ack_idle_.size() == 0) {
     bg_accum_num_waits_on_ack_idle_ = stats.accum_num_waits_on_ack_idle;
   } else {
+    CHECK_EQ(stats.accum_num_waits_on_ack_idle.size(),
+             bg_accum_num_waits_on_ack_idle_.size())
+        << "bg num_waits_on_ack_idle not equal! "
+        << " thread = " << stats.accum_num_waits_on_ack_idle.size()
+        << " process = " << bg_accum_num_waits_on_ack_idle_.size();
+
     for (int i = 0; i < stats.accum_num_waits_on_ack_idle.size(); ++i) {
       bg_accum_num_waits_on_ack_idle_[i]
           = stats.accum_num_waits_on_ack_idle[i];
@@ -416,6 +422,12 @@ void Stats::DeregisterBgThread() {
   if (bg_accum_num_waits_on_ack_clock_.size() == 0) {
     bg_accum_num_waits_on_ack_clock_ = stats.accum_num_waits_on_ack_clock;
   } else {
+    CHECK_EQ(stats.accum_num_waits_on_ack_clock.size(),
+             bg_accum_num_waits_on_ack_clock_.size())
+        << "bg num_waits_on_ack_clock not equal! "
+        << " thread = " << stats.accum_num_waits_on_ack_clock.size()
+        << " process = " << bg_accum_num_waits_on_ack_clock_.size();
+
     for (int i = 0; i < stats.accum_num_waits_on_ack_clock.size(); ++i) {
       bg_accum_num_waits_on_ack_clock_[i]
           = stats.accum_num_waits_on_ack_clock[i];
@@ -503,7 +515,7 @@ void Stats::DeregisterServerThread() {
     server_accum_num_waits_on_ack_idle_ = stats.accum_num_waits_on_ack_idle;
   } else {
     for (int i = 0; i < stats.accum_num_waits_on_ack_idle.size(); ++i) {
-      bg_accum_num_waits_on_ack_idle_[i]
+      server_accum_num_waits_on_ack_idle_[i]
           = stats.accum_num_waits_on_ack_idle[i];
     }
   }
