@@ -24,6 +24,11 @@ public:
     std::unique_lock<std::mutex> lock(DenseRowCore<V>::mtx_);
     DenseRowCore<V>::store_.Copy(to);
   }
+
+  // not thread-safe
+  const void *GetDataPtr() const {
+    return DenseRowCore<V>::store_.GetDataPtr();
+  }
 };
 
 }

@@ -34,13 +34,15 @@ void ReadDataLabelBinary(const std::string& filename,
 void ReadDataLabelLibSVM(const std::string& filename,
     int32_t feature_dim, int32_t num_data,
     std::vector<AbstractFeature<float>*>* features, std::vector<int32_t>* labels,
-    bool feature_one_based = false, bool label_one_based = false);
+    bool feature_one_based = false, bool label_one_based = false,
+    bool snappy_compressed = false);
 
 // Read LibSVM into std::vector<float>.
 void ReadDataLabelLibSVM(const std::string& filename,
     int32_t feature_dim, int32_t num_data,
     std::vector<std::vector<float> >* features, std::vector<int32_t>* labels,
-    bool feature_one_based = false, bool label_one_based = false);
+    bool feature_one_based = false, bool label_one_based = false,
+    bool snappy_compressed = false);
 
 }  // namespace ml
 }  // namespace petuum

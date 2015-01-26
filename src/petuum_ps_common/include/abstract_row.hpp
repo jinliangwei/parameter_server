@@ -38,8 +38,8 @@ public:
   virtual void ResetRowData(const void *data, size_t num_bytes) = 0;
 
   // Write lock ensure mutual exclusiveness for non-thread-safe functions
-  virtual void GetWriteLock() = 0;
-  virtual void ReleaseWriteLock() = 0;
+  virtual void GetWriteLock() const = 0;
+  virtual void ReleaseWriteLock() const = 0;
 
   // Thread safe.
   virtual double ApplyIncGetImportance(int32_t column_id, const void *update) = 0;
