@@ -164,7 +164,7 @@ public:
 
   template<typename ROW>
   const ROW &Get(int32_t row_id, RowAccessor *row_accessor = 0) {
-    return *(dynamic_cast<ROW*>(
+    return *(static_cast<ROW*>(
         system_table_->Get(row_id, row_accessor)->GetRowDataPtr()));
   }
 
