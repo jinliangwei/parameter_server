@@ -417,7 +417,7 @@ long AbstractBgWorker::HandleClockMsg(bool clock_advanced) {
   CreateOpLogMsgs(bg_oplog);
   STATS_BG_ACCUM_CLOCK_END_OPLOG_SERIALIZE_END();
 
-  clock_has_pushed_ = client_clock_;
+  clock_has_pushed_ = client_clock_ - 1;
 
   SendOpLogMsgs(clock_advanced);
   TrackBgOpLog(bg_oplog);
@@ -1091,8 +1091,9 @@ void *AbstractBgWorker::operator() () {
         {
           //LOG(INFO) << "bg_recv_clock = " << (client_clock_ + 1)
           //        << " " << my_id_;
-          timeout_milli = HandleClockMsg(true);
           client_clock_ += 1;
+          timeout_milli = HandleClockMsg(true);
+          //LOG(INFO) << "HandleClockMsg done, timeout_milli = " << timeout_milli;
           //LOG(INFO) << client_clock_ << " " << my_id_;
           //LOG(INFO) << "bg_sent_oplog = " << client_clock_
           //        << " " << my_id_;

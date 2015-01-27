@@ -120,8 +120,8 @@ void Server::Init(int32_t server_id,
      const void *oplog, size_t oplog_size, int32_t bg_thread_id,
      uint32_t version) {
 
-   LOG(INFO) << "Apply oplog from " << bg_thread_id
-             << " oplog size = " << oplog_size;
+   //LOG(INFO) << "Apply oplog from " << bg_thread_id
+   //        << " oplog size = " << oplog_size;
 
    CHECK_EQ(bg_version_map_[bg_thread_id] + 1, version)
        << "bg_thread_id = " << bg_thread_id;

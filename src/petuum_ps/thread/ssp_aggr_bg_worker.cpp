@@ -382,34 +382,23 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
     return ResetBgIdleMilli();
   }
 
-  if (client_clock_ <= clock_has_pushed_) {
-    if (suppression_on_) {
-      LOG(ERROR) << "client_clock > clock_has_pushed failed"
-                 << " client_clock = " << client_clock_
-                 << " clock_has_pushed_ = " << clock_has_pushed_
-                 << " my_id = " << my_id_;
-    } else {
-      LOG(ERROR) << "client_clock > clock_has_pushed failed"
-                 << " client_clock = " << client_clock_
-                 << " clock_has_pushed_ = " << clock_has_pushed_
-                 << " my_id = " << my_id_;
-      client_clock_ = clock_has_pushed_ + 1;
-    }
-  }
+  CHECK_GT(client_clock_ - 1, clock_has_pushed_)
+      << "(client_clock - 1) > clock_has_pushed failed"
+      << " client_clock = " << client_clock_
+      << " clock_has_pushed_ = " << clock_has_pushed_
+      << " my_id = " << my_id_;
 
   if (suppression_on_
-      && clock_has_pushed_ >= (client_clock_ - suppression_level_)) {
-    //LOG(INFO) << "clock_has_pushed = " << clock_has_pushed_
-    //        << " client_clock = " << client_clock_
-    //        << " clock msg suppressed";
+      && clock_has_pushed_ >= (client_clock_ - 1 - suppression_level_)) {
     return ResetBgIdleMilli();
   }
 
-  int32_t clock_to_push = client_clock_;
+  int32_t clock_to_push = client_clock_ - 1;
   clock_has_pushed_ = clock_to_push;
 
   //LOG(INFO) << "Clock to push = " << clock_to_push
-  //        << " clock has pushed = " << clock_has_pushed_;
+  //        << " clock has pushed = " << clock_has_pushed_
+  //        << " " << ThreadContext::get_id();;
 
   double left_over_send_milli_sec = 0;
 
@@ -431,7 +420,8 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   size_t sent_size = SendOpLogMsgs(true);
   TrackBgOpLog(bg_oplog);
 
-  //LOG(INFO) << "sent size = " << sent_size;
+  //LOG(INFO) << "sent size = " << sent_size
+  //        << " " << ThreadContext::get_id();
 
   oplog_send_milli_sec_
       = TransTimeEstimate::EstimateTransMillisec(
