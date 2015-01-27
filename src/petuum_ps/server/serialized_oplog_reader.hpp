@@ -2,6 +2,8 @@
 
 #include <boost/noncopyable.hpp>
 #include <petuum_ps/server/server_table.hpp>
+#include <petuum_ps/thread/context.hpp>
+
 
 namespace petuum {
 
@@ -106,6 +108,23 @@ private:
     offset_ += sizeof(int32_t);
 
     auto table_iter = server_tables_.find(current_table_id_);
+
+    CHECK(table_iter != server_tables_.end())
+        << "table_id = " << current_table_id_
+        << " not found!"
+        << " num_tables_left = " << num_tables_left_
+        << " num_rows_left_in_current_table_ = "
+        << num_rows_left_in_current_table_
+        << " update_size = " << update_size_;
+
+    //    LOG(INFO) << "thread id = " << ThreadContext::get_id();
+    //        << " table_id = " << current_table_id_
+    //        << " num_tables_left = " << num_tables_left_
+    //        << " num_rows_left_in_current_table_ = "
+    //        << num_rows_left_in_current_table_
+    //        << " update_size = " << update_size_;
+
+
     curr_sample_row_oplog_ = table_iter->second.get_sample_row_oplog();
     if (table_iter->second.oplog_dense_serialized())
       GetNextUpdate_ = GetNextUpdateDense;
