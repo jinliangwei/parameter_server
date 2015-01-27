@@ -36,6 +36,8 @@ public:
 
   const void Copy(void *to) const;
 
+  const void *GetDataPtr() const;
+
 private:
   std::vector<V> data_;
 };
@@ -111,6 +113,11 @@ template<typename V>
 const void VectorStore<V>::Copy(void *to) const {
   std::vector<V> *vec = reinterpret_cast<std::vector<V>*>(to);
   memcpy(vec->data(), data_.data(), data_.size()*sizeof(V));
+}
+
+template<typename V>
+const void *VectorStore<V>::GetDataPtr() const {
+  return &data_;
 }
 
 }

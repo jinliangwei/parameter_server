@@ -30,9 +30,9 @@ public:
 
   virtual void ResetRowData(const void *data, size_t num_bytes);
 
-  virtual void GetWriteLock();
+  virtual void GetWriteLock() const;
 
-  virtual void ReleaseWriteLock();
+  virtual void ReleaseWriteLock() const;
 
   virtual void ApplyIncUnsafe(int32_t column_id, const void *update);
 
@@ -144,13 +144,13 @@ void NumericStoreRow<StoreType, V, ImpCalc>::ResetRowData(const void *data, size
 
 template<template<typename> class StoreType, typename V,
          template<typename> class ImpCalc>
-void NumericStoreRow<StoreType, V, ImpCalc>::GetWriteLock() {
+void NumericStoreRow<StoreType, V, ImpCalc>::GetWriteLock() const {
   mtx_.lock();
 }
 
 template<template<typename> class StoreType, typename V,
          template<typename> class ImpCalc>
-void NumericStoreRow<StoreType, V, ImpCalc>::ReleaseWriteLock() {
+void NumericStoreRow<StoreType, V, ImpCalc>::ReleaseWriteLock() const {
   mtx_.unlock();
 }
 

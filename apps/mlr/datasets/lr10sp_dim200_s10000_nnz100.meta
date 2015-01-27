@@ -1,0 +1,10 @@
+num_train_total: 10000
+num_train_this_partition: 10000
+feature_dim: 200
+num_labels: 10
+format: libsvm
+feature_one_based: 1
+label_one_based: 0
+nnz_per_column: 100
+correlation_strength: 0.5
+snappy_compressed: 0

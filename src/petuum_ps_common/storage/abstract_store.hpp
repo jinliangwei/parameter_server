@@ -42,6 +42,11 @@ public:
     return 0;
   }
 
+  virtual const void *GetDataPtr() const {
+    LOG(FATAL) << "Not yet supported";
+    return 0;
+  }
+
   static_assert(std::is_pod<V>::value, "V must be POD");
 };
 
