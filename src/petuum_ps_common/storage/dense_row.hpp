@@ -2,11 +2,15 @@
 
 #include <petuum_ps_common/storage/numeric_store_row.hpp>
 #include <petuum_ps_common/storage/vector_store.hpp>
+#include <petuum_ps_common/storage/ns_count_calc.hpp>
 
 namespace petuum {
 
 template<typename V>
 using DenseRowCore  = NumericStoreRow<VectorStore, V >;
+
+//template<typename V>
+//using DenseRowCore  = NumericStoreRow<VectorStore, V, NSCountImplCalc>;
 
 template<typename V>
 class DenseRow : public DenseRowCore<V> {

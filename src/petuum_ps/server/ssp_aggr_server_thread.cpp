@@ -2,6 +2,7 @@
 #include <petuum_ps/thread/trans_time_estimate.hpp>
 #include <petuum_ps/thread/context.hpp>
 #include <petuum_ps_common/util/stats.hpp>
+#include <petuum_ps/thread/ps_msgs.hpp>
 #include <algorithm>
 
 namespace petuum {
@@ -114,5 +115,27 @@ void SSPAggrServerThread::PrepareBeforeInfiniteLoop() { }
 
 
 void SSPAggrServerThread::ClockNotice() { }
+
+void SSPAggrServerThread::AdjustSuppressionLevel(
+    int32_t bg_id, int32_t bg_clock) {
+  bool changed = client_progress_clock_.TickUntil(bg_id, bg_clock);
+  if (!changed) return;
+
+  if (client_progress_clock_.IsUniqueMax(bg_id)) {
+    int32_t min_clock = client_progress_clock_.get_min_clock();
+    if (bg_clock - min_clock >= 2) {
+      AdjustSuppressionLevelMsg msg;
+      for (auto &id : bg_worker_ids_) {
+        int32_t clock = client_progress_clock_.get_clock(id);
+        if (clock == min_clock) {
+          size_t sent_size = (GlobalContext::comm_bus->*(
+              GlobalContext::comm_bus->SendAny_))(
+                  id, msg.get_mem(), msg.get_size());
+          CHECK_EQ(sent_size, msg.get_size());
+        }
+      }
+    }
+  }
+}
 
 }

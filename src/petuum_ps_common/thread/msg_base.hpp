@@ -38,6 +38,7 @@ enum MsgType {
   kEarlyCommOn = 23,
   kEarlyCommOff = 24,
   kBgServerPushRowAck = 25,
+  kAdjustSuppressionLevel = 26,
   kMemTransfer = 50,
   kNonExist = 100
 };

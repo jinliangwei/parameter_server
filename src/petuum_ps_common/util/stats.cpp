@@ -1003,7 +1003,8 @@ void Stats::BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog, bo
     LOG(FATAL) << "Error! should have been inserted!";
   }
 
-  table_iter->second.back() += meta_row_oplog->GetMeta().get_importance();
+  table_iter->second.back()
+      += meta_row_oplog->GetMeta().get_importance() / kImportanceScaleFactor;
 
   auto num_rows_iter = stats.table_accum_num_rows_sent.find(table_id);
   if (num_rows_iter == stats.table_accum_num_rows_sent.end()) {
@@ -1024,7 +1025,7 @@ void Stats::BgAccumImportance(int32_t table_id, double importance, bool row_sent
     table_iter->second.push_back(0.0);
   }
 
-  table_iter->second.back() += importance;
+  table_iter->second.back() += importance / kImportanceScaleFactor;
 
   auto num_rows_iter = stats.table_accum_num_rows_sent.find(table_id);
   if (num_rows_iter == stats.table_accum_num_rows_sent.end()) {
@@ -1146,7 +1147,7 @@ void Stats::ServerAccumImportance(int32_t table_id, double importance, bool row_
     table_iter->second.push_back(0.0);
   }
 
-  table_iter->second.back() += importance;
+  table_iter->second.back() += importance / kImportanceScaleFactor;
 
   auto num_rows_iter = stats.table_accum_num_rows_sent.find(table_id);
   if (num_rows_iter == stats.table_accum_num_rows_sent.end()) {

@@ -153,6 +153,8 @@ protected:
 
   void SendClientShutDownMsgs();
 
+  virtual void HandleAdjustSuppressionLevel();
+
   int32_t my_id_;
   int32_t my_comm_channel_idx_;
   std::map<int32_t, ClientTable* > *tables_;

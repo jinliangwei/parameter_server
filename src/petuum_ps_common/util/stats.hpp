@@ -877,6 +877,8 @@ private:
   static const int32_t kProcessCacheInsertSampleFreq = 10000;
   static const int32_t kServerPushDeserializeSampleFreq = 10000;
 
+  static constexpr double kImportanceScaleFactor = 1e10;
+
   // assuming I have received all server pushed message after this number
   // of Get()s.
   static const int32_t kFirstNGetToSkip = 10;

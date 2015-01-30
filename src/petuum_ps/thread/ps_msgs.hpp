@@ -875,6 +875,31 @@ protected:
   }
 };
 
+struct AdjustSuppressionLevelMsg : public NumberedMsg {
+public:
+  AdjustSuppressionLevelMsg() {
+    if (get_size() > PETUUM_MSG_STACK_BUFF_SIZE) {
+      own_mem_ = true;
+      use_stack_buff_ = false;
+      mem_.Alloc(get_size());
+    } else {
+      own_mem_ = false;
+      use_stack_buff_ = true;
+      mem_.Reset(stack_buff_);
+    }
+    InitMsg();
+  }
+
+  explicit AdjustSuppressionLevelMsg(void *msg):
+    NumberedMsg(msg) {}
+
+protected:
+  void InitMsg() {
+    NumberedMsg::InitMsg();
+    get_msg_type() = kAdjustSuppressionLevel;
+  }
+};
+
 struct ServerRowRequestReplyMsg : public ArbitrarySizedMsg {
 public:
   explicit ServerRowRequestReplyMsg(int32_t avai_size) {

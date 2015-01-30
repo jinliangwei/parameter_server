@@ -396,7 +396,7 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   int32_t clock_to_push = client_clock_ - 1;
   clock_has_pushed_ = clock_to_push;
 
-  //LOG(INFO) << "Clock to push = " << clock_to_push
+  //LOG(INFO) << "clock to push = " << clock_to_push
   //        << " clock has pushed = " << clock_has_pushed_
   //        << " " << ThreadContext::get_id();;
 
@@ -431,7 +431,7 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   // reset suppression level
   if (suppression_on_) {
     // num seconds to send updates and fetch up-to-date parameters
-    double comm_sec = oplog_send_milli_sec_*2;
+    double comm_sec = oplog_send_milli_sec_*2 / kOneThousand;
     double construct_comm_sec = serialize_sec + comm_sec;
     double comm_clock_ticks = comm_sec / clock_tick_sec_;
     int32_t construct_comm_clock_ticks = (int32_t) (construct_comm_sec / clock_tick_sec_) + 1;
@@ -444,13 +444,21 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
     int32_t suppression_level_min = comm_clock_ticks_int;
     int32_t suppression_level_max = min_table_staleness_ - 1 - construct_comm_clock_ticks_int;
 
+    LOG(INFO) << "comm sec = " << comm_sec
+              << " clock tick sec = " << clock_tick_sec_
+              << " comm_clock_ticks_int = " << comm_clock_ticks_int
+              << " suppression_level_min = " << suppression_level_min
+              << " id = " << my_id_;
+    suppression_level_min_ = suppression_level_min;
+
     if (suppression_level_max > suppression_level_min)
       suppression_level_ = suppression_level_max;
     else
       suppression_level_ = suppression_level_min;
 
     CHECK(suppression_level_ >= 0) << "min_table_staleness = " << min_table_staleness_;
-    LOG(INFO) << "suppression level changed to " << suppression_level_;
+    LOG(INFO) << "suppression level set to " << suppression_level_
+              << " " << my_id_;
   }
 
   //LOG(INFO) << "HandleClock send bytes = " << sent_size
@@ -661,6 +669,13 @@ void SSPAggrBgWorker::HandleEarlyCommOff() {
         server_id, msg.get_mem(), msg.get_size());
     CHECK_EQ(sent_size, msg.get_size());
   }
+}
+
+void SSPAggrBgWorker::HandleAdjustSuppressionLevel() {
+  suppression_level_ = suppression_level_min_;
+  LOG(INFO) << "Adjust suppression level to "
+            << suppression_level_min_
+            << " id = " << my_id_;
 }
 
 }

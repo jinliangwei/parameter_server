@@ -9,6 +9,7 @@
 #include <petuum_ps_common/util/thread.hpp>
 #include <petuum_ps/thread/context.hpp>
 #include <petuum_ps_common/thread/msg_tracker.hpp>
+#include <petuum_ps_common/util/max_vector_clock.hpp>
 #include <petuum_ps_common/include/constants.hpp>
 
 namespace petuum {
@@ -82,6 +83,8 @@ protected:
   virtual void PrepareBeforeInfiniteLoop();
   virtual void ClockNotice();
 
+  virtual void AdjustSuppressionLevel(int32_t bg_id, int32_t bg_clock);
+
   int32_t my_id_;
   std::vector<int32_t> bg_worker_ids_;
   Server server_obj_;
@@ -95,6 +98,8 @@ protected:
   bool pending_shut_down_;
 
   int32_t min_table_staleness_;
+
+  MaxVectorClock client_progress_clock_;
 };
 
 }

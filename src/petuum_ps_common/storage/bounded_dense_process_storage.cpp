@@ -51,7 +51,7 @@ bool BoundedDenseProcessStorage::Find(int32_t row_id) {
 }
 
 bool BoundedDenseProcessStorage::Insert(int32_t row_id, ClientRow* client_row) {
-  LOG(FATAL) << "Operation not supported!";
+  LOG(FATAL) << "Operation not supported! to be inserted = " << row_id;
   return false;
 }
 

@@ -31,6 +31,7 @@ protected:
 
   void PrepareBeforeInfiniteLoop();
   void ClockNotice();
+  void AdjustSuppressionLevel(int32_t bg_id, int32_t bg_clock);
 
   typedef long (SSPAggrServerThread::*ResetServerIdleMilliFunc)();
 

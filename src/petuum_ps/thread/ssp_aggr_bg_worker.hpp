@@ -28,6 +28,7 @@ public:
       min_table_staleness_(INT_MAX),
       oplog_send_milli_sec_(0),
       suppression_level_(0),
+      suppression_level_min_(0),
       clock_tick_sec_(0),
       suppression_on_(false) {
     ResetBgIdleMilli_ = &SSPAggrBgWorker::ResetBgIdleMilliNoEarlyComm;
@@ -106,6 +107,8 @@ protected:
   void PrepareBgIdleOpLogsAppendOnlyNoReplay(int32_t table_id,
                                      ClientTable *table);
 
+  virtual void HandleAdjustSuppressionLevel();
+
   int32_t min_table_staleness_;
 
   OpLogMeta oplog_meta_;
@@ -114,6 +117,7 @@ protected:
 
   HighResolutionTimer clock_timer_;
   int32_t suppression_level_;
+  int32_t suppression_level_min_;
   double clock_tick_sec_;
   ResetBgIdleMilliFunc ResetBgIdleMilli_;
 

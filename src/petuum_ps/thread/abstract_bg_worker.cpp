@@ -641,7 +641,8 @@ size_t AbstractBgWorker::SendOpLogMsgs(bool clock_advanced) {
       oplog_msg_iter->second->get_is_clock() = clock_advanced;
       oplog_msg_iter->second->get_client_id() = GlobalContext::get_client_id();
       oplog_msg_iter->second->get_version() = version_;
-      oplog_msg_iter->second->get_bg_clock() = clock_has_pushed_ + 1;
+      oplog_msg_iter->second->get_bg_clock()
+          = clock_advanced ? (clock_has_pushed_ + 1) : (client_clock_ - 1);
       oplog_msg_iter->second->get_seq_num() = msg_tracker_.IncGetSeq(server_id);
 
       accum_size += oplog_msg_iter->second->get_size();
@@ -981,6 +982,8 @@ void AbstractBgWorker::SendClientShutDownMsgs() {
   }
 }
 
+void AbstractBgWorker::HandleAdjustSuppressionLevel() { }
+
 void *AbstractBgWorker::operator() () {
   STATS_REGISTER_THREAD(kBgThread);
 
@@ -1147,6 +1150,11 @@ void *AbstractBgWorker::operator() () {
       case kBgEarlyCommOff:
         {
           HandleEarlyCommOff();
+        }
+        break;
+      case kAdjustSuppressionLevel:
+        {
+          HandleAdjustSuppressionLevel();
         }
         break;
       default:

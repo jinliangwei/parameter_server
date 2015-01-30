@@ -117,6 +117,11 @@ void ServerThread::InitServer() {
   }
 
   server_obj_.Init(my_id_, bg_worker_ids_, &msg_tracker_);
+
+  for (auto id : bg_worker_ids_) {
+    client_progress_clock_.AddClock(id, 0);
+  }
+
   ClientStartMsg client_start_msg;
   SendToAllBgThreads(reinterpret_cast<MsgBase*>(&client_start_msg));
 }
@@ -256,6 +261,8 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
       }
       STATS_SERVER_CLOCK();
     }
+  } else if (my_id_ == 1 && GlobalContext::get_suppression_on()) {
+    AdjustSuppressionLevel(sender_id, bg_clock);
   }
 
   if (clock_changed) {
@@ -315,6 +322,8 @@ void ServerThread::ShutDownServer() {
 void ServerThread::PrepareBeforeInfiniteLoop() { }
 
 void ServerThread::ClockNotice() { }
+
+void ServerThread::AdjustSuppressionLevel(int32_t bg_id, int32_t bg_clock) { }
 
 void *ServerThread::operator() () {
 
