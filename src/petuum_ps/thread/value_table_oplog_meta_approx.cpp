@@ -15,6 +15,7 @@ void ValueTableOpLogMetaApprox::InsertMergeRowOpLogMeta(
   auto iter = oplog_meta_.find(row_id);
   if (iter == oplog_meta_.end()) {
     oplog_meta_.insert(std::make_pair(row_id, row_oplog_meta));
+    ++num_new_oplog_metas_;
     return;
   }
   iter->second.set_clock(row_oplog_meta.get_clock());

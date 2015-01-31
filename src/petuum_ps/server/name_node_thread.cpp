@@ -63,6 +63,9 @@ void NameNodeThread::InitNameNode() {
     int32_t client_id;
     bool is_client;
     int32_t sender_id = GetConnection(&is_client, &client_id);
+    LOG(INFO) << "get connection from " << sender_id
+              << " client ? " << is_client
+              << " num_connections = " << num_connections;
     if (is_client) {
       bg_worker_ids_[num_bgs] = sender_id;
       ++num_bgs;
@@ -72,6 +75,9 @@ void NameNodeThread::InitNameNode() {
   }
 
   CHECK_EQ(num_bgs, GlobalContext::get_num_total_comm_channels());
+
+  LOG(INFO) << "name node has got all connections!";
+
   server_obj_.Init(0, bg_worker_ids_, 0);
 
   ConnectServerMsg connect_server_msg;

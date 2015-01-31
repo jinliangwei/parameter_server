@@ -625,6 +625,8 @@ struct BgThreadStats {
   std::vector<size_t> accum_num_waits_on_ack_idle;
   std::vector<size_t> accum_num_waits_on_ack_clock;
 
+  size_t accum_num_new_oplog_meta;
+
   BgThreadStats():
     accum_clock_end_oplog_serialize_sec(0.0),
     accum_total_oplog_serialize_sec(0.0),
@@ -652,7 +654,8 @@ struct BgThreadStats {
     num_row_oplog_created(0),
     num_row_oplog_recycled(0),
     accum_num_waits_on_ack_idle(1, 0),
-    accum_num_waits_on_ack_clock(1, 0) { }
+    accum_num_waits_on_ack_clock(1, 0) ,
+    accum_num_new_oplog_meta(0) { }
 };
 
 struct ServerThreadStats {
@@ -829,6 +832,7 @@ public:
   static void BgAccumWaitsOnAckIdle();
   static void BgAccumWaitsOnAckClock();
 
+  static void BgAccumNumNewOpLogMeta(size_t num_new_oplog_metas);
   static void ServerAccumPushRowBegin();
   static void ServerAccumPushRowEnd();
 
@@ -971,6 +975,8 @@ private:
 
   static std::vector<size_t> bg_accum_num_waits_on_ack_idle_;
   static std::vector<size_t> bg_accum_num_waits_on_ack_clock_;
+
+  static size_t bg_accum_num_new_oplog_meta_;
 
   // Server thread stats
   static double server_accum_apply_oplog_sec_;

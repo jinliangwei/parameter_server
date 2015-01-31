@@ -32,6 +32,8 @@ public:
   void InsertMergeRowOpLogMeta(int32_t row_id,
                                const RowOpLogMeta& row_oplog_meta);
 
+  size_t GetCleanNumNewOpLogMeta();
+
   void Prepare(size_t num_rows_to_send);
   int32_t GetAndClearNextInOrder();
 
@@ -82,6 +84,8 @@ private:
   // (exclusive)
   // Assume oplogs below this clock will not be added after GetAndClear...
   int32_t clock_to_clear_;
+
+  size_t num_new_oplog_metas_;
 };
 
 }

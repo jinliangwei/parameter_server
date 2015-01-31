@@ -21,6 +21,8 @@ public:
 
   void InsertMergeRowOpLogMeta(int32_t row_id,
                                const RowOpLogMeta& row_oplog_meta);
+  virtual size_t GetCleanNumNewOpLogMeta();
+
   int32_t GetAndClearNextInOrder();
 
   int32_t InitGetUptoClock(int32_t clock);
@@ -49,6 +51,8 @@ private:
   int32_t heap_walker_;
   int32_t heap_last_;
   int32_t clock_to_clear_;
+
+  size_t num_new_oplog_metas_;
 };
 
 }

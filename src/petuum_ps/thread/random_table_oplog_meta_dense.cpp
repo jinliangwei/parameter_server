@@ -6,17 +6,26 @@ RandomTableOpLogMetaDense::RandomTableOpLogMetaDense(const AbstractRow *sample_r
     sample_row_(sample_row),
     meta_vec_(table_size, RowOpLogMeta()),
     num_valid_oplogs_(0),
-    uniform_dist_(0, 1) { }
+    uniform_dist_(0, 1),
+    num_new_oplog_metas_(0) { }
 
 RandomTableOpLogMetaDense::~RandomTableOpLogMetaDense() { }
 
 void RandomTableOpLogMetaDense::InsertMergeRowOpLogMeta(
     int32_t row_id, const RowOpLogMeta &row_oplog_meta) {
   auto &my_row_oplog_meta = meta_vec_[row_id];
-  if (my_row_oplog_meta.get_clock() == -1)
+  if (my_row_oplog_meta.get_clock() == -1) {
     num_valid_oplogs_++;
+    num_new_oplog_metas_++;
+  }
 
   my_row_oplog_meta.set_clock(row_oplog_meta.get_clock());
+}
+
+size_t RandomTableOpLogMetaDense::GetCleanNumNewOpLogMeta() {
+  size_t tmp = num_new_oplog_metas_;
+  num_new_oplog_metas_ = 0;
+  return tmp;
 }
 
 void RandomTableOpLogMetaDense::Prepare(size_t num_rows_to_send) {

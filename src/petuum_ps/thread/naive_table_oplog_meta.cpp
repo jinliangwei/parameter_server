@@ -9,7 +9,8 @@
 namespace petuum {
 
 NaiveTableOpLogMeta::NaiveTableOpLogMeta(const AbstractRow *sample_row):
-    sample_row_(sample_row) {
+    sample_row_(sample_row),
+    num_new_oplog_metas_(0) {
 
   switch(GlobalContext::get_update_sort_policy()) {
     case FIFO:
@@ -55,10 +56,17 @@ void NaiveTableOpLogMeta::InsertMergeRowOpLogMeta(int32_t row_id,
     *meta_to_insert = row_oplog_meta;
     oplog_map_.insert(std::make_pair(row_id, meta_to_insert));
     oplog_list_.push_back(std::make_pair(row_id, meta_to_insert));
+    ++num_new_oplog_metas_;
     return;
   }
 
   MergeRowOpLogMeta_(iter->second, row_oplog_meta);
+}
+
+size_t NaiveTableOpLogMeta::GetCleanNumNewOpLogMeta() {
+  size_t tmp = num_new_oplog_metas_;
+  num_new_oplog_metas_ = 0;
+  return tmp;
 }
 
 void NaiveTableOpLogMeta::Prepare(size_t num_rows_to_send

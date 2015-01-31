@@ -87,6 +87,8 @@ std::unordered_map<int32_t, std::vector<size_t> > Stats::bg_table_accum_num_rows
 std::vector<size_t> Stats::bg_accum_num_waits_on_ack_idle_(0);
 std::vector<size_t> Stats::bg_accum_num_waits_on_ack_clock_(0);
 
+size_t Stats::bg_accum_num_new_oplog_meta_ = 0;
+
 double Stats::server_accum_apply_oplog_sec_ = 0.0;
 double Stats::server_accum_push_row_sec_ = 0.0;
 
@@ -433,6 +435,7 @@ void Stats::DeregisterBgThread() {
           = stats.accum_num_waits_on_ack_clock[i];
     }
   }
+  bg_accum_num_new_oplog_meta_ += stats.accum_num_new_oplog_meta;
 }
 
 void Stats::DeregisterServerThread() {
@@ -1046,6 +1049,10 @@ void Stats::BgAccumWaitsOnAckClock() {
   (bg_thread_stats_->accum_num_waits_on_ack_clock.back())++;
 }
 
+void Stats::BgAccumNumNewOpLogMeta(size_t num_new_oplog_metas) {
+  (bg_thread_stats_->accum_num_new_oplog_meta) += num_new_oplog_metas;
+}
+
 void Stats::ServerAccumApplyOpLogBegin() {
   server_thread_stats_->apply_oplog_timer.restart();
 }
@@ -1530,6 +1537,10 @@ void Stats::PrintStats() {
   yaml_out << YAML::Key << "bg_accum_num_waits_on_ack_clock"
            << YAML::Value;
   YamlPrintSequence(&yaml_out, bg_accum_num_waits_on_ack_clock_);
+
+  yaml_out << YAML::Key << "bg_accum_num_new_oplog_meta"
+           << YAML::Value
+           << bg_accum_num_new_oplog_meta_;
 
   yaml_out << YAML::EndMap;
 

@@ -16,6 +16,7 @@ public:
 
   virtual void InsertMergeRowOpLogMeta(int32_t row_id,
                                        const RowOpLogMeta& row_oplog_meta) = 0;
+  virtual size_t GetCleanNumNewOpLogMeta() = 0;
 
   virtual void Prepare(size_t num_rows_to_send
                        __attribute__((unused)) ) { }

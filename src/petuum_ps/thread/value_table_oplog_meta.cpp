@@ -9,7 +9,8 @@ ValueTableOpLogMeta::ValueTableOpLogMeta(const AbstractRow *sample_row,
     sample_row_(sample_row),
     heap_(table_size),
     heap_size_(0),
-    heap_index_(table_size, -1) { }
+    heap_index_(table_size, -1),
+    num_new_oplog_metas_(0) { }
 
 ValueTableOpLogMeta::~ValueTableOpLogMeta() { }
 
@@ -128,9 +129,15 @@ void ValueTableOpLogMeta::InsertMergeRowOpLogMeta(
     HeapIncrease(index, row_oplog_meta);
   } else {
     HeapInsert(row_id, row_oplog_meta);
+    num_new_oplog_metas_++;
   }
 }
 
+size_t ValueTableOpLogMeta::GetCleanNumNewOpLogMeta() {
+  size_t tmp = num_new_oplog_metas_;
+  num_new_oplog_metas_ = 0;
+  return tmp;
+}
 
 int32_t ValueTableOpLogMeta::GetAndClearNextInOrder() {
   auto max = HeapExtractMax();

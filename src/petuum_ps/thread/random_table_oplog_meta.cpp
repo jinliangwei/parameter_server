@@ -3,6 +3,7 @@
 namespace petuum {
 RandomTableOpLogMeta::RandomTableOpLogMeta(const AbstractRow *sample_row):
     sample_row_(sample_row),
+    num_new_oplog_metas_(0),
     uniform_dist_(0, INT_MAX) { }
 
 RandomTableOpLogMeta::~RandomTableOpLogMeta() { }
@@ -12,9 +13,16 @@ void RandomTableOpLogMeta::InsertMergeRowOpLogMeta(
   auto iter = oplog_meta_.find(row_id);
   if (iter == oplog_meta_.end()) {
     oplog_meta_.insert(std::make_pair(row_id, row_oplog_meta));
+    ++num_new_oplog_metas_;
     return;
   }
   iter->second.set_clock(row_oplog_meta.get_clock());
+}
+
+size_t RandomTableOpLogMeta::GetCleanNumNewOpLogMeta() {
+  size_t tmp = num_new_oplog_metas_;
+  num_new_oplog_metas_ = 0;
+  return tmp;
 }
 
 int32_t RandomTableOpLogMeta::GetAndClearNextInOrder() {
