@@ -21,7 +21,7 @@ DECLARE_int32(num_epochs);
 DECLARE_int32(num_batches_per_epoch);
 DECLARE_double(learning_rate);
 DECLARE_double(decay_rate);
-DECLARE_int32(num_batches_per_eval);
+DECLARE_int32(num_epochs_per_eval);
 DECLARE_bool(sparse_weight);
 
 DECLARE_string(output_file_prefix);

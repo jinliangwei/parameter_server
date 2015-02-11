@@ -9,7 +9,10 @@ MLR_BIN = $(MLR_DIR)/bin
 MLR_OBJ = $(MLR_SRC:.cpp=.o)
 NDEBUG = -DNDEBUG
 
-all: $(MLR_BIN)/mlr_main $(MLR_BIN)/gen_data_sparse
+process_data: $(MLR_BIN)/process_data
+mlr: $(MLR_BIN)/mlr_main
+
+all: mlr $(MLR_BIN)/gen_data_sparse process_data
 
 $(MLR_BIN):
 	mkdir -p $(MLR_BIN)
@@ -26,8 +29,12 @@ $(MLR_BIN)/gen_data_sparse: $(MLR_DIR)/src/tools/gen_data_sparse.cpp $(MLR_BIN)
 	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
 	$< $(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
 
+$(MLR_BIN)/process_data: $(MLR_DIR)/src/tools/process_data.cpp $(MLR_BIN)
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
+	$< $(PETUUM_ML_LIB) $(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
+
 clean:
 	rm -rf $(MLR_OBJ)
 	rm -rf $(MLR_BIN)
 
-.PHONY: clean
+.PHONY: clean, process_data

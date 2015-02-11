@@ -42,7 +42,7 @@ DEFINE_int32(num_batches_per_epoch, 10, "Since we Clock() at the end of each bat
     "num_batches_per_epoch is effectively the number of clocks per epoch (iteration)");
 DEFINE_double(learning_rate, 0.1, "Initial step size");
 DEFINE_double(decay_rate, 1, "multiplicative decay");
-DEFINE_int32(num_batches_per_eval, 10, "Number of batches per evaluation");
+DEFINE_int32(num_epochs_per_eval, 10, "Number of batches per evaluation");
 DEFINE_bool(sparse_weight, false, "Use sparse feature for model parameters");
 
 // Misc
@@ -57,8 +57,8 @@ int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
-  //STATS_APP_LOAD_DATA_BEGIN();
   mlr::MLREngine mlr_engine;
+  //STATS_APP_LOAD_DATA_BEGIN();
   mlr_engine.ReadData();
   //STATS_APP_LOAD_DATA_END();
 
@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
   petuum::PSTableGroup::CreateTable(kWTableID, table_config);
 
   // loss table.
+  table_config.process_storage_type = petuum::BoundedSparse;
   table_config.table_info.row_type = kDenseRowFloatTypeID;
   table_config.table_info.row_capacity = mlr::kNumColumnsLossTable;
   table_config.table_info.dense_row_oplog_capacity

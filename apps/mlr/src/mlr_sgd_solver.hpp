@@ -29,9 +29,13 @@ public:
   void SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
       int32_t label, float step_size);
 
+  void SingleDataSGD(const petuum::ml::DenseFeature<float>& feature,
+                     int32_t label, float step_size);
+
   // Predict the probability of each label.
-  std::vector<float> Predict(
-      const petuum::ml::AbstractFeature<float>& feature) const;
+  void Predict(
+      const petuum::ml::AbstractFeature<float>& feature,
+      std::vector<float> *result) const;
 
   // Return 0 if a prediction (of length num_labels_) correctly gives the
   // ground truth label 'label'; 0 otherwise.
@@ -66,6 +70,7 @@ private:
   int32_t feature_dim_; // feature dimension
   int32_t num_labels_; // number of classes/labels
   int32_t w_dim_;       // dimension of w_table_ = feature_dim_ * num_labels_.
+  std::vector<float> predict_buff_;
 
   // Specialization Functions
   std::function<float(const petuum::ml::AbstractFeature<float>&,

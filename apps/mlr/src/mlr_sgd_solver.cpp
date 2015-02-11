@@ -18,7 +18,8 @@ namespace mlr {
 
 MLRSGDSolver::MLRSGDSolver(const MLRSGDSolverConfig& config) :
   w_table_(config.w_table), feature_dim_(config.feature_dim),
-  num_labels_(config.num_labels), w_dim_(feature_dim_ * num_labels_) {
+  num_labels_(config.num_labels), w_dim_(feature_dim_ * num_labels_),
+  predict_buff_(config.feature_dim) {
     w_cache_.resize(num_labels_);
     w_delta_.resize(num_labels_);
     for (int i = 0; i < num_labels_; ++i) {
@@ -61,14 +62,14 @@ void MLRSGDSolver::RefreshParams() {
 void MLRSGDSolver::RefreshParamsDense() {
   // Write delta's to PS table.
   for (int i = 0; i < num_labels_; ++i) {
-    petuum::UpdateBatch<float> w_update_batch(feature_dim_);
+    petuum::DenseUpdateBatch<float> w_update_batch(0, feature_dim_);
     auto dense_ptr = static_cast<petuum::ml::DenseFeature<float>*>(w_delta_[i]);
     const std::vector<float>& w_delta_i = dense_ptr->GetVector();
     for (int j = 0; j < feature_dim_; ++j) {
       CHECK_EQ(w_delta_i[j], w_delta_i[j]) << "nan detected.";
-      w_update_batch.UpdateSet(j, j, w_delta_i[j]);
+      w_update_batch[j] = w_delta_i[j];
     }
-    w_table_.BatchInc(i, w_update_batch);
+    w_table_.DenseBatchInc(i, w_update_batch);
   }
 
   // Zero delta.
@@ -135,36 +136,55 @@ int32_t MLRSGDSolver::ZeroOneLoss(const std::vector<float>& prediction,
 }
 
 float MLRSGDSolver::CrossEntropyLoss(const std::vector<float>& prediction,
-    int32_t label) const {
-  CHECK_LE(prediction[label], 1);
+                                     int32_t label) const {
+  CHECK_LE(prediction[label], 1) << "label = " << label;
   return -petuum::ml::SafeLog(prediction[label]);
 }
 
 
-std::vector<float> MLRSGDSolver::Predict(
-    const petuum::ml::AbstractFeature<float>& feature) const {
-    std::vector<float> y_vec(num_labels_);
-    for (int i = 0; i < num_labels_; ++i) {
-      y_vec[i] = FeatureDotProductFun_(feature, *w_cache_[i]);
-    }
-    petuum::ml::Softmax(&y_vec);
-    return y_vec;
+void MLRSGDSolver::Predict(
+    const petuum::ml::AbstractFeature<float>& feature,
+    std::vector<float> *result) const {
+  std::vector<float> &y_vec = *result;
+  for (int i = 0; i < num_labels_; ++i) {
+    y_vec[i] = FeatureDotProductFun_(feature, *w_cache_[i]);
   }
+  petuum::ml::Softmax(&y_vec);
+}
 
 void MLRSGDSolver::SingleDataSGD(
     const petuum::ml::AbstractFeature<float>& feature,
     int32_t label, float learning_rate) {
-  std::vector<float> y_vec = Predict(feature);
-  y_vec[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+  Predict(feature, &predict_buff_);
+  predict_buff_[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
 
   // outer product
   for (int i = 0; i < num_labels_; ++i) {
     // w_cache_[i] += -\eta * y_vec[i] * feature
-    petuum::ml::FeatureScaleAndAdd(-learning_rate * y_vec[i], feature,
-        w_cache_[i]);
-    petuum::ml::FeatureScaleAndAdd(-learning_rate * y_vec[i], feature,
-        w_delta_[i]);
+    petuum::ml::FeatureScaleAndAdd(-learning_rate * predict_buff_[i],
+                                   feature, w_cache_[i]);
+    petuum::ml::FeatureScaleAndAdd(-learning_rate * predict_buff_[i],
+                                   feature, w_delta_[i]);
   }
+}
+
+void MLRSGDSolver::SingleDataSGD(
+    const petuum::ml::DenseFeature<float>& feature,
+    int32_t label, float learning_rate) {
+  Predict(feature, &predict_buff_);
+  predict_buff_[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
+
+  // outer product
+  for (int i = 0; i < num_labels_; ++i) {
+    // w_cache_[i] += -\eta * y_vec[i] * feature
+    petuum::ml::FeatureScaleAndAdd(
+        -learning_rate * predict_buff_[i], feature,
+        static_cast<petuum::ml::DenseFeature<float>*>(w_cache_[i]));
+
+    petuum::ml::FeatureScaleAndAdd(
+        -learning_rate * predict_buff_[i], feature,
+        static_cast<petuum::ml::DenseFeature<float>*>(w_delta_[i]));
+   }
 }
 
 void MLRSGDSolver::SaveWeights(const std::string& filename) const {

@@ -52,13 +52,14 @@ private:  // functions
   // is distributed. This will reset test_workload_mgr.
   void ComputeTestError(MLRSGDSolver* mlr_solver,
     petuum::ml::WorkloadManager* test_workload_mgr,
-    int32_t num_data_to_use, int32_t ith_eval);
+                        int32_t num_data_to_use, int32_t ith_eval,
+                        std::vector<float> *predict_buff);
 
   // Compute online training error based on the first num_data_to_use. This
   // will reset workload_mgr.
   void ComputeTrainError(MLRSGDSolver* solver,
       petuum::ml::WorkloadManager* workload_mgr, int32_t num_data_to_use,
-      int32_t ith_eval);
+                         int32_t ith_eval, std::vector<float> *predict_buff);
 
 private:
   // ============== Data Variables ==================
