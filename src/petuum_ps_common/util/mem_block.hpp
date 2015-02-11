@@ -10,10 +10,10 @@
 namespace petuum {
 
 /*
- * A thin layer to manage a chunk of contiguous memory which may be allocated 
+ * A thin layer to manage a chunk of contiguous memory which may be allocated
  * outside (via MemAlloc) or inside (via Alloc) the class.
  * This class is meant to be simple (cheap) so it does not chech any assumption
- * that a function assumes when that function is invoked. If the assumption is 
+ * that a function assumes when that function is invoked. If the assumption is
  * not satisfied the behavior of the current and future operation on MemBlock
  * is undefined.
  */
@@ -29,9 +29,9 @@ public:
   }
 
   /*
-   * Reset the MemBlock object to manage a particular memory chunk of certain 
+   * Reset the MemBlock object to manage a particular memory chunk of certain
    * size. If there is a previous memory chunk managed by this object, it is
-   * freed. Once a memory chunk is give to MemBlock, it cannot be freed 
+   * freed. Once a memory chunk is give to MemBlock, it cannot be freed
    * externally.
    */
   void Reset(void *mem){
@@ -58,14 +58,14 @@ public:
   }
 
   /*
-   * Allocate a chunk of memory based on the size information. Must be invoked 
+   * Allocate a chunk of memory based on the size information. Must be invoked
    * when there's no memory managed by this MemBlock object yet.
    */
-  void Alloc(int32_t size){
+  void Alloc(size_t size){
     mem_ = MemAlloc(size);
   }
 
-  static inline uint8_t *MemAlloc(int32_t nbytes){
+  static inline uint8_t *MemAlloc(size_t nbytes){
     uint8_t *mem = new uint8_t[nbytes];
     return mem;
   }

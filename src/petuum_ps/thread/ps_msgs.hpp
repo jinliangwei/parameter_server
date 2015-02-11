@@ -902,7 +902,7 @@ protected:
 
 struct ServerRowRequestReplyMsg : public ArbitrarySizedMsg {
 public:
-  explicit ServerRowRequestReplyMsg(int32_t avai_size) {
+  explicit ServerRowRequestReplyMsg(size_t avai_size) {
     own_mem_ = true;
     mem_.Alloc(get_header_size() + avai_size);
     InitMsg(avai_size);
@@ -953,7 +953,7 @@ public:
   }
 
 protected:
-  virtual void InitMsg(int32_t avai_size) {
+  virtual void InitMsg(size_t avai_size) {
     ArbitrarySizedMsg::InitMsg(avai_size);
     get_msg_type() = kServerRowRequestReply;
   }
@@ -961,7 +961,7 @@ protected:
 
 struct ClientSendOpLogMsg : public ArbitrarySizedMsg {
 public:
-  explicit ClientSendOpLogMsg(int32_t avai_size) {
+  explicit ClientSendOpLogMsg(size_t avai_size) {
     own_mem_ = true;
     mem_.Alloc(get_header_size() + avai_size);
     InitMsg(avai_size);
@@ -1007,7 +1007,7 @@ public:
   }
 
 protected:
-  virtual void InitMsg(int32_t avai_size) {
+  virtual void InitMsg(size_t avai_size) {
     ArbitrarySizedMsg::InitMsg(avai_size);
     get_msg_type() = kClientSendOpLog;
   }
@@ -1015,7 +1015,7 @@ protected:
 
 struct ServerPushRowMsg : public ArbitrarySizedMsg {
 public:
-  explicit ServerPushRowMsg(int32_t avai_size) {
+  explicit ServerPushRowMsg(size_t avai_size) {
     own_mem_ = true;
     mem_.Alloc(get_header_size() + avai_size);
     InitMsg(avai_size);
@@ -1055,7 +1055,7 @@ public:
   }
 
 protected:
-  virtual void InitMsg(int32_t avai_size) {
+  virtual void InitMsg(size_t avai_size) {
     ArbitrarySizedMsg::InitMsg(avai_size);
     get_msg_type() = kServerPushRow;
   }

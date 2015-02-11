@@ -239,10 +239,14 @@
   Stats::BgAccumImportance(table_id, importance, row_sent)
 
 #define STATS_BG_ACCUM_WAITS_ON_ACK_IDLE() \
-  Stats::BgAccumWaitsOnAckIdle();
+  Stats::BgAccumWaitsOnAckIdle()
 
 #define STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK() \
-  Stats::BgAccumWaitsOnAckClock();
+  Stats::BgAccumWaitsOnAckClock()
+
+#define STATS_BG_ACCUM_NUM_OPLOG_METAS_READ(table_id, num_oplog_metas_read, \
+                                            num_new_oplog_metas)        \
+  Stats::BgAccumNumOpLogMetasRead(table_id, num_oplog_metas_read, num_new_oplog_metas)
 
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() \
   Stats::ServerAccumPushRowBegin()
@@ -380,6 +384,8 @@
   ((void) 0)
 #define STATS_BG_SAMPLE_SERVER_PUSH_DESERIALIZE_END() \
   ((void) 0)
+
+#define STATS_BG_ACCUM_NUM_OPLOG_METAS_READ() ((void) 0)
 
 #define STATS_BG_IDLE_INVOKE_INC_ONE() ((void) 0)
 #define STATS_BG_IDLE_SEND_INC_ONE() ((void) 0)
@@ -625,7 +631,14 @@ struct BgThreadStats {
   std::vector<size_t> accum_num_waits_on_ack_idle;
   std::vector<size_t> accum_num_waits_on_ack_clock;
 
-  size_t accum_num_new_oplog_meta;
+  struct OpLogReadStats {
+    size_t accum_num_new_oplog_meta;
+    size_t accum_num_oplog_metas_read;
+    size_t accum_num_oplog_index_reads;
+  };
+
+  std::unordered_map<int32_t, OpLogReadStats>
+  table_oplog_read_stats;
 
   BgThreadStats():
     accum_clock_end_oplog_serialize_sec(0.0),
@@ -654,8 +667,7 @@ struct BgThreadStats {
     num_row_oplog_created(0),
     num_row_oplog_recycled(0),
     accum_num_waits_on_ack_idle(1, 0),
-    accum_num_waits_on_ack_clock(1, 0) ,
-    accum_num_new_oplog_meta(0) { }
+    accum_num_waits_on_ack_clock(1, 0) { }
 };
 
 struct ServerThreadStats {
@@ -832,7 +844,9 @@ public:
   static void BgAccumWaitsOnAckIdle();
   static void BgAccumWaitsOnAckClock();
 
-  static void BgAccumNumNewOpLogMeta(size_t num_new_oplog_metas);
+  static void BgAccumNumOpLogMetasRead(int32_t table_id, size_t num_oplog_metas_read,
+                                       size_t num_new_oplog_metas);
+
   static void ServerAccumPushRowBegin();
   static void ServerAccumPushRowEnd();
 
@@ -976,7 +990,8 @@ private:
   static std::vector<size_t> bg_accum_num_waits_on_ack_idle_;
   static std::vector<size_t> bg_accum_num_waits_on_ack_clock_;
 
-  static size_t bg_accum_num_new_oplog_meta_;
+  static std::unordered_map<int32_t, BgThreadStats::OpLogReadStats>
+  bg_oplog_read_stats_;
 
   // Server thread stats
   static double server_accum_apply_oplog_sec_;

@@ -63,6 +63,7 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &s
      sender_id, ack_msg.get_mem(), ack_msg.get_size());
   CHECK_EQ(sent_size, ack_msg.get_size());
 
+  //LOG(INFO) << "ack " << sender_id << " " << seq;
 }
 
 void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,

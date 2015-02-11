@@ -66,8 +66,17 @@ TableGroup::TableGroup(const TableGroupConfig &table_group_config,
 
   NumaMgr::Init(table_group_config.numa_opt);
 
+  size_t num_zmq_threads = 1;
+  // use more zmq threads for SSPAggr
+  if (consistency_model == SSPAggr
+      && num_local_table_threads >= 8) num_zmq_threads = 2;
+  if (num_comm_channels_per_client > num_zmq_threads) num_zmq_threads = num_comm_channels_per_client;
+  if (num_comm_channels_per_client >= 4) num_zmq_threads += 4;
+
+  LOG(INFO) << "num_zmq_threads = " << num_zmq_threads;
+
   CommBus *comm_bus = new CommBus(local_id_min, local_id_max,
-                                  num_total_clients, 1);
+                                  num_total_clients, num_zmq_threads);
   GlobalContext::comm_bus = comm_bus;
 
   *init_thread_id = local_id_min

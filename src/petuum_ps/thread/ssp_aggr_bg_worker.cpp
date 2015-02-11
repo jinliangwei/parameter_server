@@ -36,10 +36,6 @@ long SSPAggrBgWorker::ResetBgIdleMilliEarlyComm() {
 
 void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
                                                    ClientTable *table) {
-  // Get OpLog index
-  cuckoohash_map<int32_t, bool> *new_table_oplog_index_ptr
-      = table->GetAndResetOpLogIndex(my_comm_channel_idx_);
-
   AbstractOpLog &table_oplog = table->get_oplog();
   AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
@@ -55,9 +51,17 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
     }
   }
 
+  if (table->GetNumRowOpLogs(my_comm_channel_idx_) == 0) return;
+
+  // Get OpLog index
+  cuckoohash_map<int32_t, bool> *new_table_oplog_index_ptr
+      = table->GetAndResetOpLogIndex(my_comm_channel_idx_);
+
   //LOG(INFO) << "table_id = " << table_id
   //        << " table_oplog_meta size = " << table_oplog_meta->GetNumRowOpLogs()
   //        << " new index size = " << new_table_oplog_index_ptr->size();
+
+  size_t num_oplog_metas_read = 0;
 
   for (auto oplog_index_iter = new_table_oplog_index_ptr->cbegin();
        !oplog_index_iter.is_end(); oplog_index_iter++) {
@@ -69,7 +73,13 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
     }
 
     table_oplog_meta->InsertMergeRowOpLogMeta(row_id, row_oplog_meta);
+
+    ++num_oplog_metas_read;
   }
+
+  size_t num_new_oplog_metas = table_oplog_meta->GetCleanNumNewOpLogMeta();
+  STATS_BG_ACCUM_NUM_OPLOG_METAS_READ(table_id, num_oplog_metas_read, num_new_oplog_metas);
+
   delete new_table_oplog_index_ptr;
 }
 
@@ -376,6 +386,7 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   }
 
   if (!msg_tracker_.CheckSendAll()) {
+    //LOG(INFO) << "client has to wait";
     STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK();
     pending_clock_send_oplog_ = true;
     clock_advanced_buffed_ = clock_advanced;
@@ -572,7 +583,6 @@ BgOpLogPartition *SSPAggrBgWorker::PrepareBgIdleOpLogsAppendOnly(int32_t table_i
 
 void SSPAggrBgWorker::PrepareBgIdleOpLogsAppendOnlyNoReplay(int32_t table_id,
                                                             ClientTable *table) {
-
   LOG(FATAL) << "Operation not supported!";
 }
 

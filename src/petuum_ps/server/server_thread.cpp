@@ -244,6 +244,12 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
     //         << " clock changed = " << clock_changed
     //         << " " << my_id_;
     if (clock_changed) {
+      //LOG(INFO)  << "server_recv_oplog, is_clock = " << is_clock
+      //         << " clock = " << bg_clock
+      //         << " from " << sender_id
+      //         << " size = " << client_send_oplog_msg.get_size()
+      //         << " clock changed = " << clock_changed
+      //         << " " << my_id_;
       std::vector<ServerRowRequest> requests;
       server_obj_.GetFulfilledRowRequests(&requests);
       for (auto request_iter = requests.begin();
@@ -286,8 +292,8 @@ void ServerThread::HandleEarlyCommOn() { }
 
 void ServerThread::HandleEarlyCommOff() { }
 
-void ServerThread::HandleBgServerPushRowAck(int32_t bg_id,
-                                            BgServerPushRowAckMsg &msg) { }
+void ServerThread::HandleBgServerPushRowAck(
+    int32_t bg_id, uint64_t ack_seq) { }
 
 void ServerThread::SendOpLogAckMsg(int32_t bg_id, uint32_t version,
                                    uint64_t seq) {
@@ -411,7 +417,7 @@ void *ServerThread::operator() () {
       case kBgServerPushRowAck:
         {
           BgServerPushRowAckMsg msg(msg_mem);
-          HandleBgServerPushRowAck(sender_id, msg);
+          HandleBgServerPushRowAck(sender_id, msg.get_ack_num());
 
           if (!pending_clock_push_row_
               && !msg_tracker_.PendingAcks()

@@ -21,6 +21,8 @@ void SSPPushServerThread::SendServerPushRowMsg(
   STATS_SERVER_ADD_PER_CLOCK_PUSH_ROW_SIZE(msg->get_size());
   STATS_SERVER_PUSH_ROW_MSG_SEND_INC_ONE();
 
+  //LOG(INFO) << "send " << bg_id << " " << msg->get_seq_num();
+
   if (last_msg) {
     msg->get_is_clock() = true;
     msg->get_clock() = server_min_clock;
@@ -51,8 +53,9 @@ void SSPPushServerThread::RowSubscribe(ServerRow *server_row,
 }
 
 void SSPPushServerThread::HandleBgServerPushRowAck(
-    int32_t bg_id, BgServerPushRowAckMsg &msg) {
-  msg_tracker_.RecvAck(bg_id, msg.get_ack_num());
+    int32_t bg_id, uint64_t ack_seq) {
+  //LOG(INFO) << "acked " << bg_id << " " << ack_seq;
+  msg_tracker_.RecvAck(bg_id, ack_seq);
   if (pending_clock_push_row_
       && msg_tracker_.CheckSendAll()) {
     pending_clock_push_row_ = false;

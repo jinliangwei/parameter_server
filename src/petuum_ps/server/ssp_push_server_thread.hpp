@@ -19,8 +19,8 @@ protected:
 
   virtual void RowSubscribe(ServerRow *server_row, int32_t client_id);
 
-  void HandleBgServerPushRowAck(int32_t bg_id,
-                                BgServerPushRowAckMsg &msg);
+  void HandleBgServerPushRowAck(
+      int32_t bg_id, uint64_t ack_seq);
 
 };
 

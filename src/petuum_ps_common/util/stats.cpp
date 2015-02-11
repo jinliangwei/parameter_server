@@ -87,7 +87,8 @@ std::unordered_map<int32_t, std::vector<size_t> > Stats::bg_table_accum_num_rows
 std::vector<size_t> Stats::bg_accum_num_waits_on_ack_idle_(0);
 std::vector<size_t> Stats::bg_accum_num_waits_on_ack_clock_(0);
 
-size_t Stats::bg_accum_num_new_oplog_meta_ = 0;
+std::unordered_map<int32_t, BgThreadStats::OpLogReadStats>
+Stats::bg_oplog_read_stats_;
 
 double Stats::server_accum_apply_oplog_sec_ = 0.0;
 double Stats::server_accum_push_row_sec_ = 0.0;
@@ -435,7 +436,24 @@ void Stats::DeregisterBgThread() {
           = stats.accum_num_waits_on_ack_clock[i];
     }
   }
-  bg_accum_num_new_oplog_meta_ += stats.accum_num_new_oplog_meta;
+
+  for (auto &table_stats : stats.table_oplog_read_stats) {
+    int32_t table_id = table_stats.first;
+    auto table_iter
+        = bg_oplog_read_stats_.find(table_id);
+    if (table_iter == bg_oplog_read_stats_.end()) {
+      bg_oplog_read_stats_.insert(
+          std::make_pair(table_id, table_stats.second));
+      continue;
+    }
+
+    table_iter->second.accum_num_new_oplog_meta
+        += table_stats.second.accum_num_new_oplog_meta;
+    table_iter->second.accum_num_oplog_metas_read
+        += table_stats.second.accum_num_oplog_metas_read;
+    table_iter->second.accum_num_oplog_index_reads
+        += table_stats.second.accum_num_oplog_index_reads;
+  }
 }
 
 void Stats::DeregisterServerThread() {
@@ -1049,8 +1067,22 @@ void Stats::BgAccumWaitsOnAckClock() {
   (bg_thread_stats_->accum_num_waits_on_ack_clock.back())++;
 }
 
-void Stats::BgAccumNumNewOpLogMeta(size_t num_new_oplog_metas) {
-  (bg_thread_stats_->accum_num_new_oplog_meta) += num_new_oplog_metas;
+void Stats::BgAccumNumOpLogMetasRead(
+    int32_t table_id, size_t num_oplog_metas_read,
+    size_t num_new_oplog_metas) {
+  BgThreadStats &stats = *bg_thread_stats_;
+  auto table_iter
+      = stats.table_oplog_read_stats.find(table_id);
+  if (table_iter == stats.table_oplog_read_stats.end()) {
+    BgThreadStats::OpLogReadStats oplog_read_stats = {0, 0, 0};
+    stats.table_oplog_read_stats.insert(
+        std::make_pair(table_id, oplog_read_stats));
+    table_iter = stats.table_oplog_read_stats.find(table_id);
+  }
+
+  table_iter->second.accum_num_new_oplog_meta += num_new_oplog_metas;
+  table_iter->second.accum_num_oplog_metas_read += num_oplog_metas_read;
+  (table_iter->second.accum_num_oplog_index_reads)++;
 }
 
 void Stats::ServerAccumApplyOpLogBegin() {
@@ -1538,10 +1570,30 @@ void Stats::PrintStats() {
            << YAML::Value;
   YamlPrintSequence(&yaml_out, bg_accum_num_waits_on_ack_clock_);
 
-  yaml_out << YAML::Key << "bg_accum_num_new_oplog_meta"
-           << YAML::Value
-           << bg_accum_num_new_oplog_meta_;
+  yaml_out << YAML::Key << "bg_table_oplog_read_stats"
+           << YAML::Value;
+  yaml_out << YAML::BeginMap;
 
+  for (auto &table_stats : bg_oplog_read_stats_) {
+    yaml_out << YAML::Key
+             << table_stats.first
+             << YAML::Value
+             << YAML::BeginMap
+             << YAML::Key
+             << "accum_num_oplog_index_reads"
+             << YAML::Value
+             << table_stats.second.accum_num_oplog_index_reads
+             << YAML::Key
+             << "accum_num_oplog_metas_read"
+             << YAML::Value
+             << table_stats.second.accum_num_oplog_metas_read
+             << YAML::Key
+             << "accum_num_new_oplog_meta"
+             << YAML::Value
+             << table_stats.second.accum_num_new_oplog_meta
+             << YAML::EndMap;
+  }
+  yaml_out << YAML::EndMap;
   yaml_out << YAML::EndMap;
 
   yaml_out << YAML::BeginMap

@@ -67,7 +67,7 @@ protected:
   virtual void HandleEarlyCommOff();
 
   virtual void HandleBgServerPushRowAck(
-      int32_t bg_id, BgServerPushRowAckMsg &msg);
+      int32_t bg_id, uint64_t ack_seq);
 
   virtual long ServerIdleWork();
   virtual long ResetServerIdleMilli();

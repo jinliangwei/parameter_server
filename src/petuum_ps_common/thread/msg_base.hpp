@@ -157,7 +157,7 @@ struct ArbitrarySizedMsg : public NumberedMsg {
 public:
   ArbitrarySizedMsg() {}
 
-  explicit ArbitrarySizedMsg(int32_t avai_size) {
+  explicit ArbitrarySizedMsg(size_t avai_size) {
     own_mem_ = true;
     mem_.Alloc(get_header_size() + avai_size);
     InitMsg(avai_size);
@@ -181,7 +181,7 @@ public:
   }
 
 protected:
-  virtual void InitMsg(int32_t avai_size){
+  virtual void InitMsg(size_t avai_size){
     NumberedMsg::InitMsg();
     get_avai_size() = avai_size;
   }

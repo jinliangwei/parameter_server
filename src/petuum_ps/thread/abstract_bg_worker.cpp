@@ -646,12 +646,14 @@ size_t AbstractBgWorker::SendOpLogMsgs(bool clock_advanced) {
       oplog_msg_iter->second->get_seq_num() = msg_tracker_.IncGetSeq(server_id);
 
       accum_size += oplog_msg_iter->second->get_size();
+      //LOG(INFO) << "send " << server_id << " " << oplog_msg_iter->second->get_seq_num();
       MemTransfer::TransferMem(comm_bus_, server_id, oplog_msg_iter->second);
       // delete message after send
       delete oplog_msg_iter->second;
       oplog_msg_iter->second = 0;
+
     } else {
-      ClientSendOpLogMsg clock_oplog_msg(0);
+      ClientSendOpLogMsg clock_oplog_msg(size_t(0));
       clock_oplog_msg.get_is_clock() = clock_advanced;
       clock_oplog_msg.get_client_id() = GlobalContext::get_client_id();
       clock_oplog_msg.get_version() = version_;
@@ -659,6 +661,9 @@ size_t AbstractBgWorker::SendOpLogMsgs(bool clock_advanced) {
       clock_oplog_msg.get_seq_num() = msg_tracker_.IncGetSeq(server_id);
 
       accum_size += clock_oplog_msg.get_size();
+
+      //LOG(INFO) << "send " << server_id << " " << clock_oplog_msg.get_seq_num();
+
       MemTransfer::TransferMem(comm_bus_, server_id, &clock_oplog_msg);
     }
   }
