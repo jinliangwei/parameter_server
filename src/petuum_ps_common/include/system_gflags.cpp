@@ -41,3 +41,5 @@ DEFINE_string(numa_policy, "Even", "numa policy");
 DEFINE_bool(naive_table_oplog_meta, true, "naive table oplog meta");
 DEFINE_bool(suppression_on, false, "suppression on");
 DEFINE_bool(use_approx_sort, true, "use_approx_sort");
+
+DEFINE_uint64(num_zmq_threads, 1, "number of zmq threads");

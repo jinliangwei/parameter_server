@@ -95,16 +95,17 @@ void FeatureScaleAndAdd(float alpha, const DenseFeature<float>& f1,
   const std::vector<float>& f1_vec = f1.GetVector();
   std::vector<float>& f2_vec = f2->GetVector();
   for (int i = 0; i < f1_vec.size(); ++i) {
-   f2_vec[i] += alpha * f1_vec[i];
+    f2_vec[i] += alpha * f1_vec[i];
   }
 }
 
 void FeatureScaleAndAdd(float alpha, const AbstractFeature<float>& f1,
     AbstractFeature<float>* f2) {
+  AbstractFeature<float> &f2_vec = *f2;
   CHECK_EQ(f1.GetFeatureDim(), f2->GetFeatureDim());
   for (int i = 0; i < f1.GetNumEntries(); ++i) {
     int32_t f1_fid = f1.GetFeatureId(i);
-    f2->SetFeatureVal(f1_fid, alpha * f1.GetFeatureVal(i) + (*f2)[f1_fid]);
+    f2_vec.SetFeatureVal(f1_fid, alpha * f1.GetFeatureVal(i) + f2_vec[f1_fid]);
   }
 }
 

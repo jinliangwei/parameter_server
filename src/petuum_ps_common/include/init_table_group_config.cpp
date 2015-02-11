@@ -51,6 +51,8 @@ void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables) {
   config->naive_table_oplog_meta = FLAGS_naive_table_oplog_meta;
   config->suppression_on = FLAGS_suppression_on;
   config->use_approx_sort = FLAGS_use_approx_sort;
+
+  config->num_zmq_threads = FLAGS_num_zmq_threads;
 }
 
 }

@@ -82,7 +82,8 @@ struct TableGroupConfig {
       numa_policy(Even),
       naive_table_oplog_meta(true),
       suppression_on(false),
-      use_approx_sort(false)
+      use_approx_sort(false),
+      num_zmq_threads(1)
   { }
 
   std::string stats_path;
@@ -163,6 +164,8 @@ struct TableGroupConfig {
   bool suppression_on;
 
   bool use_approx_sort;
+
+  size_t num_zmq_threads;
 };
 
 // TableInfo is shared between client and server.

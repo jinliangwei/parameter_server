@@ -399,7 +399,12 @@ public:
     return use_approx_sort_;
   }
 
-  static CommBus* comm_bus;
+  static void create_comm_bus(
+      int32_t local_id_min, int32_t local_id_max,
+
+
+
+  //static CommBus* comm_bus;
 
   // name node thread id - 0
   // server thread ids - 1~99
@@ -460,6 +465,8 @@ private:
   static bool suppression_on_;
 
   static bool use_approx_sort_;
+
+  //static std::vector<CommBus*> comm_bus;
 };
 
 }   // namespace petuum
