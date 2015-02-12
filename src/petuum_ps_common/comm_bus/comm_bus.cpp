@@ -27,17 +27,20 @@ void CommBus::MakeInterProcAddr(const std::string &network_addr,
   *result += network_addr;
 }
 
-bool CommBus::IsLocalEntity(int32_t entity_id) {
-  //VLOG(0) << "e_st_ = " << e_st_
-  //	  << " e_end_ = " << e_end_;
-  return (e_st_ <= entity_id) && (entity_id <= e_end_);
+bool CommBus::IsLocalEntity(int32_t entity_id, int32_t my_id) {
+  return (my_id < 0) ||
+      ((e_st_ <= entity_id)
+      && (entity_id <= e_end_)
+      && ((entity_id % num_comm_buses_per_client_)
+          == (my_id % num_comm_buses_per_client_)));
 }
 
 
-CommBus::CommBus(int32_t e_st, int32_t e_end, int32_t num_clients,
-                 int32_t num_zmq_thrs) {
+CommBus::CommBus(int32_t e_st, int32_t e_end, bool more_than_one_clients,
+                 size_t num_comm_buses_per_client, int32_t num_zmq_thrs) {
   e_st_ = e_st;
   e_end_ = e_end;
+  num_comm_buses_per_client_ = num_comm_buses_per_client;
 
   try {
     zmq_ctx_ = new zmq::context_t(num_zmq_thrs);
@@ -47,7 +50,7 @@ CommBus::CommBus(int32_t e_st, int32_t e_end, int32_t num_clients,
     LOG(FATAL) << "Failed to create zmq context";
   }
 
-  if (num_clients == 1) {
+  if (!more_than_one_clients) {
     RecvAny_ = &CommBus::RecvInProc;
     RecvAsyncAny_ = &CommBus::RecvInProcAsync;
     RecvTimeOutAny_ = &CommBus::RecvInProcTimeOut;
@@ -146,8 +149,10 @@ void CommBus::ThreadDeregister() {
   thr_info_.reset();
 }
 
-void CommBus::ConnectTo(int32_t entity_id, void *connect_msg, size_t size) {
-  CHECK(IsLocalEntity(entity_id)) << "Not local entity " << entity_id;
+void CommBus::ConnectTo(
+    int32_t entity_id, void *connect_msg, size_t size,
+    int32_t my_id) {
+  CHECK(IsLocalEntity(entity_id, my_id)) << "Not local entity " << entity_id;
 
   zmq::socket_t *sock = thr_info_->inproc_sock_.get();
   if (sock == NULL) {
@@ -168,9 +173,10 @@ void CommBus::ConnectTo(int32_t entity_id, void *connect_msg, size_t size) {
   ZMQUtil::ZMQConnectSend(sock, connect_addr, zmq_id, connect_msg, size);
 }
 
-void CommBus::ConnectTo(int32_t entity_id, const std::string &network_addr,
-    void *connect_msg, size_t size) {
-  CHECK(!IsLocalEntity(entity_id)) << "Local entity " << entity_id;
+void CommBus::ConnectTo(
+    int32_t entity_id, const std::string &network_addr,
+    void *connect_msg, size_t size, int32_t my_id) {
+  CHECK(!IsLocalEntity(entity_id, my_id)) << "Local entity " << entity_id;
 
   zmq::socket_t *sock = thr_info_->interproc_sock_.get();
   if (sock == NULL) {
@@ -193,10 +199,11 @@ void CommBus::ConnectTo(int32_t entity_id, const std::string &network_addr,
   ZMQUtil::ZMQConnectSend(sock, connect_addr, zmq_id, connect_msg, size);
 }
 
-size_t CommBus::Send(int32_t entity_id, const void *data, size_t len) {
+size_t CommBus::Send(int32_t entity_id, const void *data, size_t len,
+                     int32_t my_id) {
   zmq::socket_t *sock;
 
-  if (IsLocalEntity(entity_id)) {
+  if (IsLocalEntity(entity_id, my_id)) {
     sock = thr_info_->inproc_sock_.get();
   } else {
     sock = thr_info_->interproc_sock_.get();
@@ -208,7 +215,8 @@ size_t CommBus::Send(int32_t entity_id, const void *data, size_t len) {
   return nbytes;
 }
 
-size_t CommBus::SendInProc(int32_t entity_id, const void *data, size_t len) {
+size_t CommBus::SendInProc(int32_t entity_id, const void *data, size_t len,
+                           int32_t my_id) {
   zmq::socket_t *sock = thr_info_->inproc_sock_.get();
 
   int32_t recv_id = ZMQUtil::EntityID2ZmqID(entity_id);
@@ -217,7 +225,8 @@ size_t CommBus::SendInProc(int32_t entity_id, const void *data, size_t len) {
   return nbytes;
 }
 
-size_t CommBus::SendInterProc(int32_t entity_id, const void *data, size_t len) {
+size_t CommBus::SendInterProc(int32_t entity_id, const void *data,
+                              size_t len, int32_t my_id) {
   zmq::socket_t *sock = thr_info_->interproc_sock_.get();
 
   int32_t recv_id = ZMQUtil::EntityID2ZmqID(entity_id);
@@ -226,10 +235,11 @@ size_t CommBus::SendInterProc(int32_t entity_id, const void *data, size_t len) {
   return nbytes;
 }
 
-size_t CommBus::Send(int32_t entity_id, zmq::message_t &msg) {
+size_t CommBus::Send(int32_t entity_id, zmq::message_t &msg,
+                     int32_t my_id) {
   zmq::socket_t *sock;
 
-  if (IsLocalEntity(entity_id)) {
+  if (IsLocalEntity(entity_id, my_id)) {
     sock = thr_info_->inproc_sock_.get();
   } else {
     sock = thr_info_->interproc_sock_.get();
@@ -241,7 +251,8 @@ size_t CommBus::Send(int32_t entity_id, zmq::message_t &msg) {
   return nbytes;
 }
 
-size_t CommBus::SendInProc(int32_t entity_id, zmq::message_t &msg) {
+size_t CommBus::SendInProc(int32_t entity_id, zmq::message_t &msg,
+                           int32_t my_id) {
   zmq::socket_t *sock = thr_info_->inproc_sock_.get();
 
   int32_t recv_id = ZMQUtil::EntityID2ZmqID(entity_id);

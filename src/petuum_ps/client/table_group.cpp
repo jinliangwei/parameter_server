@@ -62,7 +62,8 @@ TableGroup::TableGroup(const TableGroupConfig &table_group_config,
       table_group_config.numa_policy,
       table_group_config.naive_table_oplog_meta,
       table_group_config.use_approx_sort,
-      table_group_config.suppression_on);
+      table_group_config.suppression_on,
+      table_group_config.num_comm_buses);
 
   NumaMgr::Init(table_group_config.numa_opt);
 
@@ -70,15 +71,17 @@ TableGroup::TableGroup(const TableGroupConfig &table_group_config,
 
   LOG(INFO) << "num_zmq_threads = " << num_zmq_threads;
 
-  CommBus *comm_bus = new CommBus(local_id_min, local_id_max,
-                                  num_total_clients, num_zmq_threads);
-  GlobalContext::comm_bus = comm_bus;
-
   *init_thread_id = local_id_min
                     + GlobalContext::kInitThreadIDOffset;
-  CommBus::Config comm_config(*init_thread_id, CommBus::kNone, "");
 
-  GlobalContext::comm_bus->ThreadRegister(comm_config);
+  GlobalContext::create_comm_bus(
+      local_id_min, local_id_max,
+      (num_total_clients > 1) || (table_group_config.num_comm_buses > 1),
+      num_zmq_threads);
+
+  CommBus::Config comm_config(*init_thread_id, CommBus::kNone, "");
+  GlobalContext::comm_bus_thread_register(comm_config);
+
   ThreadContext::RegisterThread(*init_thread_id);
 
   if (GlobalContext::am_i_name_node_client()) {
@@ -112,7 +115,8 @@ TableGroup::~TableGroup() {
   }
 
   BgWorkers::ShutDown();
-  GlobalContext::comm_bus->ThreadDeregister();
+  GlobalContext::comm_bus_thread_deregister();
+
   for(auto iter = tables_.begin(); iter != tables_.end(); iter++){
     delete iter->second;
   }
@@ -120,7 +124,7 @@ TableGroup::~TableGroup() {
   STATS_DEREGISTER_THREAD();
   STATS_PRINT();
 
-  delete GlobalContext::comm_bus;
+  GlobalContext::delete_comm_bus();
 }
 
 bool TableGroup::CreateTable(int32_t table_id,
@@ -164,7 +168,7 @@ int32_t TableGroup::RegisterThread() {
 
   NumaMgr::ConfigureTableThread();
 
-  GlobalContext::comm_bus->ThreadRegister(comm_config);
+  GlobalContext::comm_bus_thread_register(comm_config);
 
   BgWorkers::AppThreadRegister();
 
@@ -186,7 +190,7 @@ void TableGroup::DeregisterThread(){
   }
 
   BgWorkers::AppThreadDeregister();
-  GlobalContext::comm_bus->ThreadDeregister();
+  GlobalContext::comm_bus_thread_deregister();
   STATS_DEREGISTER_THREAD();
 }
 

@@ -156,7 +156,8 @@ public:
       NumaPolicy numa_policy,
       bool naive_table_oplog_meta,
       bool use_approx_sort,
-      bool suppression_on) {
+      bool suppression_on,
+      size_t num_comm_buses) {
 
     num_comm_channels_per_client_
         = num_comm_channels_per_client;
@@ -227,6 +228,8 @@ public:
         server_ids_.push_back(server_id);
       }
     }
+
+    num_comm_buses_ = num_comm_buses;
   }
 
   // Functions that depend on Init()
@@ -399,17 +402,54 @@ public:
     return use_approx_sort_;
   }
 
-  static CommBus* comm_bus;
+  static size_t get_num_comm_buses() {
+    return num_comm_buses_;
+  }
+
+  static void create_comm_bus(
+      int32_t local_id_min, int32_t local_id_max,
+      bool more_than_one_clients, size_t num_zmq_threads) {
+    comm_bus_.resize(num_comm_buses_);
+    for (auto &comm_bus_i : comm_bus_) {
+      comm_bus_i = new CommBus(local_id_min, local_id_max,
+                               more_than_one_clients, num_comm_buses_,
+                               num_zmq_threads);
+    }
+  }
+
+  static void delete_comm_bus() {
+    for (const auto &comm_bus_i : comm_bus_) {
+      delete comm_bus_i;
+    }
+  }
+
+  static void comm_bus_thread_register(
+      const CommBus::Config &comm_config) {
+    for (auto &comm_bus_i : comm_bus_) {
+      comm_bus_i->ThreadRegister(comm_config);
+    }
+  }
+
+  static void comm_bus_thread_deregister() {
+    for (auto &comm_bus_i : comm_bus_) {
+      comm_bus_i->ThreadDeregister();
+    }
+  }
+
+  static CommBus *get_comm_bus(int32_t thread_id) {
+    int32_t comm_bus_index = thread_id % num_comm_buses_;
+    return comm_bus_[comm_bus_index];
+  }
 
   // name node thread id - 0
   // server thread ids - 1~99
-  // bg thread ids - 100~199
+  // bg thread ids - 101~199
   // init thread id - 200
   // app threads - 201~xxx
 
   static const int32_t kMaxNumThreadsPerClient = 1000;
   // num of server + name node thread per node <= 100
-  static const int32_t kBgThreadIDStartOffset = 100;
+  static const int32_t kBgThreadIDStartOffset = 101;
   static const int32_t kInitThreadIDOffset = 200;
   static const int32_t kServerThreadIDStartOffset = 1;
 private:
@@ -461,7 +501,9 @@ private:
 
   static bool use_approx_sort_;
 
-  //static std::vector<CommBus*> comm_bus;
+  static size_t num_comm_buses_;
+
+  static std::vector<CommBus*> comm_bus_;
 };
 
 }   // namespace petuum

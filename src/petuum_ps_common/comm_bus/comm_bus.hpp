@@ -88,9 +88,10 @@ public:
     ThreadCommInfo() { }
   };
 
-  bool IsLocalEntity(int32_t entity_id);
+  bool IsLocalEntity(int32_t entity_id, int32_t my_id);
 
-  CommBus(int32_t e_st, int32_t e_end, int32_t num_clients, int32_t num_zmq_thrs = 1);
+  CommBus(int32_t e_st, int32_t e_end, bool more_than_one_clients,
+          size_t num_comm_buses_per_client, int32_t num_zmq_thrs = 1);
   ~CommBus();
 
   // Register a thread, set up necessary commnication channel.
@@ -109,18 +110,24 @@ public:
   // ConnectTo due to a long-standing zeromq bug. See
   // http://grokbase.com/t/zeromq/zeromq-dev/12ajmp3rkd/inproc-need-to-bind-to-an-address-before-connect
   // for more info.
-  void ConnectTo(int32_t entity_id, void *connect_msg, size_t size);
+  void ConnectTo(int32_t entity_id, void *connect_msg, size_t size,
+                 int32_t my_id);
   // Connect to a remote thread.
   void ConnectTo(int32_t entity_id, const std::string& network_addr, void
-      *connect_msg, size_t size);
+                 *connect_msg, size_t size, int32_t my_id);
 
-  size_t Send(int32_t entity_id, const void *data, size_t len);
-  size_t SendInProc(int32_t entity_id, const void *data, size_t len);
-  size_t SendInterProc(int32_t entity_id, const void *data, size_t len);
+  size_t Send(int32_t entity_id, const void *data, size_t len,
+              int32_t my_id);
+  size_t SendInProc(int32_t entity_id, const void *data, size_t len,
+                    int32_t my_id);
+  size_t SendInterProc(int32_t entity_id, const void *data, size_t len,
+                       int32_t my_id);
 
   // msg is nollified
-  size_t Send(int32_t entity_id, zmq::message_t &msg);
-  size_t SendInProc(int32_t entity_id, zmq::message_t &msg);
+  size_t Send(int32_t entity_id, zmq::message_t &msg,
+              int32_t my_id);
+  size_t SendInProc(int32_t entity_id, zmq::message_t &msg,
+                    int32_t my_id);
 
   void Recv(int32_t *entity_id, zmq::message_t *msg);
   bool RecvAsync(int32_t *entity_id, zmq::message_t *msg);
@@ -142,13 +149,14 @@ public:
   typedef bool (CommBus::*RecvAsyncFunc)(int32_t *sender_id,
                                          zmq::message_t *msg);
 
-  typedef void (*WaitMsgFunc)(int32_t *sender_id, zmq::message_t *msg);
-  typedef bool (*WaitMsgTimeOutFunc)(int32_t *sender_id,
-                                         zmq::message_t *msg,
-                                         long timeout_milli);
+  typedef void (*WaitMsgFunc)(
+      CommBus *comm_bus, int32_t *sender_id, zmq::message_t *msg);
+  typedef bool (*WaitMsgTimeOutFunc)(
+      CommBus *comm_bus,
+      int32_t *sender_id, zmq::message_t *msg, long timeout_milli);
 
   typedef size_t (CommBus::*SendFunc)(int32_t entity_id, const void *msg,
-    size_t len);
+                                      size_t len, int32_t my_id);
 
   SendFunc SendAny_;
   RecvFunc RecvAny_;
@@ -168,6 +176,7 @@ private:
   // denote the range of entity IDs that are local, inclusive
   int32_t e_st_;
   int32_t e_end_;
+  size_t num_comm_buses_per_client_;
   boost::thread_specific_ptr<ThreadCommInfo> thr_info_;
 };
 }   // namespace petuum

@@ -35,7 +35,8 @@ public:
 
   void Init(int32_t server_id,
             const std::vector<int32_t> &bg_ids,
-            MsgTracker *msg_tracker);
+            MsgTracker *msg_tracker,
+            CommBus *comm_bus);
 
   void CreateTable(int32_t table_id, TableInfo &table_info);
   ServerRow *FindCreateRow(int32_t table_id, int32_t row_id);
@@ -52,7 +53,8 @@ public:
   typedef void (*PushMsgSendFunc)(int32_t bg_id, ServerPushRowMsg *msg,
                                   bool is_last, int32_t version,
                                   int32_t server_min_clock,
-                                  MsgTracker *msg_tracker);
+                                  MsgTracker *msg_tracker,
+                                  CommBus *comm_bus, int32_t my_id);
   size_t CreateSendServerPushRowMsgs(PushMsgSendFunc PushMsgSender,
                                      bool clock_changed = true);
 
@@ -80,6 +82,7 @@ private:
 
   size_t accum_oplog_count_;
   MsgTracker *msg_tracker_;
+  CommBus *comm_bus_;
 };
 
 }  // namespace petuum

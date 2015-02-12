@@ -8,30 +8,28 @@
 #include <unistd.h>
 namespace petuum {
 
-bool ServerThread::WaitMsgBusy(int32_t *sender_id, zmq::message_t *zmq_msg,
-                               long timeout_milli __attribute__ ((unused)) ) {
-  bool received = (GlobalContext::comm_bus->*(
-      GlobalContext::comm_bus->RecvAsyncAny_))(sender_id, zmq_msg);
+bool ServerThread::WaitMsgBusy(
+    CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+    long timeout_milli __attribute__ ((unused)) ) {
+  bool received = (comm_bus->*(comm_bus->RecvAsyncAny_))(sender_id, zmq_msg);
   while (!received) {
-    received = (GlobalContext::comm_bus->*(
-        GlobalContext::comm_bus->RecvAsyncAny_))(sender_id, zmq_msg);
+    received = (comm_bus->*(comm_bus->RecvAsyncAny_))(sender_id, zmq_msg);
   }
   return true;
 }
 
-bool ServerThread::WaitMsgSleep(int32_t *sender_id, zmq::message_t *zmq_msg,
-                                long timeout_milli __attribute__ ((unused)) ) {
-  (GlobalContext::comm_bus->*(
-      GlobalContext::comm_bus->RecvAny_))(sender_id, zmq_msg);
-
+bool ServerThread::WaitMsgSleep(
+    CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+    long timeout_milli __attribute__ ((unused)) ) {
+  (comm_bus->*(comm_bus->RecvAny_))(sender_id, zmq_msg);
   return true;
 }
 
-bool ServerThread::WaitMsgTimeOut(int32_t *sender_id, zmq::message_t *zmq_msg,
-                                  long timeout_milli) {
-  bool received = (GlobalContext::comm_bus->*(
-      GlobalContext::comm_bus->RecvTimeOutAny_))(
-          sender_id, zmq_msg, timeout_milli);
+bool ServerThread::WaitMsgTimeOut(
+    CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+    long timeout_milli) {
+  bool received = (comm_bus->*(comm_bus->RecvTimeOutAny_))(
+      sender_id, zmq_msg, timeout_milli);
   return received;
 }
 
@@ -51,7 +49,8 @@ void ServerThread::SetUpCommBus() {
   CommBus::Config comm_config;
   comm_config.entity_id_ = my_id_;
 
-  if (GlobalContext::get_num_clients() > 1) {
+  if (GlobalContext::get_num_clients() > 1
+      || GlobalContext::get_num_comm_buses() > 1) {
     comm_config.ltype_ = CommBus::kInProc | CommBus::kInterProc;
     HostInfo host_info = GlobalContext::get_server_info(my_id_);
     comm_config.network_addr_ = host_info.ip + ":" + host_info.port;
@@ -69,12 +68,12 @@ void ServerThread::ConnectToNameNode() {
   void *msg = server_connect_msg.get_mem();
   int32_t msg_size = server_connect_msg.get_size();
 
-  if (comm_bus_->IsLocalEntity(name_node_id)) {
-    comm_bus_->ConnectTo(name_node_id, msg, msg_size);
+  if (comm_bus_->IsLocalEntity(name_node_id, my_id_)) {
+    comm_bus_->ConnectTo(name_node_id, msg, msg_size, my_id_);
   } else {
     HostInfo name_node_info = GlobalContext::get_name_node_info();
     std::string name_node_addr = name_node_info.ip + ":" + name_node_info.port;
-    comm_bus_->ConnectTo(name_node_id, name_node_addr, msg, msg_size);
+    comm_bus_->ConnectTo(name_node_id, name_node_addr, msg, msg_size, my_id_);
   }
 }
 
@@ -97,7 +96,7 @@ int32_t ServerThread::GetConnection(bool *is_client, int32_t *client_id) {
 void ServerThread::SendToAllBgThreads(MsgBase *msg) {
   for (const auto &bg_worker_id : bg_worker_ids_) {
     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-        bg_worker_id, msg->get_mem(), msg->get_size());
+        bg_worker_id, msg->get_mem(), msg->get_size(), my_id_);
     CHECK_EQ(sent_size, msg->get_size());
   }
 }
@@ -116,7 +115,8 @@ void ServerThread::InitServer() {
     msg_tracker_.AddEntity(bg_id);
   }
 
-  server_obj_.Init(my_id_, bg_worker_ids_, &msg_tracker_);
+  server_obj_.Init(my_id_, bg_worker_ids_, &msg_tracker_,
+                   comm_bus_);
 
   for (auto id : bg_worker_ids_) {
     client_progress_clock_.AddClock(id, 0);
@@ -149,8 +149,10 @@ void ServerThread::HandleCreateTable(int32_t sender_id,
   // I'm not name node
   CreateTableReplyMsg create_table_reply_msg;
   create_table_reply_msg.get_table_id() = create_table_msg.get_table_id();
-  size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(sender_id,
-    create_table_reply_msg.get_mem(), create_table_reply_msg.get_size());
+  size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+      sender_id,
+      create_table_reply_msg.get_mem(), create_table_reply_msg.get_size(),
+      my_id_);
   CHECK_EQ(sent_size, create_table_reply_msg.get_size());
 
   TableInfo table_info;
@@ -209,7 +211,7 @@ void ServerThread::ReplyRowRequest(int32_t bg_id, ServerRow *server_row,
 
   server_row_request_reply_msg.get_row_size() = row_size;
 
-  MemTransfer::TransferMem(comm_bus_, bg_id, &server_row_request_reply_msg);
+  MemTransfer::TransferMem(comm_bus_, bg_id, &server_row_request_reply_msg, my_id_);
 }
 
 void ServerThread::HandleOpLogMsg(int32_t sender_id,
@@ -301,10 +303,11 @@ void ServerThread::SendOpLogAckMsg(int32_t bg_id, uint32_t version,
   server_oplog_ack_msg.get_ack_version() = version;
   server_oplog_ack_msg.get_ack_num() = seq;
 
-  size_t sent_size = (GlobalContext::comm_bus->*(
-      GlobalContext::comm_bus->SendAny_))(
+  size_t sent_size = (comm_bus_->*(
+      comm_bus_->SendAny_))(
           bg_id, server_oplog_ack_msg.get_mem(),
-          server_oplog_ack_msg.get_size());
+          server_oplog_ack_msg.get_size(),
+          my_id_);
   CHECK_EQ(sent_size, server_oplog_ack_msg.get_size());
 }
 
@@ -315,7 +318,8 @@ void ServerThread::SendServerShutDownAcks() {
   for (i = 0; i < GlobalContext::get_num_clients(); ++i) {
     int32_t bg_id = bg_worker_ids_[i];
     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-        bg_id, shut_down_ack_msg.get_mem(), msg_size);
+        bg_id, shut_down_ack_msg.get_mem(), msg_size,
+        my_id_);
     CHECK_EQ(msg_size, sent_size);
   }
 }
@@ -353,7 +357,7 @@ void *ServerThread::operator() () {
   long timeout_milli = -1;
   PrepareBeforeInfiniteLoop();
   while(1) {
-    bool received = WaitMsg_(&sender_id, &zmq_msg, timeout_milli);
+    bool received = WaitMsg_(comm_bus_, &sender_id, &zmq_msg, timeout_milli);
     if (!received) {
       timeout_milli = ServerIdleWork();
       continue;

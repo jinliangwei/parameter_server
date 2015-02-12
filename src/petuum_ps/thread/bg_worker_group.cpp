@@ -84,9 +84,16 @@ void BgWorkerGroup::RequestRowAsync(int32_t table_id, int32_t row_id,
 void BgWorkerGroup::GetAsyncRowRequestReply() {
   zmq::message_t zmq_msg;
   int32_t sender_id;
-  GlobalContext::comm_bus->RecvInProc(&sender_id, &zmq_msg);
-  MsgType msg_type = MsgBase::get_msg_type(zmq_msg.data());
-  CHECK_EQ(msg_type, kRowRequestReply);
+  while (1) {
+    for (int32_t i = 0; i < GlobalContext::get_num_comm_channels_per_client();
+         ++i) {
+      if(GlobalContext::get_comm_bus(i)->RecvInProcTimeOut(&sender_id, &zmq_msg, 0)) {
+        MsgType msg_type = MsgBase::get_msg_type(zmq_msg.data());
+        CHECK_EQ(msg_type, kRowRequestReply);
+        return;
+      }
+    }
+  }
 }
 
 void BgWorkerGroup::SignalHandleAppendOnlyBuffer(

@@ -665,7 +665,7 @@ void SSPAggrBgWorker::HandleEarlyCommOn() {
   EarlyCommOnMsg msg;
   for (const auto &server_id : server_ids_) {
     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-        server_id, msg.get_mem(), msg.get_size());
+        server_id, msg.get_mem(), msg.get_size(), my_id_);
     CHECK_EQ(sent_size, msg.get_size());
   }
 }
@@ -676,7 +676,7 @@ void SSPAggrBgWorker::HandleEarlyCommOff() {
   EarlyCommOffMsg msg;
   for (const auto &server_id : server_ids_) {
     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-        server_id, msg.get_mem(), msg.get_size());
+        server_id, msg.get_mem(), msg.get_size(), my_id_);
     CHECK_EQ(sent_size, msg.get_size());
   }
 }

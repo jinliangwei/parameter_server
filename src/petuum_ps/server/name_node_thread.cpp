@@ -13,7 +13,7 @@ namespace petuum {
 NameNodeThread::NameNodeThread(pthread_barrier_t *init_barrier):
     my_id_(0),
     init_barrier_(init_barrier),
-    comm_bus_(GlobalContext::comm_bus),
+    comm_bus_(GlobalContext::get_comm_bus(0)),
     bg_worker_ids_(GlobalContext::get_num_clients()
                    *GlobalContext::get_num_comm_channels_per_client()),
     num_shutdown_bgs_(0) {
@@ -39,7 +39,7 @@ int32_t NameNodeThread::GetConnection(bool *is_client, int32_t *client_id) {
 void NameNodeThread::SendToAllBgThreads(MsgBase *msg){
   for (const auto &bg_id : bg_worker_ids_) {
     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-        bg_id, msg->get_mem(), msg->get_size());
+        bg_id, msg->get_mem(), msg->get_size(), 0);
     CHECK_EQ(sent_size, msg->get_size());
   }
 }
@@ -48,7 +48,7 @@ void NameNodeThread::SendToAllServers(MsgBase *msg){
   std::vector<int32_t> server_ids = GlobalContext::get_all_server_ids();
   for (const auto &server_id : server_ids) {
     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-        server_id, msg->get_mem(), msg->get_size());
+        server_id, msg->get_mem(), msg->get_size(), 0);
     CHECK_EQ(sent_size, msg->get_size());
   }
 }
@@ -78,7 +78,7 @@ void NameNodeThread::InitNameNode() {
 
   LOG(INFO) << "name node has got all connections!";
 
-  server_obj_.Init(0, bg_worker_ids_, 0);
+  server_obj_.Init(0, bg_worker_ids_, 0, 0);
 
   ConnectServerMsg connect_server_msg;
   SendToAllBgThreads(reinterpret_cast<MsgBase*>(&connect_server_msg));
@@ -108,7 +108,7 @@ void NameNodeThread::SendCreatedAllTablesMsg() {
     int32_t head_bg_id = GlobalContext::get_head_bg_id(client_idx);
     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
         head_bg_id, created_all_tables_msg.get_mem(),
-        created_all_tables_msg.get_size());
+        created_all_tables_msg.get_size(), 0);
     CHECK_EQ(sent_size, created_all_tables_msg.get_size());
   }
 }
@@ -124,7 +124,7 @@ bool NameNodeThread::HandleShutDownMsg() {
     for(i = 0; i < GlobalContext::get_num_total_comm_channels(); ++i){
       int32_t bg_id = bg_worker_ids_[i];
       size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-          bg_id, shut_down_ack_msg.get_mem(), msg_size);
+          bg_id, shut_down_ack_msg.get_mem(), msg_size, 0);
       CHECK_EQ(msg_size, sent_size);
     }
     return true;
@@ -153,7 +153,7 @@ void NameNodeThread::HandleCreateTable (int32_t sender_id,
     create_table_reply_msg.get_table_id() = create_table_msg.get_table_id();
     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
         sender_id, create_table_reply_msg.get_mem(),
-        create_table_reply_msg.get_size());
+        create_table_reply_msg.get_size(), 0);
     CHECK_EQ(sent_size, create_table_reply_msg.get_size());
     ++create_table_map_[table_id].num_clients_replied_;
     if (HaveCreatedAllTables())
@@ -178,7 +178,7 @@ void NameNodeThread::HandleCreateTableReply(
       bgs_to_reply.pop();
       size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
           bg_id, create_table_reply_msg.get_mem(),
-          create_table_reply_msg.get_size());
+          create_table_reply_msg.get_size(), 0);
       CHECK_EQ(sent_size, create_table_reply_msg.get_size());
       ++create_table_map_[table_id].num_clients_replied_;
     }
@@ -191,7 +191,8 @@ void NameNodeThread::SetUpCommBus() {
   CommBus::Config comm_config;
   comm_config.entity_id_ = my_id_;
 
-  if (GlobalContext::get_num_clients() > 1) {
+  if (GlobalContext::get_num_clients() > 1
+      || GlobalContext::get_num_comm_buses() > 1) {
     comm_config.ltype_ = CommBus::kInProc | CommBus::kInterProc;
     HostInfo host_info = GlobalContext::get_name_node_info();
     comm_config.network_addr_ = host_info.ip + ":" + host_info.port;

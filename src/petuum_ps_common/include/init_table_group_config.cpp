@@ -53,6 +53,7 @@ void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables) {
   config->use_approx_sort = FLAGS_use_approx_sort;
 
   config->num_zmq_threads = FLAGS_num_zmq_threads;
+  config->num_comm_buses = FLAGS_num_comm_buses;
 }
 
 }

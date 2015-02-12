@@ -15,7 +15,8 @@ protected:
   static void SendServerPushRowMsg (int32_t bg_id, ServerPushRowMsg *msg,
                                     bool last_msg, int32_t version,
                                     int32_t server_min_clock,
-                                    MsgTracker *msg_tracker);
+                                    MsgTracker *msg_tracker,
+                                    CommBus *comm_bus, int32_t my_id);
 
   virtual void RowSubscribe(ServerRow *server_row, int32_t client_id);
 

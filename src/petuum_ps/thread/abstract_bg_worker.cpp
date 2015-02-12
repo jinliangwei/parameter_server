@@ -28,7 +28,7 @@ AbstractBgWorker::AbstractBgWorker(int32_t id,
     version_(0),
     client_clock_(0),
     clock_has_pushed_(-1),
-    comm_bus_(GlobalContext::comm_bus),
+    comm_bus_(GlobalContext::get_comm_bus(my_id_)),
     init_barrier_(init_barrier),
     create_table_barrier_(create_table_barrier),
     msg_tracker_(kMaxPendingMsgs),
@@ -59,7 +59,7 @@ void AbstractBgWorker::AppThreadRegister() {
   void *msg = app_connect_msg.get_mem();
   size_t msg_size = app_connect_msg.get_size();
 
-  comm_bus_->ConnectTo(my_id_, msg, msg_size);
+  comm_bus_->ConnectTo(my_id_, msg, msg_size, -1);
 }
 
 void AbstractBgWorker::AppThreadDeregister() {
@@ -192,30 +192,29 @@ void AbstractBgWorker::InitWhenStart() {
   CreateRowRequestOpLogMgr();
 }
 
-bool AbstractBgWorker::WaitMsgBusy(int32_t *sender_id, zmq::message_t *zmq_msg,
-                           long timeout_milli __attribute__ ((unused)) ) {
-  bool received = (GlobalContext::comm_bus->*
-                   (GlobalContext::comm_bus->RecvAsyncAny_))(sender_id,
-                                               zmq_msg);
+bool AbstractBgWorker::WaitMsgBusy(
+    CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+    long timeout_milli __attribute__ ((unused)) ) {
+  bool received = (comm_bus->*(comm_bus->RecvAsyncAny_))(sender_id,
+                                                           zmq_msg);
   while (!received)
-    received = (GlobalContext::comm_bus->*
-                (GlobalContext::comm_bus->RecvAsyncAny_))(sender_id,
-                                                          zmq_msg);
+    received = (comm_bus->*(comm_bus->RecvAsyncAny_))(sender_id,
+                                                        zmq_msg);
   return true;
 }
 
-bool AbstractBgWorker::WaitMsgSleep(int32_t *sender_id, zmq::message_t *zmq_msg,
-                            long timeout_milli __attribute__ ((unused)) ) {
-  (GlobalContext::comm_bus->*
-   (GlobalContext::comm_bus->RecvAny_))(sender_id, zmq_msg);
+bool AbstractBgWorker::WaitMsgSleep(
+    CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+    long timeout_milli __attribute__ ((unused)) ) {
+  (comm_bus->*(comm_bus->RecvAny_))(sender_id, zmq_msg);
   return true;
 }
 
-bool AbstractBgWorker::WaitMsgTimeOut(int32_t *sender_id, zmq::message_t *zmq_msg,
-                              long timeout_milli) {
-  bool received = (GlobalContext::comm_bus->*
-                   (GlobalContext::comm_bus->RecvTimeOutAny_))(
-                       sender_id, zmq_msg, timeout_milli);
+bool AbstractBgWorker::WaitMsgTimeOut(
+    CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+    long timeout_milli) {
+  bool received = (comm_bus->*(comm_bus->RecvTimeOutAny_))(
+      sender_id, zmq_msg, timeout_milli);
   return received;
 }
 
@@ -254,9 +253,9 @@ void AbstractBgWorker::BgServerHandshake() {
     // wait for ConnectServerMsg
     zmq::message_t zmq_msg;
     int32_t sender_id;
-    if (comm_bus_->IsLocalEntity(name_node_id)) {
+    if (comm_bus_->IsLocalEntity(name_node_id, my_id_)) {
       comm_bus_->RecvInProc(&sender_id, &zmq_msg);
-    }else{
+    } else {
       comm_bus_->RecvInterProc(&sender_id, &zmq_msg);
     }
     MsgType msg_type = MsgBase::get_msg_type(zmq_msg.data());
@@ -363,8 +362,9 @@ void AbstractBgWorker::HandleCreateTables() {
 
       // send msg to name node
       int32_t name_node_id = GlobalContext::get_name_node_id();
-      size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(name_node_id,
-	create_table_msg.get_mem(), create_table_msg.get_size());
+      size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+          name_node_id,
+          create_table_msg.get_mem(), create_table_msg.get_size(), my_id_);
       CHECK_EQ(sent_size, create_table_msg.get_size());
     }
 
@@ -389,7 +389,7 @@ void AbstractBgWorker::HandleCreateTables() {
       (*tables_)[table_id] = client_table;
 
       size_t sent_size = comm_bus_->SendInProc(sender_id, zmq_msg.data(),
-        zmq_msg.size());
+                                               zmq_msg.size(), my_id_);
       CHECK_EQ(sent_size, zmq_msg.size());
     }
   }
@@ -647,7 +647,7 @@ size_t AbstractBgWorker::SendOpLogMsgs(bool clock_advanced) {
 
       accum_size += oplog_msg_iter->second->get_size();
       //LOG(INFO) << "send " << server_id << " " << oplog_msg_iter->second->get_seq_num();
-      MemTransfer::TransferMem(comm_bus_, server_id, oplog_msg_iter->second);
+      MemTransfer::TransferMem(comm_bus_, server_id, oplog_msg_iter->second, my_id_);
       // delete message after send
       delete oplog_msg_iter->second;
       oplog_msg_iter->second = 0;
@@ -664,7 +664,7 @@ size_t AbstractBgWorker::SendOpLogMsgs(bool clock_advanced) {
 
       //LOG(INFO) << "send " << server_id << " " << clock_oplog_msg.get_seq_num();
 
-      MemTransfer::TransferMem(comm_bus_, server_id, &clock_oplog_msg);
+      MemTransfer::TransferMem(comm_bus_, server_id, &clock_oplog_msg, my_id_);
     }
   }
 
@@ -727,7 +727,7 @@ void AbstractBgWorker::CheckForwardRowRequestToServer(
           RowRequestReplyMsg row_request_reply_msg;
           size_t sent_size = comm_bus_->SendInProc(
               app_thread_id, row_request_reply_msg.get_mem(),
-              row_request_reply_msg.get_size());
+              row_request_reply_msg.get_size(), my_id_);
           CHECK_EQ(sent_size, row_request_reply_msg.get_size());
           return;
         }
@@ -751,8 +751,9 @@ void AbstractBgWorker::CheckForwardRowRequestToServer(
     int32_t server_id
         = GlobalContext::GetPartitionServerID(row_id, my_comm_channel_idx_);
 
-    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(server_id,
-      row_request_msg.get_mem(), row_request_msg.get_size());
+    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+        server_id,
+        row_request_msg.get_mem(), row_request_msg.get_size(), my_id_);
     CHECK_EQ(sent_size, row_request_msg.get_size());
   }
 }
@@ -913,8 +914,9 @@ void AbstractBgWorker::HandleServerRowRequestReply(
     int32_t server_id = GlobalContext::GetPartitionServerID(
         row_id, my_comm_channel_idx_);
 
-    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(server_id,
-      row_request_msg.get_mem(), row_request_msg.get_size());
+    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+        server_id,
+        row_request_msg.get_mem(), row_request_msg.get_size(), my_id_);
     CHECK_EQ(sent_size, row_request_msg.get_size());
   }
 
@@ -922,15 +924,17 @@ void AbstractBgWorker::HandleServerRowRequestReply(
   RowRequestReplyMsg row_request_reply_msg;
 
   for (int i = 0; i < (int) app_thread_ids.size(); ++i) {
-    size_t sent_size = comm_bus_->SendInProc(app_thread_ids[i],
-      row_request_reply_msg.get_mem(), row_request_reply_msg.get_size());
+    size_t sent_size = comm_bus_->SendInProc(
+        app_thread_ids[i],
+        row_request_reply_msg.get_mem(), row_request_reply_msg.get_size(),
+        my_id_);
     CHECK_EQ(sent_size, row_request_reply_msg.get_size());
   }
 }
 
 size_t AbstractBgWorker::SendMsg(MsgBase *msg) {
   size_t sent_size = comm_bus_->SendInProc(my_id_, msg->get_mem(),
-                                            msg->get_size());
+                                           msg->get_size(), -1);
   return sent_size;
 }
 
@@ -945,8 +949,8 @@ void AbstractBgWorker::ConnectToNameNodeOrServer(int32_t server_id) {
   void *msg = client_connect_msg.get_mem();
   int32_t msg_size = client_connect_msg.get_size();
 
-  if (comm_bus_->IsLocalEntity(server_id)) {
-    comm_bus_->ConnectTo(server_id, msg, msg_size);
+  if (comm_bus_->IsLocalEntity(server_id, my_id_)) {
+    comm_bus_->ConnectTo(server_id, msg, msg_size, my_id_);
   } else {
     HostInfo server_info;
     if (server_id == GlobalContext::get_name_node_id())
@@ -955,7 +959,7 @@ void AbstractBgWorker::ConnectToNameNodeOrServer(int32_t server_id) {
       server_info = GlobalContext::get_server_info(server_id);
 
     std::string server_addr = server_info.ip + ":" + server_info.port;
-    comm_bus_->ConnectTo(server_id, server_addr, msg, msg_size);
+    comm_bus_->ConnectTo(server_id, server_addr, msg, msg_size, my_id_);
   }
 }
 
@@ -979,11 +983,11 @@ void AbstractBgWorker::SendClientShutDownMsgs() {
   ClientShutDownMsg msg;
   int32_t name_node_id = GlobalContext::get_name_node_id();
   (comm_bus_->*(comm_bus_->SendAny_))(name_node_id, msg.get_mem(),
-                                      msg.get_size());
+                                      msg.get_size(), my_id_);
 
   for (const auto &server_id : server_ids_) {
     (comm_bus_->*(comm_bus_->SendAny_))(server_id, msg.get_mem(),
-                                        msg.get_size());
+                                        msg.get_size(), my_id_);
   }
 }
 
@@ -1023,7 +1027,7 @@ void *AbstractBgWorker::operator() () {
   long timeout_milli = -1;
   PrepareBeforeInfiniteLoop();
   while (1) {
-    bool received = WaitMsg_(&sender_id, &zmq_msg, timeout_milli);
+    bool received = WaitMsg_(comm_bus_, &sender_id, &zmq_msg, timeout_milli);
 
     if (!received) {
       timeout_milli = BgIdleWork();

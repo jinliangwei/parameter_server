@@ -8,7 +8,8 @@ namespace petuum {
 void SSPPushServerThread::SendServerPushRowMsg(
     int32_t bg_id, ServerPushRowMsg *msg, bool last_msg,
     int32_t version, int32_t server_min_clock,
-    MsgTracker *msg_tracker) {
+    MsgTracker *msg_tracker,
+    CommBus *comm_bus, int32_t my_id) {
 
   //if (last_msg)
   //LOG(INFO) << "server_send_push_row, is_clock = " << last_msg
@@ -26,12 +27,11 @@ void SSPPushServerThread::SendServerPushRowMsg(
   if (last_msg) {
     msg->get_is_clock() = true;
     msg->get_clock() = server_min_clock;
-    MemTransfer::TransferMem(GlobalContext::comm_bus, bg_id, msg);
+    MemTransfer::TransferMem(comm_bus, bg_id, msg, my_id);
   } else {
     msg->get_is_clock() = false;
-    size_t sent_size = (GlobalContext::comm_bus->*(
-        GlobalContext::comm_bus->SendAny_))(
-        bg_id, msg->get_mem(), msg->get_size());
+    size_t sent_size = (comm_bus->*(comm_bus->SendAny_))(
+        bg_id, msg->get_mem(), msg->get_size(), my_id);
     CHECK_EQ(sent_size, msg->get_size());
   }
 }

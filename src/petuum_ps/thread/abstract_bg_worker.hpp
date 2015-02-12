@@ -56,13 +56,15 @@ protected:
   virtual void SetWaitMsg();
   virtual void CreateRowRequestOpLogMgr() = 0;
 
-  static bool WaitMsgBusy(int32_t *sender_id, zmq::message_t *zmq_msg,
-                          long timeout_milli = -1);
-  static bool WaitMsgSleep(int32_t *sender_id, zmq::message_t *zmq_msg,
+  static bool WaitMsgBusy(
+      CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+      long timeout_milli = -1);
+  static bool WaitMsgSleep(
+      CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
                            long timeout_milli  = -1);
-  static bool WaitMsgTimeOut(int32_t *sender_id,
-                             zmq::message_t *zmq_msg,
-                             long timeout_milli);
+  static bool WaitMsgTimeOut(
+      CommBus *comm_bus, int32_t *sender_id,
+      zmq::message_t *zmq_msg, long timeout_milli);
 
   CommBus::WaitMsgTimeOutFunc WaitMsg_;
 

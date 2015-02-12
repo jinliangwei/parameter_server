@@ -60,7 +60,7 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &s
   ack_msg.get_ack_num() = seq;
 
   size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-     sender_id, ack_msg.get_mem(), ack_msg.get_size());
+      sender_id, ack_msg.get_mem(), ack_msg.get_size(), my_id_);
   CHECK_EQ(sent_size, ack_msg.get_size());
 
   //LOG(INFO) << "ack " << sender_id << " " << seq;

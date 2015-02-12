@@ -129,9 +129,9 @@ void SSPAggrServerThread::AdjustSuppressionLevel(
       for (auto &id : bg_worker_ids_) {
         int32_t clock = client_progress_clock_.get_clock(id);
         if (clock == min_clock) {
-          size_t sent_size = (GlobalContext::comm_bus->*(
-              GlobalContext::comm_bus->SendAny_))(
-                  id, msg.get_mem(), msg.get_size());
+          size_t sent_size = (comm_bus_->*(
+              comm_bus_->SendAny_))(
+                  id, msg.get_mem(), msg.get_size(), my_id_);
           CHECK_EQ(sent_size, msg.get_size());
         }
       }

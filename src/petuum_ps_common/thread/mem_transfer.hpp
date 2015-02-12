@@ -10,17 +10,19 @@ public:
   // responsible for destroying the received MemBlock via DestroyTransferredMem().
   // Return true if the memory is transferred without copying otherwise return false.
   // MemBlock is released from msg regardless wether or not the memory is copied.
-  static bool TransferMem(CommBus *comm_bus, int32_t recv_id, ArbitrarySizedMsg *msg) {
-    if (comm_bus->IsLocalEntity(recv_id)) {
+  static bool TransferMem(CommBus *comm_bus, int32_t recv_id, ArbitrarySizedMsg *msg,
+                          int32_t my_id) {
+    if (comm_bus->IsLocalEntity(recv_id, my_id)) {
       MemTransferMsg mem_transfer_msg;
       InitMemTransferMsg(&mem_transfer_msg, msg);
       size_t sent_size = comm_bus->SendInProc(recv_id,
-        mem_transfer_msg.get_mem(), mem_transfer_msg.get_size());
+                                              mem_transfer_msg.get_mem(), mem_transfer_msg.get_size(),
+                                              my_id);
       CHECK_EQ(sent_size, mem_transfer_msg.get_size());
       return true;
     } else {
       size_t sent_size = comm_bus->SendInterProc(recv_id, msg->get_mem(),
-        msg->get_size());
+                                                 msg->get_size(), my_id);
       CHECK_EQ(sent_size, msg->get_size());
       return false;
     }

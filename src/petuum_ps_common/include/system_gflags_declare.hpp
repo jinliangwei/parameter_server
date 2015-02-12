@@ -45,6 +45,7 @@ DECLARE_bool(suppression_on);
 DECLARE_bool(use_approx_sort);
 
 DECLARE_uint64(num_zmq_threads);
+DECLARE_uint64(num_comm_buses);
 
 namespace petuum {
 void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables);

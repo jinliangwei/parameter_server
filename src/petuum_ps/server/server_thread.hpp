@@ -19,7 +19,7 @@ public:
       my_id_(my_id),
       bg_worker_ids_(GlobalContext::get_num_clients()),
       num_shutdown_bgs_(0),
-      comm_bus_(GlobalContext::comm_bus),
+      comm_bus_(GlobalContext::get_comm_bus(my_id_)),
       init_barrier_(init_barrier),
       msg_tracker_(kMaxPendingMsgs),
       pending_clock_push_row_(false),
@@ -33,12 +33,15 @@ public:
   }
 
 protected:
-  static bool WaitMsgBusy(int32_t *sender_id, zmq::message_t *zmq_msg,
-                          long timeout_milli = -1);
-  static bool WaitMsgSleep(int32_t *sender_id, zmq::message_t *zmq_msg,
-                           long timeout_milli  = -1);
-  static bool WaitMsgTimeOut(int32_t *sender_id, zmq::message_t *zmq_msg,
-                             long timeout_milli);
+  static bool WaitMsgBusy(
+      CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+      long timeout_milli = -1);
+  static bool WaitMsgSleep(
+      CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+      long timeout_milli  = -1);
+  static bool WaitMsgTimeOut(
+      CommBus *comm_bus, int32_t *sender_id, zmq::message_t *zmq_msg,
+      long timeout_milli);
   CommBus::WaitMsgTimeOutFunc WaitMsg_;
 
   virtual void InitWhenStart();
