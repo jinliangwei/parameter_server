@@ -407,10 +407,6 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   int32_t clock_to_push = client_clock_ - 1;
   clock_has_pushed_ = clock_to_push;
 
-  //LOG(INFO) << "clock to push = " << clock_to_push
-  //        << " clock has pushed = " << clock_has_pushed_
-  //        << " " << ThreadContext::get_id();;
-
   double left_over_send_milli_sec = 0;
 
   if (oplog_send_milli_sec_ > 0) {
