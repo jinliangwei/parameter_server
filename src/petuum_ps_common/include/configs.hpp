@@ -28,7 +28,8 @@ enum UpdateSortPolicy {
   FIFO = 0,
   Random = 1,
   RelativeMagnitude = 2,
-  FIFO_N_ReMag = 3
+  FIFO_N_ReMag = 3,
+  FixedOrder = 4
 };
 
 struct RowOpLogType {

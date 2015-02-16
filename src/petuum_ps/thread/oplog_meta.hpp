@@ -9,6 +9,7 @@
 #include <petuum_ps/thread/naive_table_oplog_meta.hpp>
 #include <petuum_ps/thread/random_table_oplog_meta.hpp>
 #include <petuum_ps/thread/random_table_oplog_meta_dense.hpp>
+#include <petuum_ps/thread/fixed_table_oplog_meta_dense.hpp>
 #include <petuum_ps/thread/value_table_oplog_meta.hpp>
 #include <petuum_ps/thread/value_table_oplog_meta_approx.hpp>
 
@@ -36,6 +37,16 @@ public:
           = GlobalContext::get_update_sort_policy();
 
       switch(update_sort_policy) {
+        case FixedOrder:
+          {
+            if (table_size > 0) {
+              table_oplog_meta
+                  = new FixedTableOpLogMetaDense(sample_row, table_size);
+            } else {
+              LOG(FATAL) << "Not yet supported!";
+            }
+          }
+          break;
         case Random:
           {
             if (table_size > 0) {

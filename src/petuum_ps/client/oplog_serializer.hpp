@@ -16,8 +16,8 @@ public:
 
     // space for num of tables
     size_t total_size = sizeof(int32_t);
-    for(auto iter = table_size_map.cbegin(); iter != table_size_map.cend();
-      iter++){
+    for (auto iter = table_size_map.cbegin(); iter != table_size_map.cend();
+      iter++) {
       int32_t table_id = iter->first;
       size_t table_size = iter->second;
       offset_map_[table_id] = total_size;
