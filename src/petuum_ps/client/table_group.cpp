@@ -222,6 +222,9 @@ void TableGroup::ClockConservative() {
     table_iter->second->Clock();
   }
   int clock = vector_clock_.Tick(ThreadContext::get_id());
+  //LOG(INFO) << "new_clock = " << clock << " " << ThreadContext::get_id()
+  //        << " my clock = " << ThreadContext::get_clock();
+
   if (clock != 0) {
     //LOG(INFO) << "new_clock = " << clock << " " << ThreadContext::get_id();
     BgWorkers::ClockAllTables();

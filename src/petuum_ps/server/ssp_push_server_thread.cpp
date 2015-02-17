@@ -13,7 +13,7 @@ void SSPPushServerThread::SendServerPushRowMsg(
   //if (last_msg)
   //LOG(INFO) << "server_send_push_row, is_clock = " << last_msg
   //          << " clock = " << server_min_clock
-  //         << " to = " << bg_id
+  //          << " to = " << bg_id
   //          << " " << ThreadContext::get_id();
 
   msg->get_version() = version;
