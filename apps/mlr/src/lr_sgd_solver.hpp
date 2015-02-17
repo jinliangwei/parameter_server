@@ -1,5 +1,5 @@
 // Author: Dai Wei (wdai@cs.cmu.edu)
-// Date: 2014.10.04
+// Date: 2015.02.04
 
 #pragma once
 
@@ -7,31 +7,30 @@
 #include <ml/include/ml.hpp>
 #include <cstdint>
 #include <vector>
-#include <functional>
 #include "abstract_mlr_sgd_solver.hpp"
 
 namespace mlr {
 
-struct MLRSGDSolverConfig {
+struct LRSGDSolverConfig {
   int32_t feature_dim;
-  int32_t num_labels;
-  bool sparse_data;
-  bool sparse_weight;
+
   petuum::Table<float> w_table;
+  int32_t w_table_num_cols;
+  bool sparse_data = false;
+
+  float lambda = 0;   // l2 regularization parameter
 };
 
-// The caller thread must be registered with PS.
-class MLRSGDSolver : public AbstractMLRSGDSolver {
+// Binary solver. Does not support sparse LR parameters. Labels y \ in {0, 1}.
+// NOT {-1, 1}
+class LRSGDSolver : public AbstractMLRSGDSolver {
 public:
-  MLRSGDSolver(const MLRSGDSolverConfig& config);
-  ~MLRSGDSolver();
+  LRSGDSolver(const LRSGDSolverConfig& config);
+  ~LRSGDSolver();
 
-  // Compute gradient using feature and label and apply to w_table_.
+  // Compute gradient using feature and label and store internally.
   void SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
-      int32_t label, float step_size);
-
-  void SingleDataSGD(const petuum::ml::DenseFeature<float>& feature,
-                     int32_t label, float step_size);
+      int32_t label, float learning_rate);
 
   // Predict the probability of each label.
   void Predict(const petuum::ml::AbstractFeature<float>& feature,
@@ -54,28 +53,24 @@ public:
   // Save the current weight in cache in libsvm format.
   void SaveWeights(const std::string& filename) const;
 
-private:    // private functions
-  void RefreshParamsDense();
-  void RefreshParamsSparse();
-
 private:
   // ======== PS Tables ==========
   // The weight of each class (stored as single feature-major row).
   petuum::Table<float> w_table_;
 
   // Thread-cache.
-  std::vector<petuum::ml::AbstractFeature<float>*> w_cache_;
-  std::vector<petuum::ml::AbstractFeature<float>*> w_delta_;
+  petuum::ml::DenseFeature<float> w_cache_;
+  petuum::ml::DenseFeature<float> w_delta_;
 
   int32_t feature_dim_; // feature dimension
-  int32_t num_labels_; // number of classes/labels
-  int32_t w_dim_;       // dimension of w_table_ = feature_dim_ * num_labels_.
+  // feature_dim % w_table_num_cols might not be 0
+  int32_t w_table_num_cols_;  // # of cols in w_table.
+  float lambda_;   // l2 regularization parameter
   std::vector<float> predict_buff_;
 
   // Specialization Functions
   std::function<float(const petuum::ml::AbstractFeature<float>&,
       const petuum::ml::AbstractFeature<float>&)> FeatureDotProductFun_;
-  std::function<void(MLRSGDSolver&)> RefreshParamFun_;
 };
 
 }  // namespace mlr

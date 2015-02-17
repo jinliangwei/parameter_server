@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "mlr_sgd_solver.hpp"
+#include "abstract_mlr_sgd_solver.hpp"
 #include <boost/thread.hpp>
 #include <ml/include/ml.hpp>
 #include <vector>
@@ -50,14 +50,14 @@ private:  // functions
 
   // Compute the classification error on the test set. This
   // is distributed. This will reset test_workload_mgr.
-  void ComputeTestError(MLRSGDSolver* mlr_solver,
+  void ComputeTestError(AbstractMLRSGDSolver* mlr_solver,
     petuum::ml::WorkloadManager* test_workload_mgr,
                         int32_t num_data_to_use, int32_t ith_eval,
                         std::vector<float> *predict_buff);
 
   // Compute online training error based on the first num_data_to_use. This
   // will reset workload_mgr.
-  void ComputeTrainError(MLRSGDSolver* solver,
+  void ComputeTrainError(AbstractMLRSGDSolver* solver,
       petuum::ml::WorkloadManager* workload_mgr, int32_t num_data_to_use,
                          int32_t ith_eval, std::vector<float> *predict_buff);
 
