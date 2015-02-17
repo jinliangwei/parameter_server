@@ -33,7 +33,11 @@ MLRSGDSolver::MLRSGDSolver(const MLRSGDSolverConfig& config) :
     }
 
     if (config.sparse_data) {
-      FeatureDotProductFun_ = petuum::ml::SparseAnyFeatureDotProduct;
+      if (config.sparse_weight) { // sparse data sparse weight
+        FeatureDotProductFun_ = petuum::ml::SparseSparseFeatureDotProduct;
+      } else  {   // sparse data, dense weight
+        FeatureDotProductFun_ = petuum::ml::SparseDenseFeatureDotProduct;
+      }
     } else {
       CHECK(!config.sparse_weight)
         << "Cannot use sparse weight when data is dense";

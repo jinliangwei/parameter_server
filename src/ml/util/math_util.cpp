@@ -6,6 +6,7 @@
 #include <glog/logging.h>
 #include <cmath>
 #include <sstream>
+#include <Eigen/Dense>
 
 namespace petuum {
 namespace ml {
@@ -21,6 +22,10 @@ float SafeLog(float x) {
     x = kCutoff;
   }
   return fastlog(x);
+}
+
+float Sigmoid(float x) {
+  return 1. / (1. + exp(x));
 }
 
 float LogSum(float log_a, float log_b) {
@@ -60,19 +65,28 @@ float DenseDenseFeatureDotProduct(const AbstractFeature<float>& f1,
   auto f2_dense_ptr = static_cast<const DenseFeature<float>*>(&f2);
   const std::vector<float>& v1 = f1_dense_ptr->GetVector();
   const std::vector<float>& v2 = f2_dense_ptr->GetVector();
+  Eigen::Map<const Eigen::VectorXf> e1(v1.data(), v1.size());
+  Eigen::Map<const Eigen::VectorXf> e2(v2.data(), v2.size());
+  return e1.dot(e2);
+}
+
+float SparseDenseFeatureDotProduct(const AbstractFeature<float>& f1,
+    const AbstractFeature<float>& f2) {
+  CHECK_EQ(f1.GetFeatureDim(), f2.GetFeatureDim());
   float sum = 0.;
-  for (int i = 0; i < v1.size(); ++i) {
-    sum += v1[i] * v2[i];
+  for (int i = 0; i < f1.GetNumEntries(); ++i) {
+    int32_t f1_fid = f1.GetFeatureId(i);
+    sum += f1.GetFeatureVal(i) * f2[f1_fid];
   }
   return sum;
 }
 
 float DenseSparseFeatureDotProduct(const AbstractFeature<float>& f1,
     const AbstractFeature<float>& f2) {
-  return SparseAnyFeatureDotProduct(f2, f1);
+  return SparseDenseFeatureDotProduct(f2, f1);
 }
 
-float SparseAnyFeatureDotProduct(const AbstractFeature<float>& f1,
+float SparseSparseFeatureDotProduct(const AbstractFeature<float>& f1,
     const AbstractFeature<float>& f2) {
   CHECK_EQ(f1.GetFeatureDim(), f2.GetFeatureDim());
   int j = 0;
@@ -99,16 +113,15 @@ void FeatureScaleAndAdd(float alpha, const DenseFeature<float>& f1,
   }
 }
 
+// f1 sparse, f2 dense.
 void FeatureScaleAndAdd(float alpha, const AbstractFeature<float>& f1,
     AbstractFeature<float>* f2) {
-  AbstractFeature<float> &f2_vec = *f2;
   CHECK_EQ(f1.GetFeatureDim(), f2->GetFeatureDim());
   for (int i = 0; i < f1.GetNumEntries(); ++i) {
     int32_t f1_fid = f1.GetFeatureId(i);
-    f2_vec.SetFeatureVal(f1_fid, alpha * f1.GetFeatureVal(i) + f2_vec[f1_fid]);
+    f2->SetFeatureVal(f1_fid, alpha * f1.GetFeatureVal(i) + (*f2)[f1_fid]);
   }
 }
-
 
 }  // namespace ml
 }  // namespace petuum

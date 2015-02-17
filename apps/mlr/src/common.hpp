@@ -23,9 +23,11 @@ DECLARE_double(learning_rate);
 DECLARE_double(decay_rate);
 DECLARE_int32(num_epochs_per_eval);
 DECLARE_bool(sparse_weight);
+DECLARE_double(lambda);
 
 DECLARE_string(output_file_prefix);
 DECLARE_int32(num_secs_per_checkpoint);
+DECLARE_int32(w_table_num_cols);
 
 const int32_t kWTableID = 0;
 const int32_t kLossTableID = 1;

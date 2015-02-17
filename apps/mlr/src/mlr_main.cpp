@@ -44,9 +44,11 @@ DEFINE_double(learning_rate, 0.1, "Initial step size");
 DEFINE_double(decay_rate, 1, "multiplicative decay");
 DEFINE_int32(num_epochs_per_eval, 10, "Number of batches per evaluation");
 DEFINE_bool(sparse_weight, false, "Use sparse feature for model parameters");
+DEFINE_double(lambda, 0.1, "L2 regularization parameter, only used for binary LR.");
 
 // Misc
 DEFINE_string(output_file_prefix, "", "Results go here.");
+DEFINE_int32(w_table_num_cols, 100, "# of columns in w_table. Only used for binary LR.");
 DEFINE_int32(num_secs_per_checkpoint, 600,
                "# of seconds between each saving to disk");
 
@@ -83,9 +85,13 @@ int main(int argc, char *argv[]) {
   petuum::InitTableConfig(&table_config);
 
   table_config.table_info.row_type = kDenseRowFloatTypeID;
-  table_config.table_info.row_capacity = feature_dim;
-  table_config.table_info.dense_row_oplog_capacity = feature_dim;
-  table_config.process_cache_capacity = num_labels;
+  table_config.table_info.row_capacity =
+    (num_labels == 2) ? FLAGS_w_table_num_cols : feature_dim;
+  table_config.table_info.dense_row_oplog_capacity =
+    (num_labels == 2) ? FLAGS_w_table_num_cols : feature_dim;
+  // Treat binary LR as special case.
+  table_config.process_cache_capacity = (num_labels == 2) ?
+    std::ceil(static_cast<float>(feature_dim) / FLAGS_w_table_num_cols) : num_labels;
   table_config.oplog_capacity = table_config.process_cache_capacity;
   petuum::PSTableGroup::CreateTable(kWTableID, table_config);
 
