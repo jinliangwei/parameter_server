@@ -76,6 +76,8 @@ ClientRow *SSPConsistencyController::Get(int32_t row_id, RowAccessor* row_access
 
 void SSPConsistencyController::Inc(int32_t row_id, int32_t column_id,
     const void* delta) {
+  //LOG(INFO) << "row_id = " << row_id;
+
   thread_cache_->IndexUpdate(row_id);
 
   OpLogAccessor oplog_accessor;

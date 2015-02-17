@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
   llh_table_config.table_info.dense_row_oplog_capacity
       = llh_table_config.table_info.row_capacity;
   llh_table_config.table_info.row_type = kDenseRowDoubleTypeID;
-  llh_table_config.process_cache_capacity = petuum::BoundedDense;
+  llh_table_config.process_storage_type = petuum::BoundedSparse;
   llh_table_config.oplog_type = petuum::Sparse;
   CHECK(petuum::PSTableGroup::CreateTable(
       FLAGS_llh_table_id, llh_table_config)) << "Failed to create summary table";

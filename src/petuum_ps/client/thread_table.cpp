@@ -123,7 +123,7 @@ void ThreadTable::InsertRow(int32_t row_id, const AbstractRow *to_insert) {
     delete row_iter->second;
     row_iter->second = row;
   } else {
-    row_storage_[row_id] = row;
+    row_storage_.insert(std::make_pair(row_id, row));
   }
 
   boost::unordered_map<int32_t, AbstractRowOpLog* >::iterator oplog_iter
@@ -246,9 +246,9 @@ void ThreadTable::FlushCacheOpLog(AbstractProcessStorage &process_storage,
     UpdateOpLogClock_(oplog_accessor.get_row_oplog());
 
     RowAccessor row_accessor;
-    bool found = process_storage.Find(row_id, &row_accessor);
+    ClientRow *client_row = process_storage.Find(row_id, &row_accessor);
 
-    (this->*ApplyThreadOpLog_)(&oplog_accessor, &row_accessor, found,
+    (this->*ApplyThreadOpLog_)(&oplog_accessor, client_row,
                                oplog_iter->second, row_id);
     delete oplog_iter->second;
   }
@@ -256,7 +256,7 @@ void ThreadTable::FlushCacheOpLog(AbstractProcessStorage &process_storage,
 }
 
 void ThreadTable::ApplyThreadOpLogSSP(
-    OpLogAccessor *oplog_accessor, RowAccessor *row_accessor, bool row_found,
+    OpLogAccessor *oplog_accessor, ClientRow *client_row,
     AbstractRowOpLog *row_oplog, int32_t row_id) {
 
   int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
@@ -268,8 +268,8 @@ void ThreadTable::ApplyThreadOpLogSSP(
     sample_row_->AddUpdates(column_id, oplog_delta, delta);
 
     oplog_index_[partition_num].insert(row_id);
-    if (row_found) {
-      row_accessor->GetRowData()->ApplyInc(column_id, delta);
+    if (client_row != 0) {
+      client_row->GetRowDataPtr()->ApplyInc(column_id, delta);
     }
 
     delta = row_oplog->Next(&column_id);
@@ -277,7 +277,7 @@ void ThreadTable::ApplyThreadOpLogSSP(
 }
 
 void ThreadTable::ApplyThreadOpLogGetImportance(
-    OpLogAccessor *oplog_accessor, RowAccessor *row_accessor, bool row_found,
+    OpLogAccessor *oplog_accessor, ClientRow *client_row,
     AbstractRowOpLog *row_oplog, int32_t row_id) {
 
   int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
@@ -290,8 +290,8 @@ void ThreadTable::ApplyThreadOpLogGetImportance(
     sample_row_->AddUpdates(column_id, oplog_delta, delta);
 
     oplog_index_[partition_num].insert(row_id);
-    if (row_found) {
-      importance += row_accessor->GetRowData()->ApplyIncGetImportance(
+    if (client_row != 0) {
+      importance += client_row->GetRowDataPtr()->ApplyIncGetImportance(
           column_id, delta);
     } else {
       importance += sample_row_->GetImportance(column_id, delta);

@@ -116,8 +116,8 @@ ClientRow *SSPPushConsistencyController::Get(int32_t row_id,
   return client_row;
 }
 
-void SSPPushConsistencyController::ThreadGet(int32_t row_id,
-  ThreadRowAccessor* row_accessor) {
+void SSPPushConsistencyController::ThreadGet(
+    int32_t row_id, ThreadRowAccessor* row_accessor) {
   STATS_APP_SAMPLE_THREAD_GET_BEGIN(table_id_);
 
   // Look for row_id in process_storage_.
@@ -136,6 +136,7 @@ void SSPPushConsistencyController::ThreadGet(int32_t row_id,
 
   AbstractRow *row_data = thread_cache_->GetRow(row_id);
   if (row_data != 0) {
+    LOG(INFO) << "thread get " << row_data;
     row_accessor->row_data_ptr_ = row_data;
     STATS_APP_SAMPLE_THREAD_GET_END(table_id_);
     return;

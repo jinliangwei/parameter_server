@@ -64,15 +64,15 @@ private:
   CreateRowOpLog::CreateRowOpLogFunc CreateRowOpLog_;
 
   void ApplyThreadOpLogSSP(
-      OpLogAccessor *oplog_accessor, RowAccessor *row_accessor, bool row_found,
+      OpLogAccessor *oplog_accessor, ClientRow *client_row,
       AbstractRowOpLog *row_oplog, int32_t row_id);
 
   void ApplyThreadOpLogGetImportance(
-      OpLogAccessor *oplog_accessor, RowAccessor *row_accessor, bool row_found,
+      OpLogAccessor *oplog_accessor, ClientRow *client_row,
       AbstractRowOpLog *row_oplog, int32_t row_id);
 
   typedef void (ThreadTable::*ApplyThreadOpLogFunc)(
-      OpLogAccessor *oplog_accessor, RowAccessor *row_accessor, bool row_found,
+      OpLogAccessor *oplog_accessor, ClientRow *client_row,
       AbstractRowOpLog *row_oplog, int32_t row_id);
 
   ThreadTable::ApplyThreadOpLogFunc ApplyThreadOpLog_;

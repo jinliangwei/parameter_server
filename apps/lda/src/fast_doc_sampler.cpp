@@ -53,6 +53,8 @@ FastDocSampler::~FastDocSampler() {
 }
 
 void FastDocSampler::RefreshCachedSummaryRow(bool timer) {
+  //LOG(INFO) << "RefreshCachedSummaryRow";
+
   petuum::HighResolutionTimer flush_timer;
   summary_table_.FlushThreadCache();
   double flush_sec = flush_timer.elapsed();

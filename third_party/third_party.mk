@@ -13,14 +13,14 @@ third_party_core: path \
                   libconfig \
                   yaml-cpp \
                   leveldb \
-                  snappy \
-									eigen
+                  snappy
 
 third_party_all: third_party_core \
                  sparsehash \
                  oprofile \
-								 gtest \
-								 iftop
+		 gtest \
+		 iftop \
+		 eigen
 
 .PHONY: third_party_core third_party_all
 

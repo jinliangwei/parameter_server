@@ -80,7 +80,8 @@ public:
   // lifetime of this RowAccessor.
   template<typename ROW>
   inline const ROW& Get() {
-    return *(dynamic_cast<ROW*>(row_data_ptr_));
+    //LOG(INFO) << "get " << row_data_ptr_;
+    return *(static_cast<ROW*>(row_data_ptr_));
   }
 
 private:
