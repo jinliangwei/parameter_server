@@ -2,47 +2,51 @@
 
 # Init weights
 use_weight_file=false
-weight_file=none
+weight_file=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc.weight
 
 # Data parameters:
 num_train_data=0  # 0 to use all training data.
 
 # Covtype
-train_file=covtype
-train_file_path=/home/jinliang/parameter_server.git/apps/mlr/datasets/covtype.scale.train.small
-test_file_path=/home/jinliang/parameter_server.git/apps/mlr/datasets/covtype.scale.test.small
+train_file=imnet
+#train_file_path=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/mlr/datasets/covtype.scale.train.small
+#test_file_path=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/mlr/datasets/covtype.scale.test.small
+#train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.50.train
+#test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.10.test
+train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train
+test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.test
 global_data=true
 perform_test=true
 
 # Execution parameters:
-num_epochs=40
-num_batches_per_epoch=1
-learning_rate=0.1
-decay_rate=0.95
-num_batches_per_eval=2
-num_train_eval=10   # large number to use all data.
-num_test_eval=20
-num_secs_per_checkpoint=1000
+num_epochs=8
+num_batches_per_epoch=32
+#learning_rate=1
+learning_rate=1.4
+decay_rate=1
+num_epochs_per_eval=1
+num_train_eval=200   # large number to use all data.
+num_test_eval=200
+num_secs_per_checkpoint=200000
 
 # System parameters:
-host_filename="../../machinefiles/localserver"
-consistency_model="SSPAggr"
-num_worker_threads=1
+host_filename="../../machinefiles/servers.4"
+#host_filename="../../machinefiles/localserver"
+consistency_model="SSPPush"
+num_worker_threads=64
 num_comm_channels_per_client=1
-table_staleness=4
-num_clocks_per_iter=1
-num_clocks_per_eval=8
+table_staleness=2
 row_oplog_type=0
 
 # SSPAggr parameters:
 bg_idle_milli=2
 # Total bandwidth: bandwidth_mbps * num_comm_channels_per_client * 2
-client_bandwidth_mbps=470
-server_bandwidth_mbps=470
+client_bandwidth_mbps=540
+server_bandwidth_mbps=540
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
-thread_oplog_batch_size=1600000
+thread_oplog_batch_size=21504000
 server_idle_milli=2
-update_sort_policy=RelativeMagnitude
+update_sort_policy=Random
 row_candidate_factor=5
 
 append_only_buffer_capacity=$((1024*1024*4))
@@ -81,10 +85,12 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 host_list=`cat $host_file | awk '{ print $2 }'`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
-output_dir=$app_dir/output
+output_dir="${app_dir}/output_feb_16_4x1_mbssp_debug"
 output_dir="${output_dir}/mlr.${train_file}.S${table_staleness}.E${num_epochs}"
 output_dir="${output_dir}.M${num_unique_hosts}"
 output_dir="${output_dir}.T${num_worker_threads}"
+output_dir="${output_dir}.B${num_batches_per_epoch}.${consistency_model}.${learning_rate}_full"
+
 output_file_prefix=$output_dir/mlr_out  # prefix for program outputs
 rm -rf ${output_dir}
 mkdir -p ${output_dir}
@@ -96,10 +102,12 @@ stats_path=${output_dir}/mlr_stats.yaml
 # Kill previous instances of this program
 echo "Killing previous instances of '$progname' on servers, please wait..."
 for ip in $unique_host_list; do
+    echo "killing ".$ip
   ssh $ssh_options $ip \
     killall -q $progname
 done
 echo "All done!"
+# exit
 
 # Spawn program instances
 client_id=0
@@ -163,17 +171,19 @@ GLOG_logtostderr=true \
     --num_batches_per_epoch=$num_batches_per_epoch \
     --learning_rate=$learning_rate \
     --decay_rate=$decay_rate \
-    --num_batches_per_eval=$num_batches_per_eval
+    --num_epochs_per_eval=$num_epochs_per_eval
     --sparse_weight=false \
     --output_file_prefix=$output_file_prefix \
     --num_secs_per_checkpoint=${num_secs_per_checkpoint}"
 
   ssh $ssh_options $ip $cmd &
   #eval $cmd  # Use this to run locally (on one machine).
+  #echo $cmd   # echo the cmd for just the first machine.
+  #exit
 
   # Wait a few seconds for the name node (client 0) to set up
   if [ $client_id -eq 0 ]; then
-    echo $cmd   # echo the cmd for just the first machine.
+    #echo $cmd   # echo the cmd for just the first machine.
     echo "Waiting for name node to set up..."
     sleep 3
   fi
