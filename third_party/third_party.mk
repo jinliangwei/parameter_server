@@ -13,7 +13,8 @@ third_party_core: path \
                   libconfig \
                   yaml-cpp \
                   leveldb \
-                  snappy
+                  snappy \
+									eigen
 
 third_party_all: third_party_core \
                  sparsehash \
@@ -260,4 +261,18 @@ $(SNAPPY_LIB): $(SNAPPY_SRC)
 
 # TODO(wdai): Make sure the file is actually hosted.
 $(SNAPPY_SRC):
+	wget $(THIRD_PARTY_HOST)/$(@F) -O $@
+
+# ===================== eigen =====================
+
+EIGEN_SRC = $(THIRD_PARTY_SRC)/eigen.3.2.4.tar.gz
+EIGEN_INCLUDE = $(THIRD_PARTY_INCLUDE)/Eigen
+
+eigen: $(EIGEN_INCLUDE)
+
+$(EIGEN_INCLUDE): $(EIGEN_SRC)
+	tar zxf $< -C $(THIRD_PARTY_SRC)
+	cp -r $(THIRD_PARTY_SRC)/eigen-eigen-10219c95fe65/Eigen $(THIRD_PARTY_INCLUDE)/
+
+$(EIGEN_SRC):
 	wget $(THIRD_PARTY_HOST)/$(@F) -O $@
