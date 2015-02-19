@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Input files:
-host_filename="../../machinefiles/localserver"
-data_filename="data/yaleB.text"
+host_filename="../../machinefiles/servers"
+#data_filename="data/yaleB.text"
+data_filename="/nfs/nas-0-16/aqiao/imnet_32768x1024.dat"
+#data_filename="/nfs/nas-0-16/yuntiand/imnet_feat.dat"
 is_partitioned=false
 data_format="binary"
 input_data_format=$data_format
@@ -12,19 +14,23 @@ cache_dirname="N/A"
 output_dirname="output"
 log_dirname="log"
 output_data_format=$data_format
-stats_path="stats"
+stats_path="~/repos/jinliangwei/parameter_server/apps/sparsecoding/stats/stats"
 
 # Sparse Coding parameters:
 # Objective function parameters
+#m=1024
+#n=2414
 m=1024
-n=2414
-dictionary_size=100
+n=32768
+#m=21504
+#n=1266734
+dictionary_size=128
 c=1.0
-lambda=1.0
+lambda=0.01
 # Optimization parameters
-num_epochs=360
+num_epochs=20
 minibatch_size=6
-minibatch_iters_per_update=2
+minibatch_iters_per_update=3
 init_step_size=0.01
 step_size_offset=0.0
 step_size_pow=0.0
@@ -44,10 +50,10 @@ num_eval_minibatch=1
 num_eval_samples=$n
 
 # System parameters:
-consistency_model="SSPAggr"
-num_worker_threads=4
-num_comm_channels_per_client=1
-table_staleness=0
+consistency_model="SSPPush"
+num_worker_threads=16
+num_comm_channels_per_client=4
+table_staleness=2
 maximum_running_time=0.0
 
 # SSPAggr parameters:
