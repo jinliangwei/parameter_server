@@ -11,6 +11,7 @@ void SSPAggrServerThread::SetWaitMsg() {
 }
 
 long SSPAggrServerThread::ServerIdleWork() {
+  //LOG(INFO) << __func__;
   if (row_send_milli_sec_ > 1) {
     double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
     //LOG(INFO) << "send_elapsed_milli = " << send_elapsed_milli
@@ -101,6 +102,7 @@ void SSPAggrServerThread::HandleEarlyCommOn() {
     early_comm_on_ = true;
     num_early_comm_off_msgs_ = 0;
   }
+  //LOG(INFO) << "Turn on early comm";
 }
 
 void SSPAggrServerThread::HandleEarlyCommOff() {

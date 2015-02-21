@@ -3,6 +3,7 @@
 #include <bitset>
 
 #include <petuum_ps_common/util/record_buff.hpp>
+#include <petuum_ps_common/util/stats.hpp>
 #include <petuum_ps/thread/context.hpp>
 #include <glog/logging.h>
 
@@ -42,18 +43,21 @@ public:
       int32_t *failed_client_id) {
     // Some simple tests show that iterating bitset isn't too bad.
     // For bitset size below 512, it takes 200~300 ns on an Intel i5 CPU.
-    int32_t client_id;
-    for (client_id = client_id_st;
+    size_t num_rows_appended = 0;
+    for (int32_t client_id = client_id_st;
          client_id < GlobalContext::get_num_clients(); ++client_id) {
       if (subscriptions_.test(client_id)) {
         bool suc = (*buffs)[client_id].Append(row_id, row_data, row_size);
         if (!suc) {
+          STATS_SERVER_ADD_PER_CLOCK_ACCUM_DUP_ROWS_SENT(num_rows_appended);
           *failed_client_id = client_id;
           return false;
         }
+        ++num_rows_appended;
       }
     }
     //VLOG(0) << "Return true";
+    STATS_SERVER_ADD_PER_CLOCK_ACCUM_DUP_ROWS_SENT(num_rows_appended);
     return true;
   }
 

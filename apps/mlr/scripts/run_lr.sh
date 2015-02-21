@@ -9,8 +9,8 @@ num_train_data=0  # 0 to use all training data.
 
 # Covtype Binary
 train_file=covtype.bin
-train_file_path=/nfs/nas-0-16/wdai/mlr_datasets/covtype/covtype.bin/covtype.libsvm.binary.scale.train
-test_file_path=/nfs/nas-0-16/wdai/mlr_datasets/covtype/covtype.bin/covtype.libsvm.binary.scale.test
+train_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/covtype.libsvm.binary.scale.train
+test_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/covtype.libsvm.binary.scale.test
 global_data=true
 perform_test=true
 lambda=0.00
@@ -83,7 +83,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 host_list=`cat $host_file | awk '{ print $2 }'`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
-output_dir="${app_dir}/output_feb_16_4x1_mbssp_debug"
+output_dir="${app_dir}/output_feb_19_4x1_mbssp_debug"
 output_dir="${output_dir}/mlr.${train_file}.S${table_staleness}.E${num_epochs}"
 output_dir="${output_dir}.M${num_unique_hosts}"
 output_dir="${output_dir}.T${num_worker_threads}"
@@ -169,7 +169,7 @@ GLOG_logtostderr=true \
     --num_batches_per_epoch=$num_batches_per_epoch \
     --learning_rate=$learning_rate \
     --decay_rate=$decay_rate \
-    --num_epochs_per_eval=$num_epochs_per_eval
+    --num_epochs_per_eval=$num_epochs_per_eval \
     --sparse_weight=false \
     --output_file_prefix=$output_file_prefix \
     --lambda=$lambda \

@@ -269,6 +269,9 @@
 #define STATS_SERVER_ADD_PER_CLOCK_PUSH_ROW_SIZE(push_row_size) \
   Stats::ServerAddPerClockPushRowSize(push_row_size)
 
+#define STATS_SERVER_ADD_PER_CLOCK_ACCUM_DUP_ROWS_SENT(rows_sent) \
+  Stats::ServerAddPerClockAccumDupRowsSent(rows_sent)
+
 #define STATS_SERVER_OPLOG_MSG_RECV_INC_ONE() \
   Stats::ServerOpLogMsgRecvIncOne();
 
@@ -411,6 +414,7 @@
 #define STATS_SERVER_CLOCK() ((void) 0)
 #define STATS_SERVER_ADD_PER_CLOCK_OPLOG_SIZE(oplog_size) ((void) 0)
 #define STATS_SERVER_ADD_PER_CLOCK_PUSH_ROW_SIZE(push_row_size) ((void) 0)
+#define STATS_SERVER_ADD_PER_CLOCK_ACCUM_DUP_ROWS_SENT(rows_sent) ((void) 0)
 #define STATS_SERVER_OPLOG_MSG_RECV_INC_ONE() ((void) 0)
 #define STATS_SERVER_PUSH_ROW_MSG_SEND_INC_ONE() ((void) 0)
 #define STATS_SERVER_IDLE_INVOKE_INC_ONE() ((void) 0)
@@ -682,6 +686,7 @@ struct ServerThreadStats {
 
   std::vector<double> per_clock_oplog_recv_kb;
   std::vector<double> per_clock_push_row_kb;
+  std::vector<size_t> per_clock_accum_dup_rows_sent;
 
   uint32_t clock_num;
 
@@ -713,6 +718,7 @@ struct ServerThreadStats {
     accum_push_row_kb(0.0),
     per_clock_oplog_recv_kb(1, 0.0),
     per_clock_push_row_kb(1, 0.0),
+    per_clock_accum_dup_rows_sent(1, 0),
     clock_num(0),
     accum_num_oplog_msg_recv(0),
     accum_num_push_row_msg_send(0),
@@ -839,6 +845,7 @@ public:
   static void BgAppendOnlyRecycleRowOpLogInc();
 
   static void BgAccumImportance(int32_t table_id, MetaRowOpLog *meta_row_oplog, bool row_sent);
+  // This is called before the to-be-sent oplogs are added to the buffer, by each thread
   static void BgAccumImportance(int32_t table_id, double importance, bool row_sent);
 
   static void BgAccumWaitsOnAckIdle();
@@ -856,6 +863,7 @@ public:
   static void ServerClock();
   static void ServerAddPerClockOpLogSize(size_t oplog_size);
   static void ServerAddPerClockPushRowSize(size_t push_row_size);
+  static void ServerAddPerClockAccumDupRowsSent(size_t rows_sent);
 
   static void ServerOpLogMsgRecvIncOne();
   static void ServerPushRowMsgSendIncOne();
@@ -1003,6 +1011,7 @@ private:
 
   static std::vector<double> server_per_clock_oplog_recv_mb_;
   static std::vector<double> server_per_clock_push_row_mb_;
+  static std::vector<size_t> server_per_clock_accum_dup_rows_sent_;
 
   static std::vector<size_t> server_accum_num_oplog_msg_recv_;
   static std::vector<size_t> server_accum_num_push_row_msg_send_;

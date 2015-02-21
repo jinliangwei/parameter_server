@@ -266,7 +266,7 @@ void MLREngine::Start() {
         STATS_APP_ACCUM_COMP_BEGIN();
         ++batch_counter;
         if (client_id == 0 && thread_id == 0)
-          LOG_EVERY_N(INFO, 100) << "batch: " << batch_counter;
+          LOG(INFO) << "batch: " << batch_counter;
       }
     }
     CHECK_EQ(0, batch_counter % num_batches_per_epoch);

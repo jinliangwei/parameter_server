@@ -2,6 +2,7 @@
 
 #include <petuum_ps_common/util/stats.hpp>
 #include <petuum_ps_common/include/constants.hpp>
+#include <petuum_ps/thread/context.hpp>
 #include <glog/logging.h>
 #include <sstream>
 #include <fstream>
@@ -98,6 +99,7 @@ double Stats::server_accum_push_row_mb_ = 0.0;
 
 std::vector<double> Stats::server_per_clock_oplog_recv_mb_;
 std::vector<double> Stats::server_per_clock_push_row_mb_;
+std::vector<size_t> Stats::server_per_clock_accum_dup_rows_sent_;
 
 std::vector<size_t> Stats::server_accum_num_oplog_msg_recv_;
 std::vector<size_t> Stats::server_accum_num_push_row_msg_send_;
@@ -493,6 +495,16 @@ void Stats::DeregisterServerThread() {
       += stats.per_clock_push_row_kb[i] / double(k1_Ki);
   }
 
+  if (server_per_clock_accum_dup_rows_sent_.size()
+      < stats.per_clock_accum_dup_rows_sent.size())
+    server_per_clock_accum_dup_rows_sent_.resize(
+        stats.per_clock_accum_dup_rows_sent.size(), 0);
+  for (int i = 0; i < stats.per_clock_accum_dup_rows_sent.size();
+       ++i) {
+    server_per_clock_accum_dup_rows_sent_[i]
+        += stats.per_clock_accum_dup_rows_sent[i];
+  }
+
   server_accum_num_oplog_msg_recv_.push_back(stats.accum_num_oplog_msg_recv);
   server_accum_num_push_row_msg_send_.push_back(
       stats.accum_num_push_row_msg_send);
@@ -509,8 +521,13 @@ void Stats::DeregisterServerThread() {
       server_table_accum_importance_.insert(
           std::make_pair(table_id, std::vector<double>(table_pair.second.size(), 0.0)));
       table_iter = server_table_accum_importance_.find(table_id);
+      //LOG(INFO) << "*size = " << table_pair.second.size()
+      //        << " table = " << table_id
+      //        << " thread id = " << ThreadContext::get_id();
     }
-    CHECK_EQ(table_pair.second.size(), table_iter->second.size());
+    CHECK_EQ(table_pair.second.size(), table_iter->second.size())
+        << "table id = " << table_id
+        << " thread id = " << ThreadContext::get_id();
 
     for (int i = 0; i < table_pair.second.size(); ++i) {
       (table_iter->second)[i] += (table_pair.second)[i];
@@ -1111,14 +1128,21 @@ void Stats::ServerClock() {
   ++server_thread_stats_->clock_num;
   server_thread_stats_->per_clock_oplog_recv_kb.push_back(0.0);
   server_thread_stats_->per_clock_push_row_kb.push_back(0.0);
+  server_thread_stats_->per_clock_accum_dup_rows_sent.push_back(0);
   server_thread_stats_->accum_num_waits_on_ack_idle.push_back(0);
   server_thread_stats_->accum_num_waits_on_ack_clock.push_back(0);
 
   for (auto &table_pair : server_thread_stats_->table_accum_importance) {
     table_pair.second.push_back(0.0);
+    //LOG(INFO) << "table = " << table_pair.first
+    //        << " size = " << table_pair.second.size()
+    //        << " thread = " << ThreadContext::get_id();
   }
 
   for (auto &table_pair : server_thread_stats_->table_accum_num_rows_sent) {
+    //LOG(INFO) << "table = " << table_pair.first
+    //        << " size = " << table_pair.second.size()
+    //        << " thread = " << ThreadContext::get_id();
     table_pair.second.push_back(0);
   }
 }
@@ -1143,6 +1167,12 @@ void Stats::ServerAddPerClockPushRowSize(size_t push_row_size) {
   stats.per_clock_push_row_kb[stats.clock_num]
     += push_row_size_kb;
   stats.accum_push_row_kb += push_row_size_kb;
+}
+
+void Stats::ServerAddPerClockAccumDupRowsSent(size_t rows_sent) {
+  ServerThreadStats &stats = *server_thread_stats_;
+  stats.per_clock_accum_dup_rows_sent[stats.clock_num]
+      += rows_sent;
 }
 
 void Stats::ServerOpLogMsgRecvIncOne() {
@@ -1614,6 +1644,10 @@ void Stats::PrintStats() {
   yaml_out << YAML::Key << "server_per_clock_push_row_mb"
     << YAML::Value;
   YamlPrintSequence(&yaml_out, server_per_clock_push_row_mb_);
+
+  yaml_out << YAML::Key << "server_per_clock_accum_dup_rows_sent"
+           << YAML::Value;
+  YamlPrintSequence(&yaml_out, server_per_clock_accum_dup_rows_sent_);
 
   yaml_out << YAML::Key << "server_accum_num_oplog_msg_recv"
     << YAML::Value;

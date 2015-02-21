@@ -56,6 +56,8 @@ UpdateSortPolicy GetUpdateSortPolicy(const std::string &policy) {
     return RelativeMagnitude;
   } else if (policy == "FIFO_N_RegMag") {
     return FIFO_N_ReMag;
+  } else if (policy == "FixedOrder") {
+    return FixedOrder;
   } else {
     LOG(FATAL) << "Unknown update sort policy: "
                << policy;

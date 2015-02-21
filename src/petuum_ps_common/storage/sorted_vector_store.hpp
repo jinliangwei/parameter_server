@@ -40,37 +40,6 @@ public:
   size_t num_entries() const;
   size_t capacity() const;
 
-  // Any change made to the list makes the iterator invalid.
-  class ConstIterator {
-  public:
-    ConstIterator(Entry<V> *begin, Entry<V> *end):
-        entry_ptr_(begin),
-        end_ptr_(end) { }
-
-    ~ConstIterator() { }
-
-    ConstIterator (const ConstIterator &other):
-        entry_ptr_(other.entry_ptr_),
-        end_ptr_(other.end_ptr_) { }
-
-    ConstIterator& operator = (const ConstIterator &other) {
-      entry_ptr_ = other.entry_ptr_;
-      end_ptr_ = other.end_ptr_;
-    }
-
-    Entry<V> operator*();
-
-    ConstIterator operator++();
-
-    bool is_end();
-
-  private:
-    Entry<V> *entry_ptr_;
-    Entry<V> *end_ptr_;
-  };
-
-  ConstIterator CBegin();
-
 private:
   // Return ture if successfully Inc-ed.
   // If false:
@@ -88,8 +57,6 @@ private:
   size_t RemoveOneEntryAndCompact(int32_t vector_idx);
 
   static size_t GetSerializedNumEntries(size_t num_bytes);
-
-  static bool ShouldCompact(size_t capacity, size_t num_entries);
 
   static const size_t kBlockSize;
 
@@ -111,9 +78,7 @@ const size_t SortedVectorStore<V>::kBlockSize = 64;
 template<typename V>
 SortedVectorStore<V>::SortedVectorStore():
     num_entries_(0),
-    capacity_(0) {
-  LOG(INFO) << "INCOMPLETE!!";
-}
+    capacity_(0) { }
 
 template<typename V>
 SortedVectorStore<V>::~SortedVectorStore() { }
@@ -158,9 +123,8 @@ size_t SortedVectorStore<V>::Serialize(void *bytes) const {
 template<typename V>
 void SortedVectorStore<V>::Deserialize(const void *data, size_t num_bytes) {
   size_t new_num_entries = GetSerializedNumEntries(num_bytes);
-  if (new_num_entries > capacity_
-      || ShouldCompact(capacity_, new_num_entries)) {
-    Init(new_num_entries);
+  if (new_num_entries > capacity_) {
+    LOG(FATAL) << "exceeding capacity";
   }
 
   memcpy(entries_.get(), data, num_bytes);
@@ -180,23 +144,9 @@ void SortedVectorStore<V>::Inc(int32_t key, V delta) {
   size_t new_size = 0;
   bool suc = Inc(key, delta, &new_size);
   if (!suc) {
-    if (new_size > capacity_) {
-      Entry<V> *new_entries = new Entry<V>[new_size];
-      memcpy(new_entries, entries_.get(), sizeof(Entry<V>)*num_entries_);
-
-      entries_.reset(new_entries);
-      capacity_ = new_size;
-
-      CHECK(Inc(key, delta, &new_size));
-    } else {
-      CHECK_LE(new_size, capacity_);
-
-      Entry<V> *new_entries = new Entry<V>[num_entries_];
-      memcpy(new_entries, entries_.get(), sizeof(Entry<V>)*num_entries_);
-
-      entries_.reset(new_entries);
-      capacity_ = num_entries_;
-    }
+    LOG(FATAL) << "Inc failed"
+               << " capacity = " << capacity_
+               << " new size = " << new_size;
   }
 }
 
@@ -218,22 +168,11 @@ size_t SortedVectorStore<V>::capacity() const {
   return capacity_;
 }
 
-template<typename V>
-typename SortedVectorStore<V>::ConstIterator SortedVectorStore<V>::CBegin() {
-  return ConstIterator(entries_.get(),
-                       entries_.get() + sizeof(Entry<V>) * num_entries_);
-}
-
 // ================ Private Methods =================
 
 template<typename V>
 size_t SortedVectorStore<V>::GetSerializedNumEntries(size_t num_bytes) {
   return num_bytes / sizeof(Entry<V>);
-}
-
-template<typename V>
-bool SortedVectorStore<V>::ShouldCompact(size_t capacity, size_t num_entries) {
-  return (capacity - num_entries >= 2 * kBlockSize);
 }
 
 template<typename V>
@@ -296,12 +235,6 @@ size_t SortedVectorStore<V>::RemoveOneEntryAndCompact(int32_t vector_idx) {
   --num_entries_;
 
   // Compact criterion.
-  if (ShouldCompact(capacity_, num_entries_)) {
-    size_t new_capacity = num_entries_;
-    int32_t remainder = new_capacity % kBlockSize;
-    new_capacity += (remainder != 0) ? kBlockSize - remainder : 0;
-    return new_capacity;
-  }
   return capacity_;
 }
 
@@ -322,7 +255,6 @@ bool SortedVectorStore<V>::Inc(int32_t key, V delta, size_t *size) {
 
     // move backwards
     LinearSearchAndMove(vector_idx, false);
-
     return true;
   }
 
@@ -330,30 +262,10 @@ bool SortedVectorStore<V>::Inc(int32_t key, V delta, size_t *size) {
   entries_[vector_idx].second += delta;
 
   if (entries_[vector_idx].second == V(0)) {
-    size_t compact_size = RemoveOneEntryAndCompact(vector_idx);
-    if (compact_size != capacity_) {
-      *size = compact_size;
-      return false;
-    }
+    RemoveOneEntryAndCompact(vector_idx);
   }
 
   return true;
-}
-
-template<typename V>
-Entry<V> SortedVectorStore<V>::ConstIterator::operator*() {
-  return *entry_ptr_;
-}
-
-template<typename V>
-typename SortedVectorStore<V>::ConstIterator
-SortedVectorStore<V>::ConstIterator::operator++() {
-  entry_ptr_ += 1;
-}
-
-template<typename V>
-bool SortedVectorStore<V>::ConstIterator::is_end() {
-  return (entry_ptr_ >= end_ptr_);
 }
 
 }  // namespace petuum

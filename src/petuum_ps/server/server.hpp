@@ -73,7 +73,7 @@ private:
   // latest oplog version that I have received from a bg thread
   std::map<int32_t, uint32_t> bg_version_map_;
   // Assume a single row does not exceed this size!
-  static const size_t kPushRowMsgSizeInit = 8*k1_Mi;
+  static const size_t kPushRowMsgSizeInit = 2*k1_Mi;
   size_t push_row_msg_data_size_;
 
   int32_t server_id_;

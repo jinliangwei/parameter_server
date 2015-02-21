@@ -92,6 +92,8 @@ int main(int argc, char *argv[]) {
   // Treat binary LR as special case.
   table_config.process_cache_capacity = (num_labels == 2) ?
     std::ceil(static_cast<float>(feature_dim) / FLAGS_w_table_num_cols) : num_labels;
+  LOG(INFO) << "feature dim = " << feature_dim;
+  LOG(INFO) << "process cache capacity = " << table_config.process_cache_capacity;
   table_config.oplog_capacity = table_config.process_cache_capacity;
   petuum::PSTableGroup::CreateTable(kWTableID, table_config);
 

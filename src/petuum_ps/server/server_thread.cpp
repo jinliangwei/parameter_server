@@ -235,6 +235,9 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
   //          << " " << my_id_;
 
   bool clock_changed = false;
+  int32_t old_clock = server_obj_.GetMinClock();
+  int32_t new_clock = old_clock;
+
   if (is_clock) {
     clock_changed = server_obj_.ClockUntil(sender_id, bg_clock);
     //LOG(INFO)  << "server_recv_oplog, is_clock = " << is_clock
@@ -265,7 +268,6 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
 	ReplyRowRequest(bg_id, server_row, table_id, row_id, server_clock,
                         version);
       }
-      STATS_SERVER_CLOCK();
     }
   } else if (my_id_ == 1 && GlobalContext::get_suppression_on()) {
     AdjustSuppressionLevel(sender_id, bg_clock);
@@ -278,6 +280,13 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
 
   SendOpLogAckMsg(sender_id, server_obj_.GetBgVersion(sender_id),
                   seq);
+
+  if (is_clock && clock_changed) {
+    new_clock = server_obj_.GetMinClock();
+    for (int i = 0; i < (new_clock - old_clock); ++i) {
+      STATS_SERVER_CLOCK();
+    }
+  }
 }
 
 long ServerThread::ServerIdleWork() {

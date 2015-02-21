@@ -18,7 +18,9 @@
 namespace mlr {
 
 LRSGDSolver::LRSGDSolver(const LRSGDSolverConfig& config) :
-  w_table_(config.w_table), w_cache_(config.feature_dim), w_delta_(config.feature_dim),
+  w_table_(config.w_table),
+  w_cache_(config.feature_dim),
+  w_delta_(config.feature_dim),
   feature_dim_(config.feature_dim),
   w_table_num_cols_(config.w_table_num_cols), lambda_(config.lambda),
   predict_buff_(2) {    // 2 for binary (2 classes).
@@ -106,26 +108,26 @@ void LRSGDSolver::RefreshParams() {
   std::vector<float>& w_delta_vec = w_delta_.GetVector();
   std::fill(w_delta_vec.begin(), w_delta_vec.end(), 0);
 
-  petuum::PSTableGroup::Clock();
+  //petuum::PSTableGroup::Clock();
 
   // Read w from the PS.
   std::vector<float>& w_cache_vec = w_cache_.GetVector();
+  std::vector<float> w_cache(w_table_num_cols_);
   for (int i = 0; i < num_full_rows; ++i) {
-    std::vector<float> w_cache(w_table_num_cols_);
     petuum::RowAccessor row_acc;
     const auto& r = w_table_.Get<petuum::DenseRow<float>>(i, &row_acc);
     r.CopyToVector(&w_cache);
     std::copy(w_cache.begin(), w_cache.end(),
-        w_cache_vec.begin() + i * w_table_num_cols_);
+              w_cache_vec.begin() + i * w_table_num_cols_);
   }
   if (feature_dim_ % w_table_num_cols_ != 0) {
     // last incomplete row.
     int num_cols_last_row = feature_dim_ - num_full_rows * w_table_num_cols_;
-    std::vector<float> w_cache(num_cols_last_row);
+    std::vector<float> w_cache(w_table_num_cols_);
     petuum::RowAccessor row_acc;
     const auto& r = w_table_.Get<petuum::DenseRow<float>>(num_full_rows, &row_acc);
     r.CopyToVector(&w_cache);
-    std::copy(w_cache.begin(), w_cache.end(),
+    std::copy(w_cache.begin(), w_cache.begin() + num_cols_last_row,
         w_cache_vec.begin() + num_full_rows * w_table_num_cols_);
   }
   LOG(INFO) << "w_cache_ after RefreshParams: " << w_cache_.ToString();

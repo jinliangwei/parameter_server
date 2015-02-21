@@ -43,10 +43,10 @@ double NSSumImpCalc<V>::ApplyIncGetImportance(
     int32_t column_id, const void *update) {
 
   V type_update = *(reinterpret_cast<const V*>(update));
-  V val = store->Get(column_id);
+  //V val = store->Get(column_id);
 
-  double importance
-      = (double(val) == 0) ? double(type_update) : double(type_update) / double(val);
+  double importance = double(type_update);
+  // = (double(val) == 0) ? double(type_update) : double(type_update) / double(val);
 
   store->Inc(column_id, type_update);
   return importance;
@@ -61,11 +61,11 @@ double NSSumImpCalc<V>::ApplyBatchIncGetImportance(
   double accum_importance = 0;
   for (int i = 0; i < num_updates; ++i) {
 
-    V val = store->Get(column_ids[i]);
+    //V val = store->Get(column_ids[i]);
 
-    double importance
-        = (double(val) == 0) ? double(update_array[i])
-        : double(update_array[i]) / double(val);
+    double importance = double(update_array[i]);
+    //  = (double(val) == 0) ? double(update_array[i])
+    //  : double(update_array[i]) / double(val);
 
     store->Inc(column_ids[i], update_array[i]);
 

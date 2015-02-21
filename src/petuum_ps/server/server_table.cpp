@@ -38,8 +38,6 @@ bool ServerTable::AppendTableToBuffs(
     if (!row_iter_->second.IsDirty())
       continue;
 
-    //LOG(INFO) << table_id_ << " " << row_iter_->first << " " << row_iter_->second.get_importance();
-
     STATS_SERVER_ACCUM_IMPORTANCE(table_id_, row_iter_->second.get_importance(), true);
 
     row_iter_->second.ResetDirty();
