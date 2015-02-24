@@ -601,6 +601,7 @@ int main(int argc, char *argv[]) {
 
   table_config.table_info.row_capacity = 6;
   table_config.table_info.dense_row_oplog_capacity = 6;
+  table_config.table_info.row_oplog_type = 0;
   table_config.process_cache_capacity = 100;
   table_config.thread_cache_capacity = 1;
   table_config.oplog_capacity = 100;

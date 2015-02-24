@@ -36,6 +36,7 @@ struct RowOpLogType {
   static const int32_t kDenseRowOpLog = 0;
   static const int32_t kSparseRowOpLog = 1;
   static const int32_t kSparseVectorRowOpLog = 2;
+  static const int32_t kDenseRowOpLogFloat16 = 3;
 };
 
 enum OpLogType {

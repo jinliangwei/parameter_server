@@ -15,14 +15,14 @@ data_filename="/l0/netflix.dat.list.gl.perm.bin.6"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 #host_filename="../../machinefiles/servers.6.eth1"
-host_filename="../../machinefiles/servers.6"
+host_filename="../../machinefiles/servers"
 #host_filename="../../machinefiles/localserver"
 
 # MF parameters:
 K=3500
 # works for SSPPush
-#init_step_size=6e-5
-#step_dec=0.995
+init_step_size=6e-5
+step_dec=0.995
 # works for SSPAggr 1GbE, Mag
 #init_step_size=7e-5
 #step_dec=0.995
@@ -67,7 +67,7 @@ M_cache_size=17771
 #M_cache_size=20000
 num_clocks_per_iter=1
 num_clocks_per_eval=4
-row_oplog_type=0
+row_oplog_type=3
 
 # SSPAggr parameters:
 bg_idle_milli=2

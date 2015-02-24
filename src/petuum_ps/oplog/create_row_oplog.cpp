@@ -37,6 +37,18 @@ AbstractRowOpLog *CreateRowOpLog::CreateSparseVectorRowOpLog(
       update_size);
 }
 
+AbstractRowOpLog *CreateRowOpLog::CreateDenseRowOpLogFloat16(
+    size_t update_size, const AbstractRow *sample_row,
+    size_t row_oplog_capacity) {
+  return new DenseRowOpLogFloat16(
+      std::bind(&AbstractRow::InitUpdate,
+                sample_row, std::placeholders::_1,
+                std::placeholders::_2),
+      std::bind(&AbstractRow::CheckZeroUpdate,
+                sample_row, std::placeholders::_1),
+      update_size, row_oplog_capacity);
+}
+
 AbstractRowOpLog *CreateRowOpLog::CreateDenseMetaRowOpLog(
     size_t update_size, const AbstractRow *sample_row, size_t row_capacity) {
   return new DenseMetaRowOpLog(
@@ -71,4 +83,17 @@ AbstractRowOpLog *CreateRowOpLog::CreateSparseVectorMetaRowOpLog(
                 sample_row, std::placeholders::_1),
       update_size);
 }
+
+AbstractRowOpLog *CreateRowOpLog::CreateDenseMetaRowOpLogFloat16(
+    size_t update_size, const AbstractRow *sample_row,
+    size_t row_oplog_capacity) {
+  return new DenseMetaRowOpLogFloat16(
+      std::bind(&AbstractRow::InitUpdate,
+                sample_row, std::placeholders::_1,
+                std::placeholders::_2),
+      std::bind(&AbstractRow::CheckZeroUpdate,
+                sample_row, std::placeholders::_1),
+      update_size, row_oplog_capacity);
+}
+
 }

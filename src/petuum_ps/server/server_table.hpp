@@ -66,6 +66,11 @@ public:
           InitUpdateFunc(), CheckZeroUpdateFunc(),
           sample_row_->get_update_size(),
           table_info.dense_row_oplog_capacity);
+    else if (table_info.row_oplog_type == RowOpLogType::kDenseRowOpLogFloat16)
+      sample_row_oplog_ = new DenseRowOpLogFloat16(
+          InitUpdateFunc(), CheckZeroUpdateFunc(),
+          sample_row_->get_update_size(),
+          table_info.dense_row_oplog_capacity);
     else
       sample_row_oplog_ = new SparseRowOpLog(
           InitUpdateFunc(), CheckZeroUpdateFunc(),

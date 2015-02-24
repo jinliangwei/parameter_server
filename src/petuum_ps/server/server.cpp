@@ -140,7 +140,7 @@ void Server::Init(int32_t server_id,
    int32_t num_updates;
    bool started_new_table;
    const void *updates = oplog_reader.Next(&table_id, &row_id, &column_ids,
-     &num_updates, &started_new_table);
+                                           &num_updates, &started_new_table);
 
    ServerTable *server_table;
    if (updates != 0) {

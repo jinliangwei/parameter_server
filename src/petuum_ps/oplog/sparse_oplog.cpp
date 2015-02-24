@@ -24,6 +24,8 @@ SparseOpLog::SparseOpLog(int capacity, const AbstractRow *sample_row,
       CreateRowOpLog_ = CreateRowOpLog::CreateDenseMetaRowOpLog;
     else if (row_oplog_type == RowOpLogType::kSparseRowOpLog)
       CreateRowOpLog_ = CreateRowOpLog::CreateSparseMetaRowOpLog;
+    else if(row_oplog_type == RowOpLogType::kDenseRowOpLogFloat16)
+      CreateRowOpLog_ = CreateRowOpLog::CreateDenseMetaRowOpLogFloat16;
     else
       CreateRowOpLog_ = CreateRowOpLog::CreateSparseVectorMetaRowOpLog;
   } else {
@@ -31,6 +33,8 @@ SparseOpLog::SparseOpLog(int capacity, const AbstractRow *sample_row,
       CreateRowOpLog_ = CreateRowOpLog::CreateDenseRowOpLog;
     else if (row_oplog_type == RowOpLogType::kSparseRowOpLog)
       CreateRowOpLog_ = CreateRowOpLog::CreateSparseRowOpLog;
+    else if(row_oplog_type == RowOpLogType::kDenseRowOpLogFloat16)
+      CreateRowOpLog_ = CreateRowOpLog::CreateDenseRowOpLogFloat16;
     else
       CreateRowOpLog_ = CreateRowOpLog::CreateSparseVectorRowOpLog;
   }
