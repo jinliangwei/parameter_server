@@ -13,8 +13,6 @@
 #include <vector>
 
 // Petuum Parameters
-
-
 DEFINE_uint64(word_topic_table_process_cache_capacity, 100000,
               "Word topic table process cache capacity");
 
@@ -58,7 +56,7 @@ int main(int argc, char *argv[]) {
   petuum::InitTableGroupConfig(&table_group_config, 3);
 
   petuum::PSTableGroup::RegisterRow<petuum::SortedVectorMapRow<int32_t> >
-    (kSortedVectorMapRowTypeID);
+      (kSortedVectorMapRowTypeID);
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<int32_t> >
     (kDenseRowIntTypeID);
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<double> >
@@ -101,10 +99,14 @@ int main(int argc, char *argv[]) {
   petuum::InitTableConfig(&summary_table_config);
   summary_table_config.table_info.row_capacity = FLAGS_num_topics;
   summary_table_config.table_info.dense_row_oplog_capacity = FLAGS_num_topics;
+  summary_table_config.process_storage_type = petuum::BoundedSparse;
+  summary_table_config.oplog_type = petuum::Sparse;
   summary_table_config.process_cache_capacity = 1;
   summary_table_config.thread_cache_capacity = 1;
   summary_table_config.oplog_capacity = 1;
   summary_table_config.table_info.row_type = kDenseRowIntTypeID;
+  summary_table_config.client_send_oplog_upper_bound = 1;
+  summary_table_config.table_info.server_push_row_upper_bound = 1;
   CHECK(petuum::PSTableGroup::CreateTable(
       FLAGS_summary_table_id, summary_table_config)) << "Failed to create summary table";
 
@@ -120,6 +122,8 @@ int main(int argc, char *argv[]) {
   llh_table_config.table_info.row_type = kDenseRowDoubleTypeID;
   llh_table_config.process_storage_type = petuum::BoundedSparse;
   llh_table_config.oplog_type = petuum::Sparse;
+  llh_table_config.client_send_oplog_upper_bound = 1;
+  llh_table_config.table_info.server_push_row_upper_bound = 1;
   CHECK(petuum::PSTableGroup::CreateTable(
       FLAGS_llh_table_id, llh_table_config)) << "Failed to create summary table";
 

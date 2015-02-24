@@ -43,7 +43,8 @@ public:
               table_oplog_meta
                   = new FixedTableOpLogMetaDense(sample_row, table_size);
             } else {
-              LOG(FATAL) << "Not yet supported!";
+              table_oplog_meta
+                  = new RandomTableOpLogMeta(sample_row);
             }
           }
           break;

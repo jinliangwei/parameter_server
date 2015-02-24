@@ -94,6 +94,13 @@ void ServerTable::SortCandidateVectorImportance(
 void ServerTable::GetPartialTableToSend(
     std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
     boost::unordered_map<int32_t, size_t> *client_size_map) {
+  (this->*(GetPartialTableToSend_))(rows_to_send,
+                                    client_size_map);
+}
+
+void ServerTable::GetPartialTableToSendRegular(
+    std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+    boost::unordered_map<int32_t, size_t> *client_size_map) {
 
   size_t num_rows_threshold = table_info_.server_push_row_upper_bound;
 
@@ -134,6 +141,39 @@ void ServerTable::GetPartialTableToSend(
 
     if ((*rows_to_send).size() >= num_rows_threshold)
       break;
+  }
+}
+
+void ServerTable::GetPartialTableToSendFixedOrder(
+    std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+    boost::unordered_map<int32_t, size_t> *client_size_map) {
+
+  if (push_row_iter_ == storage_.end())
+    push_row_iter_ = storage_.begin();
+
+  size_t num_rows_threshold = table_info_.server_push_row_upper_bound;
+
+  size_t num_rows = 0;
+  while ((*rows_to_send).size() < num_rows_threshold
+         && num_rows < storage_.size()) {
+    for (;push_row_iter_ != storage_.end()
+             && num_rows < storage_.size(); ++push_row_iter_) {
+      num_rows++;
+      if (push_row_iter_->second.NoClientSubscribed()
+          || !push_row_iter_->second.IsDirty())
+        continue;
+
+      (*rows_to_send).push_back(
+          std::make_pair(push_row_iter_->first, &(push_row_iter_->second)));
+      push_row_iter_->second.AccumSerializedSizePerClient(client_size_map);
+
+      if ((*rows_to_send).size() >= num_rows_threshold)
+        break;
+    }
+
+    if (push_row_iter_ == storage_.end()) {
+      push_row_iter_ = storage_.begin();
+    }
   }
 }
 
@@ -245,5 +285,6 @@ void ServerTable::ReadSnapShot(const std::string &resume_dir,
   }
   delete it;
   delete db;
+  push_row_iter_ = storage_.begin();
 }
 }

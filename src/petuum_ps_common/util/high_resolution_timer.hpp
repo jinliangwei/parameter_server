@@ -9,22 +9,22 @@ namespace petuum {
 // http://boost.2283326.n4.nabble.com/boost-shared-mutex-performance-td2659061.html
 class HighResolutionTimer {
   public:
-    HighResolutionTimer();
+  HighResolutionTimer();
 
-    void restart();
+  void restart();
 
-    // return elapsed time (including previous restart-->pause time) in seconds.
-    double elapsed() const;
+  // return elapsed time (including previous restart-->pause time) in seconds.
+  double elapsed() const;
 
-    // return estimated maximum value for elapsed()
-    double elapsed_max() const;
+  // return estimated maximum value for elapsed()
+  double elapsed_max() const;
 
-    // return minimum value for elapsed()
-    double elapsed_min() const;
+  // return minimum value for elapsed()
+  double elapsed_min() const;
 
-  private:
-    double total_time_;
-    struct timespec start_time_;
+ private:
+  double total_time_;
+  struct timespec start_time_;
 };
 
 } // namespace petuum

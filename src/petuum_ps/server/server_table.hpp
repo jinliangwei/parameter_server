@@ -36,7 +36,8 @@ public:
     if (GlobalContext::get_consistency_model() == SSPAggr
         && (GlobalContext::get_update_sort_policy() == RelativeMagnitude
             || GlobalContext::get_update_sort_policy() == FIFO_N_ReMag
-            || GlobalContext::get_update_sort_policy() == Random)) {
+            || GlobalContext::get_update_sort_policy() == Random
+            || GlobalContext::get_update_sort_policy() == FixedOrder)) {
 #else
     if (GlobalContext::get_consistency_model() == SSPAggr
         && (GlobalContext::get_update_sort_policy() == RelativeMagnitude
@@ -69,6 +70,11 @@ public:
       sample_row_oplog_ = new SparseRowOpLog(
           InitUpdateFunc(), CheckZeroUpdateFunc(),
           sample_row_->get_update_size());
+
+    if (GlobalContext::get_update_sort_policy() == FixedOrder)
+      GetPartialTableToSend_ = &ServerTable::GetPartialTableToSendFixedOrder;
+    else
+      GetPartialTableToSend_ = &ServerTable::GetPartialTableToSendRegular;
   }
 
   ~ServerTable() {
@@ -81,13 +87,15 @@ public:
   // Move constructor: storage gets other's storage, leaving other
   // in an unspecified but valid state.
   ServerTable(ServerTable && other):
-    table_id_(other.table_id_),
-    table_info_(other.table_info_),
-    storage_(std::move(other.storage_)) ,
-    tmp_row_buff_size_(other.tmp_row_buff_size_) {
+      table_id_(other.table_id_),
+      table_info_(other.table_info_),
+      storage_(std::move(other.storage_)) ,
+      tmp_row_buff_size_(other.tmp_row_buff_size_),
+      push_row_iter_(storage_.begin()) {
     ApplyRowBatchInc_ = other.ApplyRowBatchInc_;
     ResetImportance_ = other.ResetImportance_;
     SortCandidateVector_ = other.SortCandidateVector_;
+    GetPartialTableToSend_ = other.GetPartialTableToSend_;
 
     sample_row_ = other.sample_row_;
     other.sample_row_ = 0;
@@ -111,6 +119,7 @@ public:
       = ClassRegistry<AbstractRow>::GetRegistry().CreateObject(row_type);
     row_data->Init(table_info_.row_capacity);
     storage_.insert(std::make_pair(row_id, ServerRow(row_data)));
+    push_row_iter_ = storage_.end();
     return &(storage_[row_id]);
   }
 
@@ -209,12 +218,24 @@ private:
     server_row->ResetImportance();
   }
 
+  void GetPartialTableToSendRegular(
+      std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+      boost::unordered_map<int32_t, size_t> *client_size_map);
+
+  void GetPartialTableToSendFixedOrder(
+      std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+      boost::unordered_map<int32_t, size_t> *client_size_map);
+
   static void ResetImportanceNoOp(ServerRow *server_row) { }
 
   typedef void (*ResetImportanceFunc)(ServerRow *server_row);
 
   typedef void (*SortCandidateVectorFunc)(
       std::vector<CandidateServerRow> *candidate_row_vector);
+
+  typedef void (ServerTable::*GetPartialTableToSendFunc)(
+      std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+      boost::unordered_map<int32_t, size_t> *client_size_map);
 
   int32_t table_id_;
   TableInfo table_info_;
@@ -230,6 +251,9 @@ private:
   ApplyRowBatchIncFunc ApplyRowBatchInc_;
   ResetImportanceFunc ResetImportance_;
   SortCandidateVectorFunc SortCandidateVector_;
+  GetPartialTableToSendFunc GetPartialTableToSend_;
+
+  boost::unordered_map<int32_t, ServerRow>::iterator push_row_iter_;
 
   const AbstractRow *sample_row_;
   const AbstractRowOpLog *sample_row_oplog_;

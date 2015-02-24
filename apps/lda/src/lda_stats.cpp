@@ -102,15 +102,20 @@ double LDAStats::ComputeOneDocLLH(DocumentWordTopics* doc) {
 
 void LDAStats::ComputeWordLLH(int32_t ith_llh, int word_idx_start,
     int word_idx_end) {
+
+  std::vector<petuum::Entry<int32_t> > word_topic_row_buff;
+
   double word_llh = 0.;
   static double zero_entry_llh = GetLogGammaBetaOffset(0);
   for (int w = word_idx_start; w < word_idx_end; ++w) {
     petuum::RowAccessor word_topic_row_acc;
     const auto& word_topic_row = word_topic_table_.Get<petuum::SortedVectorMapRow<int32_t> >(w, &word_topic_row_acc);
 
-    word_topic_row.CopyToVector(&word_topic_row_buff_);
-    if (word_topic_row_buff_.size() > 0) {
-      for (auto & wt_it : word_topic_row_buff_) {
+    CHECK(&word_topic_row != 0) << "null pointer read!";
+
+    word_topic_row.CopyToVector(&word_topic_row_buff);
+    if (word_topic_row_buff.size() > 0) {
+      for (auto & wt_it : word_topic_row_buff) {
         int count = std::max(wt_it.second, 0);
         CHECK_LE(0, count) << "row id = " << w;
         //word_llh += LogGamma(count + beta_);
@@ -120,7 +125,7 @@ void LDAStats::ComputeWordLLH(int32_t ith_llh, int word_idx_start,
           << count;
       }
       // The other word-topic counts are 0.
-      int num_zeros = K_ - word_topic_row_buff_.size();
+      int num_zeros = K_ - word_topic_row_buff.size();
       word_llh += num_zeros * zero_entry_llh;
     }
   }

@@ -98,8 +98,6 @@ private:
   // the complete log-likelihood of the i-th likelihood computation.
   petuum::Table<double> llh_table_;
 
-  std::vector<petuum::Entry<int32_t> > word_topic_row_buff_;
-
 };
 
 }  // namespace lda

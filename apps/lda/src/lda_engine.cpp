@@ -75,6 +75,7 @@ void LDAEngine::Start() {
       it != word_topic_updates.end(); ++it) {
     word_topic_table.BatchInc(it->first, it->second);
   }
+  petuum::PSTableGroup::GlobalBarrier();
 
   {
     std::unique_lock<std::mutex> ulock(local_vocabs_mtx_);
@@ -109,9 +110,12 @@ void LDAEngine::Start() {
   if (thread_id == 0) {
     LOG(INFO) << "Done initializing topic assignments (uniform random).";
     STATS_APP_BOOTSTRAP_BEGIN();
+    int32_t max_word_id = 0;
     for (auto it = local_vocabs_.begin(); it != local_vocabs_.end(); ++it) {
       word_topic_table.GetAsyncForced(*it);
+      if (*it > max_word_id) max_word_id = *it;
     }
+    LOG(INFO) << "max_workd_id = " << max_word_id;
     word_topic_table.WaitPendingAsyncGet();
     STATS_APP_BOOTSTRAP_END();
   }
@@ -138,6 +142,10 @@ void LDAEngine::Start() {
     = std::ceil(static_cast<float>(num_docs) * num_iters_per_work_unit
       / num_clocks_per_work_unit);
   petuum::HighResolutionTimer total_timer;  // times the computation.
+
+  if (thread_id == 0)
+    petuum::PSTableGroup::TurnOnEarlyComm();
+
   for (int work_unit = 1; work_unit <= num_work_units; ++work_unit) {
 
     STATS_APP_ACCUM_COMP_BEGIN();
@@ -265,6 +273,8 @@ void LDAEngine::Start() {
 
     STATS_APP_ACCUM_COMP_END();
   }   // for iter.
+  if (thread_id == 0)
+    petuum::PSTableGroup::TurnOffEarlyComm();
 
   petuum::PSTableGroup::GlobalBarrier();
   // Head thread print out the LLH.
