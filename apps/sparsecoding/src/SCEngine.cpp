@@ -430,6 +430,7 @@ namespace sparsecoding {
             LOG(INFO) << "matrix B initialization finished!";
         }
         petuum::PSTableGroup::GlobalBarrier();
+        petuum::PSTableGroup::TurnOnEarlyComm();
         STATS_APP_INIT_END();
 
         // Optimization Loop
@@ -585,6 +586,7 @@ namespace sparsecoding {
         }
         // Save results to disk
         petuum::PSTableGroup::GlobalBarrier();
+        petuum::PSTableGroup::TurnOffEarlyComm();
         SaveResults(thread_id, B_table, loss_table);
         petuum::PSTableGroup::DeregisterThread();
     }
