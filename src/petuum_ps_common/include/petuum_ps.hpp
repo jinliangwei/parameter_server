@@ -4,6 +4,7 @@
 #include <petuum_ps_common/include/table.hpp>
 #include <petuum_ps_common/include/configs.hpp>
 #include <petuum_ps_common/storage/dense_row.hpp>
+#include <petuum_ps_common/storage/dense_row_float16.hpp>
 #include <petuum_ps_common/storage/multiplicative_dense_row.hpp>
 #include <petuum_ps_common/storage/sparse_row.hpp>
 #include <petuum_ps_common/storage/sorted_vector_map_row.hpp>
