@@ -13,7 +13,8 @@ third_party_core: path \
                   libconfig \
                   yaml-cpp \
                   leveldb \
-                  snappy
+                  snappy \
+		  float16_compressor
 
 third_party_all: third_party_core \
                  sparsehash \
@@ -275,4 +276,16 @@ $(EIGEN_INCLUDE): $(EIGEN_SRC)
 	cp -r $(THIRD_PARTY_SRC)/eigen-eigen-10219c95fe65/Eigen $(THIRD_PARTY_INCLUDE)/
 
 $(EIGEN_SRC):
+	wget $(THIRD_PARTY_HOST)/$(@F) -O $@
+
+# ===================== float16_compressor =====================
+float16_compressor: $(FLOAT16_COMPRESSOR_INCLUDE)
+
+FLOAT16_COMPRESSOR_SRC = $(THIRD_PARTY_SRC)/float16_compressor.hpp
+FLOAT16_COMPRESSOR_INCLUDE = $(THIRD_PARTY_INCLUDE)/float16_compressor.hpp
+
+$(FLOAT16_COMPRESSOR_INCLUDE): $(FLOAT16_COMPRESSOR_SRC)
+	cp $(FLOAT16_COMPRESSOR_SRC)/float16_compressor.hpp $(THIRD_PARTY_INCLUDE)/
+
+$(FLOAT16_COMPRESSOR_SRC):
 	wget $(THIRD_PARTY_HOST)/$(@F) -O $@
