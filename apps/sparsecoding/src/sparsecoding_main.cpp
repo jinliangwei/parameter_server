@@ -91,6 +91,7 @@ DEFINE_double(init_B_high, 0.0, "Initial value for B are drawed uniformly from "
 int main(int argc, char * argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
+    FLAGS_logbufsecs = 0;
 
     petuum::TableGroupConfig table_group_config;
     petuum::InitTableGroupConfig(&table_group_config, 2);
