@@ -279,13 +279,13 @@ $(EIGEN_SRC):
 	wget $(THIRD_PARTY_HOST)/$(@F) -O $@
 
 # ===================== float16_compressor =====================
-float16_compressor: $(FLOAT16_COMPRESSOR_INCLUDE)
-
 FLOAT16_COMPRESSOR_SRC = $(THIRD_PARTY_SRC)/float16_compressor.hpp
 FLOAT16_COMPRESSOR_INCLUDE = $(THIRD_PARTY_INCLUDE)/float16_compressor.hpp
 
+float16_compressor: $(FLOAT16_COMPRESSOR_INCLUDE)
+
 $(FLOAT16_COMPRESSOR_INCLUDE): $(FLOAT16_COMPRESSOR_SRC)
-	cp $(FLOAT16_COMPRESSOR_SRC)/float16_compressor.hpp $(THIRD_PARTY_INCLUDE)/
+	cp $(FLOAT16_COMPRESSOR_SRC) $(THIRD_PARTY_INCLUDE)/
 
 $(FLOAT16_COMPRESSOR_SRC):
 	wget $(THIRD_PARTY_HOST)/$(@F) -O $@
