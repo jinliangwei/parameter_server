@@ -511,6 +511,9 @@ namespace sparsecoding {
                             ((float) elapTime.total_milliseconds()) / 1000 
                             / num_worker_threads_);
                     beginT = boost::posix_time::microsec_clock::local_time();
+                } else {
+                    LOG(INFO) << "iter: " << num_minibatch << ", client " 
+                        << client_id_ << ", thread " << thread_id;
                 }
                 step_size_B = init_step_size_B_ * 
                     pow(step_size_offset_B_ + num_minibatch, 
