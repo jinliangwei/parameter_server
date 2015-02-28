@@ -565,6 +565,16 @@ namespace sparsecoding {
                             B_table.BatchInc(row_id, B_update);
                         }
                         petuum_update_cache.fill(0.0);
+                        petuum::RowAccessor row_acc;
+                        for (int row_id = 0; row_id < dictionary_size_; ++row_id) {
+                            const auto & row = 
+                                B_table.Get<petuum::DenseRow<float> >(row_id, &row_acc);
+                            row.CopyToVector(&petuum_row_cache);
+                            for (int col_id = 0; col_id < m; ++col_id) {
+                                petuum_table_cache(col_id, row_id) = 
+                                    petuum_row_cache[col_id];
+                            }
+                        }
                     }
                 }
                 
