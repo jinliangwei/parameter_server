@@ -564,6 +564,7 @@ namespace sparsecoding {
                             }
                             B_table.BatchInc(row_id, B_update);
                         }
+                        petuum_update_cache.fill(0.0);
                     }
                 }
                 
