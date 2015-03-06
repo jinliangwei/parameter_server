@@ -105,7 +105,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClock(
     bool found = table_oplog.GetEraseOpLog(row_id, &row_oplog);
 
     if (found && row_oplog != 0) {
-      STATS_BG_ACCUM_IMPORTANCE(table_id, dynamic_cast<MetaRowOpLog*>(row_oplog), true);
+      //STATS_BG_ACCUM_IMPORTANCE(table_id, dynamic_cast<MetaRowOpLog*>(row_oplog), true);
+      STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
       size_t serialized_oplog_size = CountRowOpLogToSend(
           row_id, row_oplog, &table_num_bytes_by_server_,
           bg_table_oplog, GetSerializedRowOpLogSize);
@@ -142,7 +143,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
       AbstractRowOpLog* row_oplog = oplog_accessor.get_row_oplog();
       if (row_oplog != 0) {
         MetaRowOpLog *meta_row_oplog = dynamic_cast<MetaRowOpLog*>(row_oplog);
-        STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
+        //STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
+        STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
 
         //LOG(INFO) << table_id << " " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
 
@@ -187,7 +189,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
     bool found = table_oplog.GetEraseOpLog(row_id, &row_oplog);
 
     if (found && row_oplog != 0) {
-      STATS_BG_ACCUM_IMPORTANCE(table_id, dynamic_cast<MetaRowOpLog*>(row_oplog), true);
+      //STATS_BG_ACCUM_IMPORTANCE(table_id, dynamic_cast<MetaRowOpLog*>(row_oplog), true);
+      STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
 
       size_t serialized_oplog_size = CountRowOpLogToSend(
           row_id, row_oplog, &table_num_bytes_by_server_,
@@ -231,7 +234,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
       AbstractRowOpLog* row_oplog = oplog_accessor.get_row_oplog();
       if (row_oplog != 0) {
         MetaRowOpLog *meta_row_oplog = dynamic_cast<MetaRowOpLog*>(row_oplog);
-        STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
+        //STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
+        STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
 
         //LOG(INFO) << table_id << " " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
 
@@ -348,7 +352,7 @@ BgOpLog *SSPAggrBgWorker::PrepareOpLogsToSend(int32_t clock_to_push) {
   for (const auto &table_pair : (*tables_)) {
     int32_t table_id = table_pair.first;
 
-    STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, 0.0, false);
+    //STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, 0.0, false);
 
     if (table_pair.second->get_no_oplog_replay()) {
       if (table_pair.second->get_oplog_type() == Sparse ||
@@ -483,7 +487,7 @@ BgOpLog *SSPAggrBgWorker::PrepareBgIdleOpLogs() {
   for (const auto &table_pair : (*tables_)) {
     int32_t table_id = table_pair.first;
 
-    STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, 0.0, false);
+    //STATS_BG_ACCUM_IMPORTANCE_VALUE(table_id, 0.0, false);
 
     if (table_pair.second->get_no_oplog_replay()) {
       if (table_pair.second->get_oplog_type() == Sparse ||

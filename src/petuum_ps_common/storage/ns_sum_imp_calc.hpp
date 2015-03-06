@@ -45,8 +45,8 @@ double NSSumImpCalc<V>::ApplyIncGetImportance(
   V type_update = *(reinterpret_cast<const V*>(update));
   //V val = store->Get(column_id);
 
-  double importance = double(type_update);
-  // = (double(val) == 0) ? double(type_update) : double(type_update) / double(val);
+  double importance = std::abs(double(type_update));
+  //double importance = (double(val) == 0) ? double(type_update) : double(type_update) / double(val);
 
   store->Inc(column_id, type_update);
   return importance;
@@ -85,9 +85,9 @@ double NSSumImpCalc<V>::ApplyDenseBatchIncGetImportance(
 
   for (int32_t i = 0; i < num_updates; ++i) {
     V &val = val_array[i];
-    double importance = double(update_array[i]);
-    //        = (double(val) == 0) ? double(update_array[i])
-    //  : double(update_array[i]) / double(val);
+    double importance //= double(update_array[i]);
+        = (double(val) == 0) ? double(update_array[i])
+        : double(update_array[i]) / double(val);
     accum_importance += std::abs(importance);
 
     val += update_array[i];

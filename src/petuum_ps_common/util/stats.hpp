@@ -248,6 +248,12 @@
                                             num_new_oplog_metas)        \
   Stats::BgAccumNumOpLogMetasRead(table_id, num_oplog_metas_read, num_new_oplog_metas)
 
+#define STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, count)        \
+  Stats::BgAccumTableOpLogSent(table_id, row_id, count)
+
+#define STATS_BG_ACCUM_TABLE_ROW_RECVED(table_id, row_id, count) \
+  Stats::BgAccumTableRowRecved(table_id, row_id, count)
+
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() \
   Stats::ServerAccumPushRowBegin()
 
@@ -406,6 +412,9 @@
 
 #define STATS_BG_ACCUM_WAITS_ON_ACK_IDLE() ((void) 0)
 #define STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK() ((void) 0)
+
+#define STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, count) ((void) 0)
+#define STATS_BG_ACCUM_TABLE_ROW_RECVED(table_id, row_id, count) ((void) 0)
 
 #define STATS_SERVER_ACCUM_PUSH_ROW_BEGIN() ((void) 0)
 #define STATS_SERVER_ACCUM_PUSH_ROW_END() ((void) 0)
@@ -644,6 +653,14 @@ struct BgThreadStats {
   std::unordered_map<int32_t, OpLogReadStats>
   table_oplog_read_stats;
 
+  std::unordered_map<int32_t,
+           std::unordered_map<int32_t, size_t> >
+  table_oplog_send_freq;
+
+  std::unordered_map<int32_t,
+                     std::unordered_map<int32_t, size_t> >
+  table_row_recv_freq;
+
   BgThreadStats():
     accum_clock_end_oplog_serialize_sec(0.0),
     accum_total_oplog_serialize_sec(0.0),
@@ -854,6 +871,9 @@ public:
   static void BgAccumNumOpLogMetasRead(int32_t table_id, size_t num_oplog_metas_read,
                                        size_t num_new_oplog_metas);
 
+  static void BgAccumTableOpLogSent(int32_t table_id, int32_t row_id, size_t count);
+  static void BgAccumTableRowRecved(int32_t table_id, int32_t row_id, size_t count);
+
   static void ServerAccumPushRowBegin();
   static void ServerAccumPushRowEnd();
 
@@ -1000,6 +1020,12 @@ private:
 
   static std::unordered_map<int32_t, BgThreadStats::OpLogReadStats>
   bg_oplog_read_stats_;
+
+  static std::map<int32_t, std::map<int32_t, size_t> >
+  bg_table_oplog_send_freq_;
+
+  static std::map<int32_t, std::map<int32_t, size_t> >
+  bg_table_row_recv_freq_;
 
   // Server thread stats
   static double server_accum_apply_oplog_sec_;

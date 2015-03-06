@@ -91,6 +91,12 @@ std::vector<size_t> Stats::bg_accum_num_waits_on_ack_clock_(0);
 std::unordered_map<int32_t, BgThreadStats::OpLogReadStats>
 Stats::bg_oplog_read_stats_;
 
+std::map<int32_t, std::map<int32_t, size_t> >
+Stats::bg_table_oplog_send_freq_;
+
+std::map<int32_t, std::map<int32_t, size_t> >
+Stats::bg_table_row_recv_freq_;
+
 double Stats::server_accum_apply_oplog_sec_ = 0.0;
 double Stats::server_accum_push_row_sec_ = 0.0;
 
@@ -455,6 +461,24 @@ void Stats::DeregisterBgThread() {
         += table_stats.second.accum_num_oplog_metas_read;
     table_iter->second.accum_num_oplog_index_reads
         += table_stats.second.accum_num_oplog_index_reads;
+  }
+
+  for (auto &table_iter : stats.table_oplog_send_freq) {
+    int32_t table_id = table_iter.first;
+    auto &oplog_send_freq = table_iter.second;
+    for (auto &row_iter : oplog_send_freq) {
+      int32_t row_id = row_iter.first;
+      bg_table_oplog_send_freq_[table_id][row_id] += row_iter.second;
+    }
+  }
+
+  for (auto &table_iter : stats.table_row_recv_freq) {
+    int32_t table_id = table_iter.first;
+    auto &row_recv_freq = table_iter.second;
+    for (auto &row_iter : row_recv_freq) {
+      int32_t row_id = row_iter.first;
+      bg_table_row_recv_freq_[table_id][row_id] += row_iter.second;
+    }
   }
 }
 
@@ -1102,6 +1126,16 @@ void Stats::BgAccumNumOpLogMetasRead(
   (table_iter->second.accum_num_oplog_index_reads)++;
 }
 
+void Stats::BgAccumTableOpLogSent(int32_t table_id, int32_t row_id, size_t count) {
+  BgThreadStats &stats = *bg_thread_stats_;
+  stats.table_oplog_send_freq[table_id][row_id] += count;
+}
+
+void Stats::BgAccumTableRowRecved(int32_t table_id, int32_t row_id, size_t count) {
+  BgThreadStats &stats = *bg_thread_stats_;
+  stats.table_row_recv_freq[table_id][row_id] += count;
+}
+
 void Stats::ServerAccumApplyOpLogBegin() {
   server_thread_stats_->apply_oplog_timer.restart();
 }
@@ -1730,6 +1764,38 @@ void Stats::PrintStats() {
   }
 
   app_defined_vec_of.close();
+
+  std::stringstream bg_oplog_send_freq_ss;
+  bg_oplog_send_freq_ss << stats_path_ << ".bg_oplog_send_freq";
+
+  std::fstream oplog_send_of(bg_oplog_send_freq_ss.str(), std::ios_base::out
+      | std::ios_base::trunc);
+
+  for (auto &table_iter : bg_table_oplog_send_freq_) {
+    int32_t table_id = table_iter.first;
+    auto &oplog_send_freq = table_iter.second;
+    for (auto &row_iter : oplog_send_freq) {
+      oplog_send_of << table_id << "\t" << row_iter.first << "\t"
+                    << row_iter.second << "\n";
+    }
+  }
+  oplog_send_of.close();
+
+  std::stringstream bg_row_recv_freq_ss;
+  bg_row_recv_freq_ss << stats_path_ << ".bg_row_recv_freq";
+
+  std::fstream row_recv_of(bg_row_recv_freq_ss.str(), std::ios_base::out
+                           | std::ios_base::trunc);
+
+  for (auto &table_iter : bg_table_row_recv_freq_) {
+    int32_t table_id = table_iter.first;
+    auto &row_recv_freq = table_iter.second;
+    for (auto &row_iter : row_recv_freq) {
+      row_recv_of << table_id << "\t" << row_iter.first << "\t"
+                    << row_iter.second << "\n";
+    }
+  }
+  row_recv_of.close();
 }
 
 }

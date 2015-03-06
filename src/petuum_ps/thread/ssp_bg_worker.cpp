@@ -121,6 +121,7 @@ BgOpLogPartition *SSPBgWorker::PrepareOpLogsNormal(
 
     CountRowOpLogToSend(row_id, row_oplog, &table_num_bytes_by_server_,
                         bg_table_oplog, GetSerializedRowOpLogSize);
+    STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
   }
   delete new_table_oplog_index_ptr;
   return bg_table_oplog;
@@ -157,6 +158,7 @@ BgOpLogPartition *SSPBgWorker::PrepareOpLogsAppendOnly(
     while (row_oplog != 0) {
       CountRowOpLogToSend(row_id, row_oplog, &table_num_bytes_by_server_,
                           bg_table_oplog, GetSerializedRowOpLogSize);
+      STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
 
       row_oplog = append_only_row_oplog_buffer->NextReadRmOpLog(&row_id);
     }
@@ -199,6 +201,7 @@ void SSPBgWorker::PrepareOpLogsNormalNoReplay(
 
     row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
     row_oplog->Reset();
+    STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
   }
 
   for (const auto &server_id : server_ids_) {
@@ -233,7 +236,7 @@ void SSPBgWorker::PrepareOpLogsAppendOnlyNoReplay(
     while (row_oplog != 0) {
       row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
       row_oplog->Reset();
-
+      STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
       row_oplog = append_only_row_oplog_buffer->NextReadOpLog(&row_id);
     }
   }

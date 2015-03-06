@@ -83,6 +83,7 @@ void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,
   //int32_t row_type = 0;
   ClientTable *client_table = NULL;
   while (data != NULL) {
+    STATS_BG_ACCUM_TABLE_ROW_RECVED(table_id, row_id, 1);
     if (curr_table_id != table_id) {
       auto table_iter = tables_->find(table_id);
       CHECK(table_iter != tables_->end()) << "Cannot find table " << table_id;
