@@ -79,7 +79,6 @@ float LRSGDSolver::CrossEntropyLoss(const std::vector<float>& prediction, int32_
   }
 
 void LRSGDSolver::RefreshParams() {
-  LOG(INFO) << "w_cache_ before RefreshParams: " << w_cache_.ToString();
   // Write delta's to PS table.
   int num_full_rows = feature_dim_ / w_table_num_cols_;
   for (int i = 0; i < num_full_rows; ++i) {
@@ -130,7 +129,6 @@ void LRSGDSolver::RefreshParams() {
     std::copy(w_cache.begin(), w_cache.begin() + num_cols_last_row,
         w_cache_vec.begin() + num_full_rows * w_table_num_cols_);
   }
-  LOG(INFO) << "w_cache_ after RefreshParams: " << w_cache_.ToString();
 }
 
 void LRSGDSolver::SaveWeights(const std::string& filename) const {

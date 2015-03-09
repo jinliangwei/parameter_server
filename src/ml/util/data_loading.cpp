@@ -193,5 +193,51 @@ void ReadDataLabelLibSVM(const std::string& filename,
     << read_timer.elapsed() << " seconds.";
 }
 
+void ReadDataLabelSparseFeatureBinary(const std::string& filename,
+    int32_t feature_dim, int32_t num_data,
+    std::vector<AbstractFeature<float>*>* features, std::vector<int32_t>* labels,
+    bool feature_one_based, bool label_one_based, bool snappy_compressed) {
+  petuum::HighResolutionTimer read_timer;
+  features->resize(num_data);
+  labels->resize(num_data);
+  std::vector<int32_t> feature_ids;
+  std::vector<float> feature_vals;
+  feature_ids.reserve(feature_dim);
+  feature_vals.reserve(feature_dim);
+  std::string file_str = snappy_compressed ?
+    SnappyOpenFileToString(filename) : OpenFileToString(filename);
+  int offset = 0;
+  int i = 0;
+  while (offset < file_str.size()) {
+    int nnz = *reinterpret_cast<int32_t*>(&file_str[offset]);
+    offset += sizeof(int32_t);
+    int label = *reinterpret_cast<int32_t*>(&file_str[offset]);
+    offset += sizeof(int32_t);
+    int32_t* feature_ids_ptr = reinterpret_cast<int32_t*>(&file_str[offset]);
+    offset += nnz * sizeof(int32_t);
+    float* feature_vals_ptr = reinterpret_cast<float*>(&file_str[offset]);
+    offset += nnz * sizeof(float);
+    feature_ids.resize(nnz);
+    feature_vals.resize(nnz);
+    if (nnz > 0) {
+      std::copy(feature_ids_ptr, feature_ids_ptr + nnz, feature_ids.begin());
+      std::copy(feature_vals_ptr, feature_vals_ptr + nnz, feature_vals.begin());
+    }
+    if (feature_one_based) {
+      for (int j = 0; j < feature_ids.size(); ++j) {
+        --feature_ids[j];
+      }
+    }
+    (*labels)[i] = label_one_based ? label - 1 : label;
+    (*features)[i] = new SparseFeature<float>(feature_ids, feature_vals,
+        feature_dim);
+    ++i;
+  }
+  CHECK_EQ(num_data, i) << "Request to read " << num_data
+    << " data instances but only " << i << " found in " << filename;
+  LOG(INFO) << "Read " << i << " instances from " << filename << " in "
+    << read_timer.elapsed() << " seconds.";
+}
+
 }  // namespace ml
 }  // namespace petuum

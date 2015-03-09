@@ -98,6 +98,16 @@ void MLREngine::ReadData() {
           num_test_data_, &test_features_, &test_labels_,
           feature_one_based_, label_one_based_, snappy_compressed_);
     }
+  } else if (read_format_ == "sparse_feature_binary") {
+    petuum::ml::ReadDataLabelSparseFeatureBinary(train_file, feature_dim_, num_train_data_,
+        &train_features_, &train_labels_, feature_one_based_,
+        label_one_based_, snappy_compressed_);
+    if (perform_test_) {
+      LOG(INFO) << "Reading test file: " << FLAGS_test_file;
+      petuum::ml::ReadDataLabelSparseFeatureBinary(FLAGS_test_file, feature_dim_,
+          num_test_data_, &test_features_, &test_labels_,
+          feature_one_based_, label_one_based_, snappy_compressed_);
+    }
   }
 }
 
@@ -190,7 +200,8 @@ void MLREngine::Start() {
     // Create LR sgd solver.
     LRSGDSolverConfig solver_config;
     solver_config.feature_dim = feature_dim_;
-    solver_config.sparse_data = (read_format_ == "libsvm");
+    solver_config.sparse_data = (read_format_ == "libsvm"
+        || read_format_ == "sparse_feature_binary");
     solver_config.w_table = w_table_;
     solver_config.lambda = FLAGS_lambda;
     solver_config.w_table_num_cols = FLAGS_w_table_num_cols;
@@ -200,7 +211,8 @@ void MLREngine::Start() {
     MLRSGDSolverConfig solver_config;
     solver_config.feature_dim = feature_dim_;
     solver_config.num_labels = num_labels_;
-    solver_config.sparse_data = (read_format_ == "libsvm");
+    solver_config.sparse_data = (read_format_ == "libsvm"
+        || read_format_ == "sparse_feature_binary");
     solver_config.sparse_weight = FLAGS_sparse_weight;
     solver_config.w_table = w_table_;
     mlr_solver.reset(new MLRSGDSolver(solver_config));
@@ -265,8 +277,8 @@ void MLREngine::Start() {
         mlr_solver->RefreshParams();
         STATS_APP_ACCUM_COMP_BEGIN();
         ++batch_counter;
-        if (client_id == 0 && thread_id == 0)
-          LOG(INFO) << "batch: " << batch_counter;
+        //if (client_id == 0 && thread_id == 0)
+        //  LOG(INFO) << "batch: " << batch_counter;
       }
     }
     CHECK_EQ(0, batch_counter % num_batches_per_epoch);
