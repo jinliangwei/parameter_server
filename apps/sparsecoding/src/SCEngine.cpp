@@ -59,13 +59,13 @@ namespace sparsecoding {
         step_size_offset_S_ = context.get_double("step_size_offset_S");
         step_size_pow_S_ = context.get_double("step_size_pow_S");
         // default step size
-        if (init_step_size_B_ < FLT_MIN) {
+        if (init_step_size_B_ == 0.0) {
             init_step_size_B_ = context.get_double("init_step_size") 
                 / num_clients_ / num_worker_threads_;
             step_size_offset_B_ = context.get_double("step_size_offset");
             step_size_pow_B_ = context.get_double("step_size_pow");
         }
-        if (init_step_size_S_ < FLT_MIN) {
+        if (init_step_size_S_ == 0.0) {
             init_step_size_S_ = context.get_double("init_step_size") / m;
             step_size_offset_S_ = context.get_double("step_size_offset");
             step_size_pow_S_ = context.get_double("step_size_pow");
@@ -437,6 +437,8 @@ namespace sparsecoding {
         // Timer
         boost::posix_time::ptime beginT = 
             boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::time_duration psTime = boost::posix_time::microseconds(0);
+        boost::posix_time::time_duration clockTime = boost::posix_time::microseconds(0);
         // Step size for optimization
         float step_size_B = init_step_size_B_, step_size_S = init_step_size_S_;
 
@@ -464,9 +466,11 @@ namespace sparsecoding {
                 // Update petuum table cache
                 petuum::RowAccessor row_acc;
                 for (int row_id = 0; row_id < dictionary_size_; ++row_id) {
+                    boost::posix_time::ptime getBegin = boost::posix_time::microsec_clock::local_time();
                     const auto & row = 
                         B_table.Get<petuum::DenseRow<float> >(row_id, &row_acc);
                     row.CopyToVector(&petuum_row_cache);
+                    psTime += boost::posix_time::microsec_clock::local_time() - getBegin;
                     for (int col_id = 0; col_id < m; ++col_id) {
                         petuum_table_cache(col_id, row_id) = 
                             petuum_row_cache[col_id];
@@ -501,7 +505,10 @@ namespace sparsecoding {
                         << client_id_ << ", thread " << thread_id <<
                         " mean loss: " << obj 
                         << ", mean reconstruction error: " << obj1
-                        << ", mean regularization: " << obj2;
+                        << ", mean regularization: " << obj2
+                        << ", elapTime: " << ((float) elapTime.total_milliseconds()) / 1000
+                        << ", psTime: " << ((float) psTime.total_milliseconds()) / 1000
+                        << ", clockTime: " << ((float) clockTime.total_milliseconds()) / 1000;
                     // update loss table
                     loss_table.Inc(client_id_ * num_eval_per_client_ + 
                             num_minibatch / num_eval_minibatch_,  0, 
@@ -511,6 +518,8 @@ namespace sparsecoding {
                             ((float) elapTime.total_milliseconds()) / 1000 
                             / num_worker_threads_);
                     beginT = boost::posix_time::microsec_clock::local_time();
+                    psTime = boost::posix_time::microseconds(0);
+                    clockTime = boost::posix_time::microseconds(0);
                 } else {
                     LOG(INFO) << "iter: " << num_minibatch << ", client " 
                         << client_id_ << ", thread " << thread_id;
@@ -556,6 +565,7 @@ namespace sparsecoding {
                             || k + 1 == minibatch_size_) {
                         // Update B_table
                         for (int row_id = 0; row_id < dictionary_size_; ++row_id) {
+                            boost::posix_time::ptime psBegin = boost::posix_time::microsec_clock::local_time();
                             petuum::UpdateBatch<float> B_update;
                             for (int col_id = 0; col_id < m; ++col_id) {
                                 B_update.Update(col_id, 
@@ -563,13 +573,16 @@ namespace sparsecoding {
                                         / minibatch_size_);
                             }
                             B_table.BatchInc(row_id, B_update);
+                            psTime += boost::posix_time::microsec_clock::local_time() - psBegin;
                         }
                         petuum_update_cache.fill(0.0);
                         petuum::RowAccessor row_acc;
                         for (int row_id = 0; row_id < dictionary_size_; ++row_id) {
+                            boost::posix_time::ptime psBegin = boost::posix_time::microsec_clock::local_time();
                             const auto & row = 
                                 B_table.Get<petuum::DenseRow<float> >(row_id, &row_acc);
                             row.CopyToVector(&petuum_row_cache);
+                            psTime += boost::posix_time::microsec_clock::local_time() - psBegin;
                             for (int col_id = 0; col_id < m; ++col_id) {
                                 petuum_table_cache(col_id, row_id) = 
                                     petuum_row_cache[col_id];
@@ -578,14 +591,19 @@ namespace sparsecoding {
                     }
                 }
                 
+                boost::posix_time::ptime clockBegin = boost::posix_time::microsec_clock::local_time();
                 petuum::PSTableGroup::Clock();
+                clockTime += boost::posix_time::microsec_clock::local_time() - clockBegin;
                 // Update B_table to normalize l2-norm to C_
                 std::vector<float> B_row_cache(m);
                 for (int row_id = 0; row_id < dictionary_size_; ++row_id) {
+                    boost::posix_time::ptime psBegin = boost::posix_time::microsec_clock::local_time();
                     const auto & row = 
                         B_table.Get<petuum::DenseRow<float> >(row_id, &row_acc);
                     row.CopyToVector(&petuum_row_cache);
+                    psTime += boost::posix_time::microsec_clock::local_time() - psBegin;
                     RegVec(petuum_row_cache, C_, B_row_cache);
+                    psBegin = boost::posix_time::microsec_clock::local_time();
                     petuum::UpdateBatch<float> B_update;
                     for (int col_id = 0; col_id < m; ++col_id) {
                         B_update.Update(col_id, 
@@ -594,8 +612,11 @@ namespace sparsecoding {
                                 num_worker_threads_);
                     }
                     B_table.BatchInc(row_id, B_update);
+                    psTime += boost::posix_time::microsec_clock::local_time() - psBegin;
                 }
+                clockBegin = boost::posix_time::microsec_clock::local_time();
                 petuum::PSTableGroup::Clock(); 
+                clockTime += boost::posix_time::microsec_clock::local_time() - clockBegin;
             }
         }
         // Save results to disk
