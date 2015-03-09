@@ -36,11 +36,16 @@ DEFINE_int32(feature_dim, 2000, "feature dimension.");
 DEFINE_int32(num_labels, 2, "# of classes.");
 DEFINE_string(output_file, " ", "Generate "
     "output_file, output_file.meta");
+DEFINE_int32(num_partitions, 1, "# of output files. Output files are"
+    "output_file.0, output_file.1 ...");
 DEFINE_int32(nnz_per_col, 25, "# of non-zeros in each column.");
 DEFINE_bool(one_based, false, "feature index starts at 1. Only relevant to "
     "libsvm format.");
 DEFINE_double(correlation_strength, 0.9, "correlation strength in [0, 1].");
-DEFINE_bool(snappy_compressed, true, "Compress output with snappy.");
+DEFINE_string(format, "libsvm", "options: 1) libsvm; 2) sparse_feature_binary.");
+DEFINE_bool(snappy_compressed, false, "compress with snappy.");
+DEFINE_bool(output_spark_format, true, "Output additionally for spark, "
+    "i.e., none compress, no partition.");
 DEFINE_double(noise_ratio, 0.1, "With this probability an instance label is "
     "randomly assigned.");
 
@@ -86,6 +91,26 @@ int FindQuantile(const std::vector<float>& quantiles, float val) {
   }
   LOG(FATAL) << "value exceeds quantile: " << val;
   return 0;
+}
+
+
+void GenerateMetaFile(const std::string& filename, int num_train_this_partition) {
+  // Generate meta file
+  std::ofstream meta_stream(filename + ".meta", std::ofstream::out
+      | std::ofstream::trunc);
+  meta_stream << "num_train_total: " << FLAGS_num_train << std::endl;
+  meta_stream << "num_train_this_partition: "
+    << num_train_this_partition << std::endl;
+  meta_stream << "feature_dim: " << FLAGS_feature_dim << std::endl;
+  meta_stream << "num_labels: " << FLAGS_num_labels << std::endl;
+  meta_stream << "format: " << FLAGS_format  << std::endl;
+  meta_stream << "feature_one_based: " << FLAGS_one_based << std::endl;
+  meta_stream << "label_one_based: " << false << std::endl;
+  meta_stream << "nnz_per_column: " << FLAGS_nnz_per_col << std::endl;
+  meta_stream << "correlation_strength: " << FLAGS_correlation_strength << std::endl;
+  meta_stream << "snappy_compressed: " << FLAGS_snappy_compressed << std::endl;
+  meta_stream.close();
+  LOG(INFO) << "Wrote to file " << filename;
 }
 
 }  // anonymous namespace
@@ -169,10 +194,92 @@ int main(int argc, char* argv[]) {
       labels[i] = FindQuantile(quantiles, regress_val[i]);
     }
   }
+  LOG(INFO) << "Generated " << FLAGS_num_train << " data of dim "
+    << FLAGS_feature_dim << " in " << total_timer.elapsed();
 
   // Write to file.
-  if (!FLAGS_snappy_compressed) {
-    FILE* outfile = fopen(FLAGS_output_file.c_str(), "w");
+  int num_data_per_partition = std::ceil(static_cast<float>(FLAGS_num_train)
+      / FLAGS_num_partitions);
+  if (FLAGS_format == "libsvm") {
+    for (int ipar = 0; ipar < FLAGS_num_partitions; ++ipar) {
+      std::string filename = FLAGS_output_file + "." + std::to_string(ipar);
+      int lower_bound = ipar * num_data_per_partition;
+      int upper_bound = std::min((ipar + 1) * num_data_per_partition,
+          FLAGS_num_train);
+      int num_train_this_partition = upper_bound - lower_bound;
+      std::stringstream ss;
+      for (int i = lower_bound; i < upper_bound; ++i) {
+        ss << labels[i] << " ";
+        for (const auto& p : X[i]) {
+          int feature_idx = FLAGS_one_based ? p.first + 1 : p.first;
+          ss << feature_idx << ":" << p.second << " ";
+        }
+        ss << std::endl;
+      }
+      if (FLAGS_snappy_compressed) {
+        // Snappy compress.
+        std::string compressed_str;
+        std::string original_str = ss.str();
+        snappy::Compress(original_str.data(), original_str.size(), &compressed_str);
+        std::ofstream outfile(filename, std::ofstream::binary);
+        outfile.write(compressed_str.data(), compressed_str.size());
+        GenerateMetaFile(filename, num_train_this_partition);
+      } else {
+        std::ofstream outfile(filename);
+        outfile.write(ss.str().data(), ss.str().size());
+      }
+    }
+  } else if (FLAGS_format == "sparse_feature_binary") {
+    std::vector<int32_t> feature_ids(FLAGS_feature_dim);
+    std::vector<float> feature_vals(FLAGS_feature_dim);
+    for (int ipar = 0; ipar < FLAGS_num_partitions; ++ipar) {
+      std::stringstream ss;
+      std::string filename = FLAGS_output_file + "." + std::to_string(ipar);
+      int lower_bound = ipar * num_data_per_partition;
+      int upper_bound = std::min((ipar + 1) * num_data_per_partition,
+          FLAGS_num_train);
+      int num_train_this_partition = upper_bound - lower_bound;
+      for (int i = lower_bound; i < upper_bound; ++i) {
+        int32_t nnz = (int32_t) X[i].size();
+        ss.write(reinterpret_cast<char*>(&nnz), sizeof(int32_t));
+        ss.write(reinterpret_cast<char*>(&labels[i]), sizeof(int32_t));
+        int j = 0;
+        for (const auto& p : X[i]) {
+          int feature_idx = FLAGS_one_based ? p.first + 1 : p.first;
+          feature_ids[j] = feature_idx;
+          feature_vals[j] = p.second;
+          ++j;
+        }
+        /*
+        ///
+        std::stringstream sss;
+        for (int xx = 0; xx < j; ++xx) {
+          sss << feature_ids[xx] << " ";
+        }
+        LOG_IF(INFO, i < 50) << sss.str();
+        ///
+        */
+        if (X[i].size() > 0) {
+          ss.write(reinterpret_cast<char*>(feature_ids.data()), X[i].size() * sizeof(int32_t));
+          ss.write(reinterpret_cast<char*>(feature_vals.data()), X[i].size() * sizeof(float));
+        }
+      }
+      std::ofstream outfile(filename, std::ofstream::binary);
+      if (FLAGS_snappy_compressed) {
+        std::string compressed_str;
+        std::string original_str = ss.str();
+        snappy::Compress(original_str.data(), original_str.size(), &compressed_str);
+        outfile.write(compressed_str.data(), compressed_str.size());
+      } else {
+        outfile.write(ss.str().data(), ss.str().size());
+      }
+      GenerateMetaFile(filename, num_train_this_partition);
+    }
+  }
+
+  if (FLAGS_output_spark_format) {
+    std::string filename = FLAGS_output_file + ".spark";
+    FILE* outfile = fopen(filename.c_str(), "w");
     for (int i = 0; i < FLAGS_num_train; ++i) {
       fprintf(outfile, "%d ", labels[i]);
       for (const auto& p : X[i]) {
@@ -182,44 +289,8 @@ int main(int argc, char* argv[]) {
       fprintf(outfile, "\n");
     }
     CHECK_EQ(0, fclose(outfile)) << "Failed to close file " << FLAGS_output_file;
-  } else {
-    std::stringstream ss;
-    for (int i = 0; i < FLAGS_num_train; ++i) {
-      ss << labels[i] << " ";
-      for (const auto& p : X[i]) {
-        int feature_idx = FLAGS_one_based ? p.first + 1 : p.first;
-        ss << feature_idx << ":" << p.second << " ";
-      }
-      ss << std::endl;
-    }
-    // Snappy compress.
-    std::string compressed_str;
-    std::string original_str = ss.str();
-    snappy::Compress(original_str.data(), original_str.size(), &compressed_str);
-    std::ofstream outfile(FLAGS_output_file, std::ofstream::binary);
-    outfile.write(compressed_str.data(), compressed_str.size());
   }
 
-  // Generate meta file
-  std::string meta_file = FLAGS_output_file + ".meta";
-  std::ofstream meta_stream(meta_file, std::ofstream::out
-      | std::ofstream::trunc);
-  meta_stream << "num_train_total: " << FLAGS_num_train << std::endl;
-  meta_stream << "num_train_this_partition: "
-    << FLAGS_num_train << std::endl;
-  meta_stream << "feature_dim: " << FLAGS_feature_dim << std::endl;
-  meta_stream << "num_labels: " << FLAGS_num_labels << std::endl;
-  meta_stream << "format: " << "libsvm" << std::endl;
-  meta_stream << "feature_one_based: " << FLAGS_one_based << std::endl;
-  meta_stream << "label_one_based: " << false << std::endl;
-  meta_stream << "nnz_per_column: " << FLAGS_nnz_per_col << std::endl;
-  meta_stream << "correlation_strength: " << FLAGS_correlation_strength << std::endl;
-  meta_stream << "snappy_compressed: " << FLAGS_snappy_compressed << std::endl;
-  meta_stream.close();
-
-  LOG(INFO) << "Generated " << FLAGS_num_train << " data of dim "
-    << FLAGS_feature_dim << " at " << FLAGS_output_file
-    << " in " << total_timer.elapsed();
 
   return 0;
 }
