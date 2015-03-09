@@ -59,13 +59,13 @@ namespace sparsecoding {
         step_size_offset_S_ = context.get_double("step_size_offset_S");
         step_size_pow_S_ = context.get_double("step_size_pow_S");
         // default step size
-        if (init_step_size_B_ < FLT_MIN) {
+        if (init_step_size_B_ == 0.0) {
             init_step_size_B_ = context.get_double("init_step_size") 
                 / num_clients_ / num_worker_threads_;
             step_size_offset_B_ = context.get_double("step_size_offset");
             step_size_pow_B_ = context.get_double("step_size_pow");
         }
-        if (init_step_size_S_ < FLT_MIN) {
+        if (init_step_size_S_ == 0.0) {
             init_step_size_S_ = context.get_double("init_step_size") / m;
             step_size_offset_S_ = context.get_double("step_size_offset");
             step_size_pow_S_ = context.get_double("step_size_pow");
