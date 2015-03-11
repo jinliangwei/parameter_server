@@ -272,7 +272,8 @@ int main(int argc, char* argv[]) {
         ss << std::endl;
       }
       std::string filename = FLAGS_output_file + "x"
-        + std::to_string(FLAGS_num_partitions) + "." + std::to_string(ipar);
+        + std::to_string(FLAGS_num_partitions) + ".libsvm."
+        + std::to_string(ipar);
       if (FLAGS_snappy_compressed) {
         // Snappy compress.
         std::string compressed_str;
@@ -280,15 +281,16 @@ int main(int argc, char* argv[]) {
         snappy::Compress(original_str.data(), original_str.size(), &compressed_str);
         std::ofstream outfile(filename, std::ofstream::binary);
         outfile.write(compressed_str.data(), compressed_str.size());
-        GenerateMetaFile(filename, num_train_this_partition);
         LOG(INFO) << "Wrote " << upper_bound - lower_bound << " data to file "
           << filename << " (" << compressed_str.size() << " bytes)";
       } else {
         std::ofstream outfile(filename);
-        outfile.write(ss.str().data(), ss.str().size());
+        std::string out_str = ss.str();
+        outfile.write(out_str.data(), out_str.size());
         LOG(INFO) << "Wrote " << upper_bound - lower_bound << " data to file "
-          << filename << " (" << ss.str().size() << " bytes)";
+          << filename << " (" << out_str.size() << " bytes)";
       }
+      GenerateMetaFile(filename, num_train_this_partition);
     }
   } else if (FLAGS_format == "sparse_feature_binary") {
     CHECK(!FLAGS_snappy_compressed) << "sparse_feature_binary format does "
@@ -306,7 +308,7 @@ int main(int argc, char* argv[]) {
         << " to " << upper_bound;
       int64_t num_train_this_partition = upper_bound - lower_bound;
       std::string filename = FLAGS_output_file + "x"
-        + std::to_string(FLAGS_num_partitions) + "." + std::to_string(ipar);
+        + std::to_string(FLAGS_num_partitions) + ".sfb." + std::to_string(ipar);
       //std::ofstream outfile(filename, std::ofstream::binary);
       FILE* fp = fopen(filename.c_str(), "wb");
       for (int64_t i = lower_bound; i < upper_bound; ++i) {
@@ -319,6 +321,7 @@ int main(int argc, char* argv[]) {
         //outfile.write(reinterpret_cast<char*>(&labels[i]), sizeof(int32_t));
         for (int j = 0; j < ids.size(); ++j) {
           int feature_id = FLAGS_one_based ? ids[j] + 1 : ids[j];
+          CHECK_GT(feature_id, -1);
           feature_ids[j] = feature_id;
           feature_vals[j] = vals[j];
         }
