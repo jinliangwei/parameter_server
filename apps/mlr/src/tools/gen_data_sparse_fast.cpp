@@ -233,7 +233,7 @@ int main(int argc, char* argv[]) {
       regress_sorted[regress_sorted.size() - 1] :
       regress_sorted[(l + 1) * FLAGS_num_train / FLAGS_num_labels];
   }
-  std::vector<int> labels(FLAGS_num_train);
+  std::vector<int32_t> labels(FLAGS_num_train);
   std::uniform_int_distribution<> class_rand(0, FLAGS_num_labels - 1);
   std::uniform_real_distribution<float> unif_zero_one(0., 1.);
   for (int i = 0; i < FLAGS_num_train; ++i) {
@@ -295,6 +295,26 @@ int main(int argc, char* argv[]) {
     petuum::HighResolutionTimer write_timer;
     std::vector<int32_t> feature_ids(FLAGS_feature_dim);
     std::vector<float> feature_vals(FLAGS_feature_dim);
+    ///
+    for (int i = 0; i < 10; ++i) {
+      const std::vector<int>& ids = X[i].GetFeatureIds();
+      const std::vector<float>& vals = X[i].GetFeatureVals();
+      std::stringstream ss;
+      for (int j = 0; j < ids.size(); ++j) {
+        ss << ids[j] << ":" << vals[j];
+      }
+      LOG(INFO) << i << ": " << ss.str();
+    }
+    for (int i = FLAGS_num_train - 11; i < FLAGS_num_train; ++i) {
+      const std::vector<int>& ids = X[i].GetFeatureIds();
+      const std::vector<float>& vals = X[i].GetFeatureVals();
+      std::stringstream ss;
+      for (int j = 0; j < ids.size(); ++j) {
+        ss << ids[j] << ":" << vals[j];
+      }
+      LOG(INFO) << i << ": " << ss.str();
+    }
+    ///
     for (int ipar = 0; ipar < FLAGS_num_partitions; ++ipar) {
       int64_t num_bytes_this_partition = 0;
       int64_t lower_bound = ipar * num_data_per_partition;
@@ -308,6 +328,13 @@ int main(int argc, char* argv[]) {
       //std::ofstream outfile(filename, std::ofstream::binary);
       FILE* fp = fopen(filename.c_str(), "wb");
       for (int64_t i = lower_bound; i < upper_bound; ++i) {
+        /*
+        if (i % 100000 == 0) {
+          LOG(INFO) << "close & open";
+          CHECK_EQ(0, fclose(fp)) << "Failed to close file " << filename;
+          fp = fopen(filename.c_str(), "ab");
+        }
+        */
         const std::vector<int>& ids = X[i].GetFeatureIds();
         const std::vector<float>& vals = X[i].GetFeatureVals();
         int32_t nnz = (int32_t) ids.size();
@@ -327,6 +354,8 @@ int main(int argc, char* argv[]) {
           //outfile.write(reinterpret_cast<char*>(feature_vals.data()), nnz * sizeof(float));
         }
       }
+      CHECK_EQ(0, fclose(fp)) << "Failed to close file " << filename;
+
       LOG(INFO) << "Wrote " << upper_bound - lower_bound << " data to file "
         << filename << " (" << num_bytes_this_partition << " bytes) in " << write_timer.elapsed();
       GenerateMetaFile(filename, num_train_this_partition);
@@ -378,6 +407,7 @@ int main(int argc, char* argv[]) {
   */
 
 
+  /*
   if (FLAGS_output_spark_format) {
     LOG(INFO) << "Writing to Spark format (libsvm).";
     petuum::HighResolutionTimer write_timer;
@@ -394,10 +424,11 @@ int main(int argc, char* argv[]) {
       }
       fprintf(outfile, "\n");
     }
-    CHECK_EQ(0, fclose(outfile)) << "Failed to close file " << FLAGS_output_file;
+    CHECK_EQ(0, fclose(outfile)) << "Failed to close file " << filename;
     LOG(INFO) << "Wrote " << FLAGS_num_train << " data to file "
       << filename << " in " << write_timer.elapsed();
   }
+  */
 
   return 0;
 }
