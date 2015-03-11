@@ -272,7 +272,8 @@ int main(int argc, char* argv[]) {
         ss << std::endl;
       }
       std::string filename = FLAGS_output_file + "x"
-        + std::to_string(FLAGS_num_partitions) + "." + std::to_string(ipar);
+        + std::to_string(FLAGS_num_partitions) + ".libsvm."
+        + std::to_string(ipar);
       if (FLAGS_snappy_compressed) {
         // Snappy compress.
         std::string compressed_str;
@@ -280,17 +281,20 @@ int main(int argc, char* argv[]) {
         snappy::Compress(original_str.data(), original_str.size(), &compressed_str);
         std::ofstream outfile(filename, std::ofstream::binary);
         outfile.write(compressed_str.data(), compressed_str.size());
-        GenerateMetaFile(filename, num_train_this_partition);
         LOG(INFO) << "Wrote " << upper_bound - lower_bound << " data to file "
           << filename << " (" << compressed_str.size() << " bytes)";
       } else {
         std::ofstream outfile(filename);
-        outfile.write(ss.str().data(), ss.str().size());
+        std::string out_str = ss.str();
+        outfile.write(out_str.data(), out_str.size());
         LOG(INFO) << "Wrote " << upper_bound - lower_bound << " data to file "
-          << filename << " (" << ss.str().size() << " bytes)";
+          << filename << " (" << out_str.size() << " bytes)";
       }
+      GenerateMetaFile(filename, num_train_this_partition);
     }
   } else if (FLAGS_format == "sparse_feature_binary") {
+    CHECK(!FLAGS_snappy_compressed) << "sparse_feature_binary format does "
+      "not support snappy.";
     LOG(INFO) << "Writing to sparse_feature_binary format.";
     petuum::HighResolutionTimer write_timer;
     std::vector<int32_t> feature_ids(FLAGS_feature_dim);
@@ -324,7 +328,7 @@ int main(int argc, char* argv[]) {
         << " to " << upper_bound;
       int64_t num_train_this_partition = upper_bound - lower_bound;
       std::string filename = FLAGS_output_file + "x"
-        + std::to_string(FLAGS_num_partitions) + "." + std::to_string(ipar);
+        + std::to_string(FLAGS_num_partitions) + ".sfb." + std::to_string(ipar);
       //std::ofstream outfile(filename, std::ofstream::binary);
       FILE* fp = fopen(filename.c_str(), "wb");
       for (int64_t i = lower_bound; i < upper_bound; ++i) {
@@ -344,6 +348,7 @@ int main(int argc, char* argv[]) {
         //outfile.write(reinterpret_cast<char*>(&labels[i]), sizeof(int32_t));
         for (int j = 0; j < ids.size(); ++j) {
           int feature_id = FLAGS_one_based ? ids[j] + 1 : ids[j];
+          CHECK_GT(feature_id, -1);
           feature_ids[j] = feature_id;
           feature_vals[j] = vals[j];
         }
@@ -362,49 +367,53 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  /*
   {
     /// DW: hack hack hack!
-    int num_partitions = 8;
+    int num_partitions = 36;
     num_data_per_partition = std::ceil(static_cast<float>(FLAGS_num_train)
     / num_partitions);
-    LOG(INFO) << "Writing to sparse_feature_binary format (8 partitions).";
+    LOG(INFO) << "Writing to sparse_feature_binary format (" << num_partitions << " partitions).";
     petuum::HighResolutionTimer write_timer;
     std::vector<int32_t> feature_ids(FLAGS_feature_dim);
     std::vector<float> feature_vals(FLAGS_feature_dim);
     for (int ipar = 0; ipar < num_partitions; ++ipar) {
-      int64_t num_bytes_this_partition = 0;
-      int64_t lower_bound = ipar * num_data_per_partition;
-      int64_t upper_bound = std::min((ipar + 1) * num_data_per_partition,
+      int lower_bound = ipar * num_data_per_partition;
+      int upper_bound = std::min((ipar + 1) * num_data_per_partition,
           FLAGS_num_train);
-      LOG(INFO) << "Writing to partition " << ipar << " data " << lower_bound
-        << " to " << upper_bound;
-      int64_t num_train_this_partition = upper_bound - lower_bound;
-      std::string filename = FLAGS_output_file + "x"
-        + std::to_string(num_partitions) + "." + std::to_string(ipar);
-      std::ofstream outfile(filename, std::ofstream::binary);
-      for (int64_t i = lower_bound; i < upper_bound; ++i) {
+      int num_train_this_partition = upper_bound - lower_bound;
+      std::stringstream ss;
+      for (int i = lower_bound; i < upper_bound; ++i) {
+        ss << labels[i] << " ";
         const std::vector<int>& ids = X[i].GetFeatureIds();
         const std::vector<float>& vals = X[i].GetFeatureVals();
-        int32_t nnz = (int32_t) ids.size();
-        outfile.write(reinterpret_cast<char*>(&nnz), sizeof(int32_t));
-        outfile.write(reinterpret_cast<char*>(&labels[i]), sizeof(int32_t));
         for (int j = 0; j < ids.size(); ++j) {
           int feature_id = FLAGS_one_based ? ids[j] + 1 : ids[j];
-          feature_ids[j] = feature_id;
-          feature_vals[j] = vals[j];
+          ss << feature_id << ":" << vals[j] << " ";
         }
-        if (ids.size() > 0) {
-          outfile.write(reinterpret_cast<char*>(feature_ids.data()), nnz * sizeof(int32_t));
-          outfile.write(reinterpret_cast<char*>(feature_vals.data()), nnz * sizeof(float));
-        }
+        ss << std::endl;
       }
-      LOG(INFO) << "Wrote " << upper_bound - lower_bound << " data to file "
-        << filename << " (" << num_bytes_this_partition << " bytes) in " << write_timer.elapsed();
+      std::string filename = FLAGS_output_file + "x"
+        + std::to_string(num_partitions) + ".libsvm."
+        + std::to_string(ipar);
+      if (FLAGS_snappy_compressed) {
+        // Snappy compress.
+        std::string compressed_str;
+        std::string original_str = ss.str();
+        snappy::Compress(original_str.data(), original_str.size(), &compressed_str);
+        std::ofstream outfile(filename, std::ofstream::binary);
+        outfile.write(compressed_str.data(), compressed_str.size());
+        LOG(INFO) << "Wrote " << upper_bound - lower_bound << " data to file "
+          << filename << " (" << compressed_str.size() << " bytes)";
+      } else {
+        std::ofstream outfile(filename);
+        std::string out_str = ss.str();
+        outfile.write(out_str.data(), out_str.size());
+        LOG(INFO) << "Wrote " << upper_bound - lower_bound << " data to file "
+          << filename << " (" << out_str.size() << " bytes)";
+      }
       GenerateMetaFile(filename, num_train_this_partition);
     }
   }
-  */
 
 
   /*
