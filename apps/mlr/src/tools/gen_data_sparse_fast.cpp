@@ -291,6 +291,8 @@ int main(int argc, char* argv[]) {
       }
     }
   } else if (FLAGS_format == "sparse_feature_binary") {
+    CHECK(!FLAGS_snappy_compressed) << "sparse_feature_binary format does "
+      "not support snappy.";
     LOG(INFO) << "Writing to sparse_feature_binary format.";
     petuum::HighResolutionTimer write_timer;
     std::vector<int32_t> feature_ids(FLAGS_feature_dim);
