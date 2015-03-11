@@ -1,4 +1,5 @@
 MLR_DIR := $(shell readlink $(dir $(lastword $(MAKEFILE_LIST))) -f)
+MLR_TOOLS := $(MLR_DIR)/src/tools
 PETUUM_ROOT = $(MLR_DIR)/../../
 
 include $(PETUUM_ROOT)/defns.mk
@@ -9,7 +10,7 @@ MLR_BIN = $(MLR_DIR)/bin
 MLR_OBJ = $(MLR_SRC:.cpp=.o)
 NDEBUG = -DNDEBUG
 
-all: mlr $(MLR_BIN)/gen_data_sparse process_data
+all: mlr $(MLR_BIN)/gen_data_sparse $(MLR_BIN)/gen_data_sparse_fast process_data
 process_data: $(MLR_BIN)/process_data
 mlr: $(MLR_BIN)/mlr_main
 
@@ -25,9 +26,21 @@ $(MLR_OBJ): %.o: %.cpp $(MLR_HDR)
 	$(PETUUM_CXX) $(NDEBUG) $(PETUUM_CXXFLAGS) -Wno-unused-result \
 		$(PETUUM_INCFLAGS) -c $< -o $@
 
-$(MLR_BIN)/gen_data_sparse: $(MLR_DIR)/src/tools/gen_data_sparse.cpp $(MLR_BIN)
+$(MLR_TOOLS)/string_buffer.o: $(MLR_TOOLS)/string_buffer.cpp \
+	$(MLR_TOOLS)/string_buffer.hpp
+	$(PETUUM_CXX) $(NDEBUG) $(PETUUM_CXXFLAGS) -Wno-unused-result \
+		$(PETUUM_INCFLAGS) -c $< -o $@
+
+
+$(MLR_BIN)/gen_data_sparse: $(MLR_DIR)/src/tools/gen_data_sparse.cpp $(MLR_BIN) \
+	$(MLR_TOOLS)/string_buffer.o
 	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
-	$< $(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
+	$< $(PETUUM_PS_LIB) $(MLR_TOOLS)/string_buffer.o $(PETUUM_LDFLAGS) -o $@
+
+$(MLR_BIN)/gen_data_sparse_fast: $(MLR_DIR)/src/tools/gen_data_sparse_fast.cpp $(MLR_BIN) \
+	$(MLR_TOOLS)/string_buffer.o
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
+	$< $(PETUUM_PS_LIB) $(MLR_TOOLS)/string_buffer.o $(PETUUM_LDFLAGS) -o $@
 
 $(MLR_BIN)/process_data: $(MLR_DIR)/src/tools/process_data.cpp $(MLR_BIN)
 	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
