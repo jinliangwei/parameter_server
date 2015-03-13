@@ -121,18 +121,11 @@ public:  // DenseFeature override.
     return this->data_[idx];
   }
 
-private:
-  /*
-  inline void ResizeDecayRates(int num_clocks) const {
-    decay_rates_.resize(num_clocks + 1);
-    decay_rates_[0] = 1.;
-    for (int c = 1; c <= num_clocks; ++c) {
-      decay_rates_[c] = decay_rates_[c - 1] * decay_rate_;
-    }
-    LOG(INFO) << "InitDecayrate done";
+  std::string ToString() const {
+    ApplyDecayAll();
+    return DenseFeature<V>::ToString();
   }
-  */
-
+private:
   // Apply decay to a feature.
   void ApplyDecay(int feature_id) const {
     this->data_[feature_id] *=

@@ -155,7 +155,6 @@ void GenerateMetaFile(const std::string& filename, int num_train_this_partition)
   meta_stream << "nnz_per_column: " << FLAGS_nnz_per_col << std::endl;
   meta_stream << "correlation_strength: " << FLAGS_correlation_strength << std::endl;
   meta_stream << "snappy_compressed: " << FLAGS_snappy_compressed << std::endl;
-  meta_stream << "noise_ratio: " << FLAGS_noise_ratio << std::endl;
   meta_stream.close();
 }
 
@@ -250,6 +249,8 @@ int main(int argc, char* argv[]) {
     << FLAGS_feature_dim << " in " << total_timer.elapsed();
 
   // Write to file.
+  float avg_nnz_per_sample = (static_cast<float>(FLAGS_feature_dim)
+      * FLAGS_nnz_per_col / FLAGS_num_train);
   int num_data_per_partition = std::ceil(static_cast<float>(FLAGS_num_train)
       / FLAGS_num_partitions);
   if (FLAGS_format == "libsvm") {
@@ -298,7 +299,6 @@ int main(int argc, char* argv[]) {
     petuum::HighResolutionTimer write_timer;
     std::vector<int32_t> feature_ids(FLAGS_feature_dim);
     std::vector<float> feature_vals(FLAGS_feature_dim);
-    /*
     ///
     for (int i = 0; i < 10; ++i) {
       const std::vector<int>& ids = X[i].GetFeatureIds();
@@ -319,7 +319,6 @@ int main(int argc, char* argv[]) {
       LOG(INFO) << i << ": " << ss.str();
     }
     ///
-    */
     for (int ipar = 0; ipar < FLAGS_num_partitions; ++ipar) {
       int64_t num_bytes_this_partition = 0;
       int64_t lower_bound = ipar * num_data_per_partition;
@@ -333,6 +332,13 @@ int main(int argc, char* argv[]) {
       //std::ofstream outfile(filename, std::ofstream::binary);
       FILE* fp = fopen(filename.c_str(), "wb");
       for (int64_t i = lower_bound; i < upper_bound; ++i) {
+        /*
+        if (i % 100000 == 0) {
+          LOG(INFO) << "close & open";
+          CHECK_EQ(0, fclose(fp)) << "Failed to close file " << filename;
+          fp = fopen(filename.c_str(), "ab");
+        }
+        */
         const std::vector<int>& ids = X[i].GetFeatureIds();
         const std::vector<float>& vals = X[i].GetFeatureVals();
         int32_t nnz = (int32_t) ids.size();
@@ -361,7 +367,6 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  /*
   {
     /// DW: hack hack hack!
     int num_partitions = 36;
@@ -409,7 +414,6 @@ int main(int argc, char* argv[]) {
       GenerateMetaFile(filename, num_train_this_partition);
     }
   }
-  */
 
 
   /*

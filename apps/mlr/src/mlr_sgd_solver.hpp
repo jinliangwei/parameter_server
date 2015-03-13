@@ -28,10 +28,10 @@ public:
 
   // Compute gradient using feature and label and apply to w_table_.
   void SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
-      int32_t label);
+      int32_t label, float step_size);
 
   void SingleDataSGD(const petuum::ml::DenseFeature<float>& feature,
-                     int32_t label);
+                     int32_t label, float step_size);
 
   // Predict the probability of each label.
   void Predict(const petuum::ml::AbstractFeature<float>& feature,
@@ -53,8 +53,6 @@ public:
 
   // Save the current weight in cache in libsvm format.
   void SaveWeights(const std::string& filename) const;
-
-  float EvaluateL2RegLoss() const;
 
 private:    // private functions
   void RefreshParamsDense();

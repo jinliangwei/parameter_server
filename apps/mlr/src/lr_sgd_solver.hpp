@@ -28,14 +28,9 @@ public:
   LRSGDSolver(const LRSGDSolverConfig& config);
   ~LRSGDSolver();
 
-  void SetLearningRate(double learning_rate) {
-    AbstractMLRSGDSolver::SetLearningRate(learning_rate);
-    w_cache_.SetDecayRate(1 - this->learning_rate_ * lambda_);
-  }
-
   // Compute gradient using feature and label and store internally.
   void SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
-      int32_t label);
+      int32_t label, float learning_rate);
 
   // Predict the probability of each label.
   void Predict(const petuum::ml::AbstractFeature<float>& feature,
@@ -58,17 +53,14 @@ public:
   // Save the current weight in cache in libsvm format.
   void SaveWeights(const std::string& filename) const;
 
-  float EvaluateL2RegLoss() const;
-
 private:
   // ======== PS Tables ==========
   // The weight of each class (stored as single feature-major row).
   petuum::Table<float> w_table_;
 
   // Thread-cache.
-  petuum::ml::DenseDecayFeature<float> w_cache_;
-  std::vector<float> w_last_refresh_;
-  //petuum::ml::DenseDecayFeature<float> w_delta_;
+  petuum::ml::DenseFeature<float> w_cache_;
+  petuum::ml::DenseFeature<float> w_delta_;
 
   int32_t feature_dim_; // feature dimension
   // feature_dim % w_table_num_cols might not be 0
