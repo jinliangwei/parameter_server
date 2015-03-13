@@ -158,23 +158,23 @@ void MLRSGDSolver::Predict(
 
 void MLRSGDSolver::SingleDataSGD(
     const petuum::ml::AbstractFeature<float>& feature,
-    int32_t label, float learning_rate) {
+    int32_t label) {
   Predict(feature, &predict_buff_);
   predict_buff_[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
 
   // outer product
   for (int i = 0; i < num_labels_; ++i) {
     // w_cache_[i] += -\eta * y_vec[i] * feature
-    petuum::ml::FeatureScaleAndAdd(-learning_rate * predict_buff_[i],
+    petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * predict_buff_[i],
                                    feature, w_cache_[i]);
-    petuum::ml::FeatureScaleAndAdd(-learning_rate * predict_buff_[i],
+    petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * predict_buff_[i],
                                    feature, w_delta_[i]);
   }
 }
 
 void MLRSGDSolver::SingleDataSGD(
     const petuum::ml::DenseFeature<float>& feature,
-    int32_t label, float learning_rate) {
+    int32_t label) {
   Predict(feature, &predict_buff_);
   predict_buff_[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
 
@@ -182,11 +182,11 @@ void MLRSGDSolver::SingleDataSGD(
   for (int i = 0; i < num_labels_; ++i) {
     // w_cache_[i] += -\eta * y_vec[i] * feature
     petuum::ml::FeatureScaleAndAdd(
-        -learning_rate * predict_buff_[i], feature,
+        -this->learning_rate_ * predict_buff_[i], feature,
         static_cast<petuum::ml::DenseFeature<float>*>(w_cache_[i]));
 
     petuum::ml::FeatureScaleAndAdd(
-        -learning_rate * predict_buff_[i], feature,
+        -this->learning_rate_ * predict_buff_[i], feature,
         static_cast<petuum::ml::DenseFeature<float>*>(w_delta_[i]));
    }
 }
@@ -209,6 +209,10 @@ void MLRSGDSolver::SaveWeights(const std::string& filename) const {
   }
   w_stream.close();
   LOG(INFO) << "Saved weight to " << filename;
+}
+
+float MLRSGDSolver::EvaluateL2RegLoss() const {
+  LOG(FATAL) << "Not supported.";
 }
 
 }  // namespace mlr

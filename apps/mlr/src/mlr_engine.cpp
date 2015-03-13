@@ -261,6 +261,7 @@ void MLREngine::Start() {
     workload_mgr.Restart();
     while (!workload_mgr.IsEnd()) {
       int32_t data_idx = workload_mgr.GetDataIdxAndAdvance();
+      mlr_solver->SetLearningRate(curr_learning_rate);
       /*
       mlr_solver->SingleDataSGD(
           *(static_cast<petuum::ml::DenseFeature<float>*>(
@@ -270,7 +271,7 @@ void MLREngine::Start() {
 
       mlr_solver->SingleDataSGD(
         *train_features_[data_idx],
-        train_labels_[data_idx], curr_learning_rate);
+        train_labels_[data_idx]);
 
       if (workload_mgr.IsEndOfBatch()) {
         STATS_APP_ACCUM_COMP_END();
@@ -361,6 +362,9 @@ void MLREngine::ComputeTrainError(
     total_entropy_loss += mlr_solver->CrossEntropyLoss(*predict_buff,
         train_labels_[data_idx]);
     ++num_total;
+  }
+  if (FLAGS_lambda > 0) {
+    total_entropy_loss += mlr_solver->EvaluateL2RegLoss();
   }
   loss_table_.Inc(ith_eval, kColIdxLossTableZeroOneLoss,
       total_zero_one_loss);
