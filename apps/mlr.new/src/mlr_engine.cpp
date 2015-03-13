@@ -258,10 +258,10 @@ void MLREngine::Start() {
   petuum::PSTableGroup::TurnOnEarlyComm();
   for (int epoch = 0; epoch < num_epochs; ++epoch) {
     float curr_learning_rate = learning_rate * pow(decay_rate, epoch);
+    mlr_solver->SetLearningRate(curr_learning_rate);
     workload_mgr.Restart();
     while (!workload_mgr.IsEnd()) {
       int32_t data_idx = workload_mgr.GetDataIdxAndAdvance();
-      mlr_solver->SetLearningRate(curr_learning_rate);
       /*
       mlr_solver->SingleDataSGD(
           *(static_cast<petuum::ml::DenseFeature<float>*>(

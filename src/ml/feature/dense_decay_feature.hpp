@@ -134,7 +134,8 @@ private:
   }
 
   // Apply all pending decay and zero the clock.
-  void ApplyDecayAll() const {
+  inline void ApplyDecayAll() const {
+    if (current_) return;
     for (int i = 0; i < this->feature_dim_; ++i) {
       this->data_[i] *= decay_rates_[clock_ - param_clocks_[i]];
     }
