@@ -49,12 +49,12 @@ void LRSGDSolver::SingleDataSGD(const petuum::ml::AbstractFeature<float>& featur
   }
 
   // Apply gradient to w_cache_
-  petuum::ml::FeatureScaleAndAdd(-learning_rate * (predict_buff_[1] - label), feature,
-      &w_cache_);
   if (lambda_ > 0) {
     petuum::ml::FeatureScaleAndAdd(-learning_rate * lambda_, w_cache_,
         &w_cache_);
   }
+  petuum::ml::FeatureScaleAndAdd(-learning_rate * (predict_buff_[1] - label), feature,
+      &w_cache_);
 }
 
 void LRSGDSolver::Predict(

@@ -36,8 +36,6 @@ LRSGDSolver::~LRSGDSolver() { }
 void LRSGDSolver::SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
     int32_t label) {
   Predict(feature, &predict_buff_);
-  //LOG(INFO) << "prediction: " << predict_buff_[0] << ", " << predict_buff_[1];
-  //LOG(INFO) << "label: " << label << " w_cache_ before: " << w_cache_.ToString() << " learning_rate: " << this->learning_rate_ << " lambda: " << lambda_;
 
   // Apply gradient to w_cache_
   if (lambda_ > 0) {
@@ -45,8 +43,6 @@ void LRSGDSolver::SingleDataSGD(const petuum::ml::AbstractFeature<float>& featur
   }
   petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * (predict_buff_[1] - label), feature,
       &w_cache_);
-  //LOG(INFO) << "feature: " << feature.ToString();
-  //LOG(INFO) << "w_cache_ after: " << w_cache_.ToString();
 }
 
 void LRSGDSolver::Predict(
