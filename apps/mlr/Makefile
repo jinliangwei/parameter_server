@@ -10,7 +10,7 @@ MLR_BIN = $(MLR_DIR)/bin
 MLR_OBJ = $(MLR_SRC:.cpp=.o)
 NDEBUG = -DNDEBUG
 
-all: mlr $(MLR_BIN)/gen_data_sparse $(MLR_BIN)/gen_data_sparse_fast process_data
+all: mlr $(MLR_BIN)/gen_data_sparse
 process_data: $(MLR_BIN)/process_data
 mlr: $(MLR_BIN)/mlr_main
 
