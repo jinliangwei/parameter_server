@@ -7,56 +7,24 @@ weight_file=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc.weigh
 # Data parameters:
 num_train_data=0  # 0 to use all training data.
 
-# Covtype Binary
-train_file=covtype.bin
-train_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/covtype.libsvm.binary.scale.train
-#test_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/covtype.libsvm.binary.scale.test
-global_data=true
-perform_test=true
-lambda=0.00
-w_table_num_cols=10
-# Execution parameters:
-num_epochs=10
-num_batches_per_epoch=1
-learning_rate=0.25 # 1 for single thread.
-decay_rate=0.97
-num_epochs_per_eval=1
-num_train_eval=10000   # large number to use all data.
-num_test_eval=10000
-
-# url_reputation
-train_file=url
-train_file_path=/l0/url_reputation/url.train
-#test_file_path=/l0/url_reputation/url.test
-global_data=true
-perform_test=false
-lambda=0.00
-w_table_num_cols=3000
-# Execution parameters:
-num_epochs=200
-num_batches_per_epoch=2
-learning_rate=8 # 1 for single thread.
-decay_rate=1
-num_epochs_per_eval=10
-num_train_eval=100000   # large number to use all data.
-num_test_eval=100000
-
 # synth data
-#train_file=lr2sp_dim10000_s1000_nnz200x1.sfb.0
-#train_file_path=/nfs/nas-0-16/wdai/mlr_datasets/synth/$train_file
+train_file=lr2sp_dim500_s5000_nnz200x1.libsvm.0
+train_file_path=/tank/projects/biglearning/wdai/datasets/lr/synth/$train_file
 #train_file=lr2sp_dim1000000_s2000000_nnz200x1.sfb.0
-train_file=lr2sp_dim50000_s500000_nnz200x1.sfb.0
-train_file_path=/nfs/nas-0-16/wdai/datasets/mlr/synth/$train_file
+#train_file=lr2sp_dim50000_s500000_nnz200x1.sfb.0
+#train_file_path=/nfs/nas-0-16/wdai/datasets/mlr/synth/$train_file
 #test_file_path=/l0/url_reputation/url.test
 global_data=true
 perform_test=false
 #lambda=0.0001
-lambda=0.0000
-w_table_num_cols=3000
+lambda=1e-2
+use_minibatch_lambda=true
+w_table_num_cols=400
 # Execution parameters:
-num_epochs=2
-num_batches_per_epoch=1000
-learning_rate=1 # 1 for single thread.
+num_epochs=20
+num_batches_per_epoch=1
+learning_rate=1
+use_minibatch_lr=true
 decay_rate=1
 num_epochs_per_eval=1
 num_train_eval=100000   # large number to use all data.
@@ -70,7 +38,7 @@ num_secs_per_checkpoint=200000
 host_filename="../../machinefiles/localserver"
 consistency_model="SSPPush"
 num_worker_threads=1
-num_comm_channels_per_client=2
+num_comm_channels_per_client=1
 table_staleness=0
 row_oplog_type=0
 
@@ -206,11 +174,13 @@ GLOG_logtostderr=true \
     --num_epochs=$num_epochs \
     --num_batches_per_epoch=$num_batches_per_epoch \
     --learning_rate=$learning_rate \
+    --use_minibatch_lr=${use_minibatch_lr} \
     --decay_rate=$decay_rate \
     --num_epochs_per_eval=$num_epochs_per_eval \
     --sparse_weight=false \
     --output_file_prefix=$output_file_prefix \
     --lambda=$lambda \
+    --use_minibatch_lambda=${use_minibatch_lambda} \
     --w_table_num_cols=$w_table_num_cols \
     --num_secs_per_checkpoint=${num_secs_per_checkpoint}"
 

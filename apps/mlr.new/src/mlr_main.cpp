@@ -41,10 +41,14 @@ DEFINE_int32(num_epochs, 1, "Number of data sweeps.");
 DEFINE_int32(num_batches_per_epoch, 10, "Since we Clock() at the end of each batch, "
     "num_batches_per_epoch is effectively the number of clocks per epoch (iteration)");
 DEFINE_double(learning_rate, 0.1, "Initial step size");
+DEFINE_bool(use_minibatch_lr, true, "true to use learning_rate per "
+    "minibatch, not per instance.");
 DEFINE_double(decay_rate, 1, "multiplicative decay");
 DEFINE_int32(num_epochs_per_eval, 10, "Number of batches per evaluation");
 DEFINE_bool(sparse_weight, false, "Use sparse feature for model parameters");
 DEFINE_double(lambda, 0.1, "L2 regularization parameter, only used for binary LR.");
+DEFINE_bool(use_minibatch_lambda, true, "If true, apply 1 weight decay per "
+    "minibatch rather than per instance.");
 
 // Misc
 DEFINE_string(output_file_prefix, "", "Results go here.");

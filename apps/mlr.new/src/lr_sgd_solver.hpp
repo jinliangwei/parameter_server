@@ -60,6 +60,9 @@ public:
 
   float EvaluateL2RegLoss() const;
 
+  // Apply L2 decay if applicable.
+  void Update();
+
 private:
   // ======== PS Tables ==========
   // The weight of each class (stored as single feature-major row).

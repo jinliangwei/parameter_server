@@ -258,7 +258,11 @@ void MLREngine::Start() {
   petuum::PSTableGroup::TurnOnEarlyComm();
   for (int epoch = 0; epoch < num_epochs; ++epoch) {
     float curr_learning_rate = learning_rate * pow(decay_rate, epoch);
-    mlr_solver->SetLearningRate(curr_learning_rate);
+    float per_sample_lr = curr_learning_rate; // learning rate per sample.
+    if (FLAGS_use_minibatch_lr) {
+      per_sample_lr = curr_learning_rate / workload_mgr.GetBatchSize();
+    }
+    mlr_solver->SetLearningRate(per_sample_lr);
     workload_mgr.Restart();
     while (!workload_mgr.IsEnd()) {
       int32_t data_idx = workload_mgr.GetDataIdxAndAdvance();
@@ -282,6 +286,10 @@ void MLREngine::Start() {
         //  LOG(INFO) << "batch: " << batch_counter;
       }
     }
+    if (FLAGS_use_minibatch_lambda) {
+      // Apply weight decay if necessary.
+      mlr_solver->Update();
+    }
     CHECK_EQ(0, batch_counter % num_batches_per_epoch);
     petuum::PSTableGroup::Clock();
 
@@ -289,6 +297,11 @@ void MLREngine::Start() {
       petuum::HighResolutionTimer eval_timer;
       ComputeTrainError(mlr_solver.get(), &workload_mgr_train_error,
                         num_train_eval_, eval_counter, &predict_buff);
+      if (thread_id == 0 && client_id == 0) {
+        // Add reg loss.
+        loss_table_.Inc(eval_counter, kColIdxLossTableRegLoss,
+            mlr_solver->EvaluateL2RegLoss());
+      }
       if (perform_test_) {
         ComputeTestError(mlr_solver.get(), &test_workload_mgr,
                          num_test_eval, eval_counter, &predict_buff);
@@ -325,6 +338,11 @@ void MLREngine::Start() {
   // Use all the train data in the last training error eval.
   ComputeTrainError(mlr_solver.get(), &workload_mgr_train_error,
                     num_train_data_, eval_counter, &predict_buff);
+  if (thread_id == 0 && client_id == 0) {
+    // Add reg loss.
+    loss_table_.Inc(eval_counter, kColIdxLossTableRegLoss,
+        mlr_solver->EvaluateL2RegLoss());
+  }
   if (perform_test_) {
     // Use the whole test set in the end.
     ComputeTestError(mlr_solver.get(), &test_workload_mgr,
@@ -362,9 +380,6 @@ void MLREngine::ComputeTrainError(
     total_entropy_loss += mlr_solver->CrossEntropyLoss(*predict_buff,
         train_labels_[data_idx]);
     ++num_total;
-  }
-  if (FLAGS_lambda > 0) {
-    total_entropy_loss += mlr_solver->EvaluateL2RegLoss();
   }
   loss_table_.Inc(ith_eval, kColIdxLossTableZeroOneLoss,
       total_zero_one_loss);
@@ -419,6 +434,9 @@ std::string MLREngine::PrintOneEval(int32_t ith_eval) {
     loss_row[kColIdxLossTableNumEvalTrain] << " "
     << "train-entropy: " << loss_row[kColIdxLossTableEntropyLoss] /
     loss_row[kColIdxLossTableNumEvalTrain] << " "
+    << "train-obj: " << loss_row[kColIdxLossTableEntropyLoss] /
+    loss_row[kColIdxLossTableNumEvalTrain]
+    + loss_row[kColIdxLossTableRegLoss] << " "
     << "num-train-used: " << loss_row[kColIdxLossTableNumEvalTrain] << " "
     << test_info << " "
     << "time: " << loss_row[kColIdxLossTableTime] << std::endl;
@@ -428,10 +446,10 @@ std::string MLREngine::PrintOneEval(int32_t ith_eval) {
 std::string MLREngine::PrintAllEval(int32_t up_to_ith_eval) {
   std::stringstream output;
   if (perform_test_) {
-    output << "Epoch Batch Train-0-1 Train-Entropy Num-Train-Used Test-0-1 "
+    output << "Epoch Batch Train-0-1 Train-Entropy Train-Obj Num-Train-Used Test-0-1 "
       << "Num-Test-Used Time" << std::endl;
   } else {
-    output << "Epoch Batch Train-0-1 Train-Entropy Num-Train-Used "
+    output << "Epoch Batch Train-0-1 Train-Entropy Train-Obj Num-Train-Used "
       << "Time" << std::endl;
   }
   for (int i = 0; i <= up_to_ith_eval; ++i) {
@@ -454,6 +472,9 @@ std::string MLREngine::PrintAllEval(int32_t up_to_ith_eval) {
       loss_row[kColIdxLossTableNumEvalTrain] << " "
       << loss_row[kColIdxLossTableEntropyLoss] /
       loss_row[kColIdxLossTableNumEvalTrain] << " "
+      << loss_row[kColIdxLossTableEntropyLoss] /
+      loss_row[kColIdxLossTableNumEvalTrain]
+      + loss_row[kColIdxLossTableRegLoss] << " "
       << loss_row[kColIdxLossTableNumEvalTrain] << " "
       << test_info << " "
       << loss_row[kColIdxLossTableTime] << std::endl;
@@ -484,6 +505,7 @@ std::string MLREngine::GetExperimentInfo() const {
     << "num_batches_per_epoch: " << FLAGS_num_batches_per_epoch << std::endl
     << "learning_rate: " << FLAGS_learning_rate << std::endl
     << "decay_rate: " << FLAGS_decay_rate << std::endl
+    << "lambda: " << FLAGS_lambda << std::endl
     << "num_epochs_per_eval: " << FLAGS_num_epochs_per_eval << std::endl
     << "use_weight_file: " << FLAGS_use_weight_file << std::endl
     << (FLAGS_use_weight_file ? FLAGS_weight_file + "\n" : "")

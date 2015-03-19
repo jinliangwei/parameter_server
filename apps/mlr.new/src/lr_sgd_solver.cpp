@@ -38,10 +38,10 @@ void LRSGDSolver::SingleDataSGD(const petuum::ml::AbstractFeature<float>& featur
   Predict(feature, &predict_buff_);
 
   // Apply gradient to w_cache_
-  if (lambda_ > 0) {
+  if (!FLAGS_use_minibatch_lambda && lambda_ > 0) {
     w_cache_.Decay();
   }
-  petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * (predict_buff_[1] - label), feature,
+  petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * (predict_buff_[0] - label), feature,
       &w_cache_);
 }
 
@@ -56,14 +56,17 @@ void LRSGDSolver::Predict(
 
 int32_t LRSGDSolver::ZeroOneLoss(const std::vector<float>& prediction, int32_t label)
   const {
-    return prediction[label] >= 0.5 ? 0 : 1;
+    // prediction[0] is the probability of being in class 1
+    return prediction[label] >= 0.5 ? 1 : 0;
   }
 
 float LRSGDSolver::CrossEntropyLoss(const std::vector<float>& prediction, int32_t label)
   const {
     CHECK_LE(prediction[label], 1);
     CHECK_GE(prediction[label], 0);
-    return -petuum::ml::SafeLog(prediction[label]);
+    // prediction[0] is the probability of being in class 1
+    float prob = (label == 0) ? prediction[1] : prediction[0];
+    return -petuum::ml::SafeLog(prob);
   }
 
 void LRSGDSolver::RefreshParams() {
@@ -128,13 +131,20 @@ void LRSGDSolver::SaveWeights(const std::string& filename) const {
   LOG(ERROR) << "SaveWeights is not implemented for binary LR.";
 }
 
+// 1/2 * lambda * ||w||^2
 float LRSGDSolver::EvaluateL2RegLoss() const {
   double l2_norm = 0.;
   std::vector<float> w = w_cache_.GetVector();
   for (int i = 0; i < feature_dim_; ++i) {
     l2_norm += w[i] * w[i];
   }
-  return lambda_ * l2_norm;
+  return 0.5 * lambda_ * l2_norm;
+}
+
+void LRSGDSolver::Update() {
+  if (FLAGS_use_minibatch_lambda && lambda_ > 0) {
+    w_cache_.Decay();
+  }
 }
 
 }  // namespace mlr

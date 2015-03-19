@@ -47,6 +47,9 @@ public:
   // Save the current weight in cache in libsvm format.
   virtual void SaveWeights(const std::string& filename) const = 0;
 
+  // Default do nothing. Could apply weight decay for L2.
+  virtual void Update() { }
+
 protected:
   double learning_rate_;
 };

@@ -20,10 +20,12 @@ DECLARE_string(weight_file);
 DECLARE_int32(num_epochs);
 DECLARE_int32(num_batches_per_epoch);
 DECLARE_double(learning_rate);
+DECLARE_bool(use_minibatch_lr);
 DECLARE_double(decay_rate);
 DECLARE_int32(num_epochs_per_eval);
 DECLARE_bool(sparse_weight);
 DECLARE_double(lambda);
+DECLARE_bool(use_minibatch_lambda);
 
 DECLARE_string(output_file_prefix);
 DECLARE_int32(num_secs_per_checkpoint);
@@ -42,7 +44,8 @@ const int32_t kColIdxLossTableNumEvalTrain = 4;    // # train point eval
 const int32_t kColIdxLossTableTestZeroOneLoss = 5;
 const int32_t kColIdxLossTableNumEvalTest = 6;  // # test point eval.
 const int32_t kColIdxLossTableTime = 7;
+const int32_t kColIdxLossTableRegLoss = 8;    // reg loss (with lambda)
 
-const int32_t kNumColumnsLossTable = 8;
+const int32_t kNumColumnsLossTable = 9;
 
 }  // namespace mlr
