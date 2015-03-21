@@ -28,14 +28,9 @@ public:
   LRSGDSolver(const LRSGDSolverConfig& config);
   ~LRSGDSolver();
 
-  void SetLearningRate(double learning_rate) {
-    AbstractMLRSGDSolver::SetLearningRate(learning_rate);
-    w_cache_.SetDecayRate(1 - this->learning_rate_ * lambda_);
-  }
-
   // Compute gradient using feature and label and store internally.
   void SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
-      int32_t label);
+      int32_t label, double sample_lr);
 
   // Predict the probability of each label.
   void Predict(const petuum::ml::AbstractFeature<float>& feature,
@@ -61,7 +56,7 @@ public:
   float EvaluateL2RegLoss() const;
 
   // Apply L2 decay if applicable.
-  void Update();
+  void Update(double batch_learning_rate);
 
 private:
   // ======== PS Tables ==========

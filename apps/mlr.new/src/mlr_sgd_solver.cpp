@@ -158,20 +158,26 @@ void MLRSGDSolver::Predict(
 
 void MLRSGDSolver::SingleDataSGD(
     const petuum::ml::AbstractFeature<float>& feature,
-    int32_t label) {
+    int32_t label, double sample_lr) {
   Predict(feature, &predict_buff_);
   predict_buff_[label] -= 1.; // See Bishop PRML (2006) Eq. (4.109)
 
   // outer product
   for (int i = 0; i < num_labels_; ++i) {
     // w_cache_[i] += -\eta * y_vec[i] * feature
-    petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * predict_buff_[i],
+    /*petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * predict_buff_[i],
                                    feature, w_cache_[i]);
     petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * predict_buff_[i],
+                                   feature, w_delta_[i]);
+                                   */
+    petuum::ml::FeatureScaleAndAdd(sample_lr * predict_buff_[i],
+                                   feature, w_cache_[i]);
+    petuum::ml::FeatureScaleAndAdd(sample_lr * predict_buff_[i],
                                    feature, w_delta_[i]);
   }
 }
 
+/*
 void MLRSGDSolver::SingleDataSGD(
     const petuum::ml::DenseFeature<float>& feature,
     int32_t label) {
@@ -190,6 +196,7 @@ void MLRSGDSolver::SingleDataSGD(
         static_cast<petuum::ml::DenseFeature<float>*>(w_delta_[i]));
    }
 }
+*/
 
 void MLRSGDSolver::SaveWeights(const std::string& filename) const {
   std::ofstream w_stream(filename, std::ofstream::out | std::ofstream::trunc);

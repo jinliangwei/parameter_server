@@ -34,14 +34,16 @@ LRSGDSolver::LRSGDSolver(const LRSGDSolverConfig& config) :
 LRSGDSolver::~LRSGDSolver() { }
 
 void LRSGDSolver::SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
-    int32_t label) {
+    int32_t label, double sample_lr) {
   Predict(feature, &predict_buff_);
 
   // Apply gradient to w_cache_
   if (!FLAGS_use_minibatch_lambda && lambda_ > 0) {
     w_cache_.Decay();
   }
-  petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * (predict_buff_[0] - label), feature,
+  //petuum::ml::FeatureScaleAndAdd(-this->learning_rate_ * (predict_buff_[0] - label), feature,
+  //    &w_cache_);
+  petuum::ml::FeatureScaleAndAdd(-sample_lr * (predict_buff_[0] - label), feature,
       &w_cache_);
 }
 
@@ -141,7 +143,8 @@ float LRSGDSolver::EvaluateL2RegLoss() const {
   return 0.5 * lambda_ * l2_norm;
 }
 
-void LRSGDSolver::Update() {
+void LRSGDSolver::Update(double batch_learning_rate) {
+  w_cache_.SetDecayRate(1 - batch_learning_rate * lambda_);
   if (FLAGS_use_minibatch_lambda && lambda_ > 0) {
     w_cache_.Decay();
   }

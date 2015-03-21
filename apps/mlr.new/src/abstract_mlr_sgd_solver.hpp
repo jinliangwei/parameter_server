@@ -15,13 +15,9 @@ class AbstractMLRSGDSolver {
 public:
   virtual ~AbstractMLRSGDSolver() { }
 
-  virtual void SetLearningRate(double learning_rate) {
-    learning_rate_ = learning_rate;
-  }
-
   // Compute gradient using feature and label and store internally.
   virtual void SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
-      int32_t label) = 0;
+      int32_t label, double sample_lr) = 0;
 
   // Predict the probability of each label.
   virtual void Predict(const petuum::ml::AbstractFeature<float>& feature,
@@ -48,10 +44,10 @@ public:
   virtual void SaveWeights(const std::string& filename) const = 0;
 
   // Default do nothing. Could apply weight decay for L2.
-  virtual void Update() { }
+  virtual void Update(double batch_learning_rate = 0) { }
 
 protected:
-  double learning_rate_;
+  //double learning_rate_;
 };
 
 }  // namespace mlr

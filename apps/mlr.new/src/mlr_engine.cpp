@@ -260,9 +260,11 @@ void MLREngine::Start() {
     float curr_learning_rate = learning_rate * pow(decay_rate, epoch);
     float per_sample_lr = curr_learning_rate; // learning rate per sample.
     if (FLAGS_use_minibatch_lr) {
-      per_sample_lr = curr_learning_rate / workload_mgr.GetBatchSize();
+      per_sample_lr = curr_learning_rate /
+        workload_mgr.GetBatchSize() / FLAGS_num_batches_per_epoch /
+        num_clients / num_threads;
     }
-    mlr_solver->SetLearningRate(per_sample_lr);
+    //mlr_solver->SetLearningRate(per_sample_lr);
     workload_mgr.Restart();
     while (!workload_mgr.IsEnd()) {
       int32_t data_idx = workload_mgr.GetDataIdxAndAdvance();
@@ -275,10 +277,13 @@ void MLREngine::Start() {
 
       mlr_solver->SingleDataSGD(
         *train_features_[data_idx],
-        train_labels_[data_idx]);
+        train_labels_[data_idx], per_sample_lr);
 
       if (workload_mgr.IsEndOfBatch()) {
         STATS_APP_ACCUM_COMP_END();
+        if (FLAGS_use_minibatch_lambda && thread_id == 0 && client_id == 0) {
+          mlr_solver->Update(curr_learning_rate / FLAGS_num_batches_per_epoch);
+        }
         mlr_solver->RefreshParams();
         STATS_APP_ACCUM_COMP_BEGIN();
         ++batch_counter;
@@ -286,17 +291,13 @@ void MLREngine::Start() {
         //  LOG(INFO) << "batch: " << batch_counter;
       }
     }
-    if (FLAGS_use_minibatch_lambda) {
-      // Apply weight decay if necessary.
-      mlr_solver->Update();
-    }
     CHECK_EQ(0, batch_counter % num_batches_per_epoch);
     petuum::PSTableGroup::Clock();
 
     if (epoch % num_epochs_per_eval == 0) {
       petuum::HighResolutionTimer eval_timer;
       ComputeTrainError(mlr_solver.get(), &workload_mgr_train_error,
-                        num_train_eval_, eval_counter, &predict_buff);
+          num_train_eval_, eval_counter, &predict_buff);
       if (thread_id == 0 && client_id == 0) {
         // Add reg loss.
         loss_table_.Inc(eval_counter, kColIdxLossTableRegLoss,
@@ -304,7 +305,7 @@ void MLREngine::Start() {
       }
       if (perform_test_) {
         ComputeTestError(mlr_solver.get(), &test_workload_mgr,
-                         num_test_eval, eval_counter, &predict_buff);
+            num_test_eval, eval_counter, &predict_buff);
       }
       if (client_id == 0 && thread_id == 0) {
         petuum::UpdateBatch<float> update_batch(3);
@@ -323,11 +324,11 @@ void MLREngine::Start() {
             SaveWeights(mlr_solver.get());
             checkpoint_timer.restart();
             LOG(INFO) << "Checkpointing finished in "
-                      << save_disk_timer.elapsed();
+              << save_disk_timer.elapsed();
           }
         }
         LOG(INFO) << "Eval #" << eval_counter << " finished in "
-                  << eval_timer.elapsed();
+          << eval_timer.elapsed();
       }
       ++eval_counter;
     }
@@ -337,7 +338,7 @@ void MLREngine::Start() {
   petuum::PSTableGroup::GlobalBarrier();
   // Use all the train data in the last training error eval.
   ComputeTrainError(mlr_solver.get(), &workload_mgr_train_error,
-                    num_train_data_, eval_counter, &predict_buff);
+      num_train_data_, eval_counter, &predict_buff);
   if (thread_id == 0 && client_id == 0) {
     // Add reg loss.
     loss_table_.Inc(eval_counter, kColIdxLossTableRegLoss,
@@ -346,7 +347,7 @@ void MLREngine::Start() {
   if (perform_test_) {
     // Use the whole test set in the end.
     ComputeTestError(mlr_solver.get(), &test_workload_mgr,
-                     num_test_data_, eval_counter, &predict_buff);
+        num_test_data_, eval_counter, &predict_buff);
   }
   petuum::PSTableGroup::GlobalBarrier();
   if (client_id == 0 && thread_id == 0) {
@@ -376,7 +377,7 @@ void MLREngine::ComputeTrainError(
     //std::vector<float> pred =
     mlr_solver->Predict(*(train_features_[data_idx]), predict_buff);
     total_zero_one_loss += mlr_solver->ZeroOneLoss(*predict_buff,
-                                                   train_labels_[data_idx]);
+        train_labels_[data_idx]);
     total_entropy_loss += mlr_solver->CrossEntropyLoss(*predict_buff,
         train_labels_[data_idx]);
     ++num_total;

@@ -28,10 +28,12 @@ public:
 
   // Compute gradient using feature and label and apply to w_table_.
   void SingleDataSGD(const petuum::ml::AbstractFeature<float>& feature,
-      int32_t label);
+      int32_t label, double sample_lr);
 
+  /*
   void SingleDataSGD(const petuum::ml::DenseFeature<float>& feature,
                      int32_t label);
+                     */
 
   // Predict the probability of each label.
   void Predict(const petuum::ml::AbstractFeature<float>& feature,
