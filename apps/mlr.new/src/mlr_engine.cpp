@@ -68,9 +68,9 @@ MLREngine::MLREngine() : thread_counter_(0) {
 }
 
 MLREngine::~MLREngine() {
-  for (auto p : train_features_) {
-    delete p;
-  }
+  // for (auto p : train_features_) {
+  //delete p;
+  //}
   for (auto p : test_features_) {
     delete p;
   }
@@ -89,8 +89,11 @@ void MLREngine::ReadData() {
           num_test_data_, &test_features_, &test_labels_);
     }
   } else if (read_format_ == "libsvm") {
+    std::vector<petuum::ml::AbstractFeature<float>*> train_features_tmp;
+    std::vector<int32_t> train_labels_tmp;
+
     petuum::ml::ReadDataLabelLibSVM(train_file, feature_dim_, num_train_data_,
-        &train_features_, &train_labels_, feature_one_based_,
+        &train_features_tmp, &train_labels_tmp, feature_one_based_,
         label_one_based_, snappy_compressed_);
     if (perform_test_) {
       LOG(INFO) << "Reading test file: " << FLAGS_test_file;
@@ -98,7 +101,24 @@ void MLREngine::ReadData() {
           num_test_data_, &test_features_, &test_labels_,
           feature_one_based_, label_one_based_, snappy_compressed_);
     }
+
+    LOG(INFO) << "Start duplicating";
+    petuum::HighResolutionTimer dup_timer;
+    int duplicate_factor = 1;
+    size_t num_train_data = train_features_tmp.size();
+    train_features_.resize(num_train_data*duplicate_factor);
+    train_labels_.resize(num_train_data*duplicate_factor);
+    for (int i = 0; i < duplicate_factor; ++i) {
+      for (int j = 0; j < train_features_tmp.size(); ++j) {
+        train_features_[i*num_train_data + j] = train_features_tmp[j];
+        train_labels_[i*num_train_data + j] = train_labels_tmp[j];
+      }
+    }
+    LOG(INFO) << "End duplicating, time = " << dup_timer.elapsed();
+    num_train_data_ = num_train_data*duplicate_factor;
+
   } else if (read_format_ == "sparse_feature_binary") {
+
     petuum::ml::ReadDataLabelSparseFeatureBinary(train_file, feature_dim_, num_train_data_,
         &train_features_, &train_labels_, feature_one_based_,
         label_one_based_, snappy_compressed_);
@@ -178,12 +198,23 @@ void MLREngine::Start() {
     w_table_ =
       petuum::PSTableGroup::GetTableOrDie<float>(kWTableID);
 
-    for (int i = 0; i < num_labels_; ++i) {
+    int num_rows = num_labels_;
+
+    if (num_labels_ == 2) {
+      LOG(INFO) << "num_labels = " << num_labels_;
+      num_rows = feature_dim_ / FLAGS_w_table_num_cols;
+      if (feature_dim_ % FLAGS_w_table_num_cols != 0)
+        num_rows++;
+    }
+
+    for (int i = 0; i < num_rows; ++i) {
       w_table_.GetAsyncForced(i);
     }
+
     w_table_.WaitPendingAsyncGet();
     LOG(INFO) << "Bootstrap done!";
   }
+
   // Barrier to ensure w_table_ and loss_table_ is initialized.
   process_barrier_->wait();
 
@@ -233,7 +264,8 @@ void MLREngine::Start() {
   petuum::ml::WorkloadManager workload_mgr_train_error(workload_mgr_config);
 
   LOG_IF(INFO, client_id == 0 && thread_id == 0)
-    << "Batch size: " << workload_mgr.GetBatchSize();
+    << "Batch size: " << workload_mgr.GetBatchSize()
+    << " num_train_data = " << num_train_data_;
 
   petuum::ml::WorkloadManagerConfig test_workload_mgr_config;
   test_workload_mgr_config.thread_id = thread_id;
@@ -258,6 +290,7 @@ void MLREngine::Start() {
   petuum::PSTableGroup::TurnOnEarlyComm();
   for (int epoch = 0; epoch < num_epochs; ++epoch) {
     float curr_learning_rate = learning_rate * pow(decay_rate, epoch);
+    //float curr_learning_rate = learning_rate * pow(epoch * FLAGS_num_batches_per_epoch + 1, -0.5);
     float per_sample_lr = curr_learning_rate; // learning rate per sample.
     if (FLAGS_use_minibatch_lr) {
       per_sample_lr = curr_learning_rate /
@@ -282,7 +315,7 @@ void MLREngine::Start() {
       if (workload_mgr.IsEndOfBatch()) {
         STATS_APP_ACCUM_COMP_END();
         if (FLAGS_use_minibatch_lambda && thread_id == 0 && client_id == 0) {
-          mlr_solver->Update(curr_learning_rate / FLAGS_num_batches_per_epoch);
+          mlr_solver->Update(curr_learning_rate);
         }
         mlr_solver->RefreshParams();
         STATS_APP_ACCUM_COMP_BEGIN();
