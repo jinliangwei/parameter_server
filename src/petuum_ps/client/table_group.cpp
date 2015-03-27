@@ -226,7 +226,9 @@ void TableGroup::ClockConservative() {
   //        << " my clock = " << ThreadContext::get_clock();
 
   if (clock != 0) {
-    //LOG(INFO) << "new_clock = " << clock << " " << ThreadContext::get_id();
+    LOG(INFO) << "new_clock = " << clock
+              << " " << GlobalContext::get_client_id()
+              << " " << ThreadContext::get_id();
     BgWorkers::ClockAllTables();
   }
 }

@@ -86,8 +86,8 @@ double NSSumImpCalc<V>::ApplyDenseBatchIncGetImportance(
   for (int32_t i = 0; i < num_updates; ++i) {
     V &val = val_array[i];
     double importance //= double(update_array[i]);
-        = (double(val) == 0) ? double(update_array[i])
-        : double(update_array[i]) / double(val);
+    = (double(val) == 0) ? double(update_array[i])
+          : double(update_array[i]) / double(val);
     accum_importance += std::abs(importance);
 
     val += update_array[i];
