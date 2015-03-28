@@ -8,41 +8,37 @@ weight_file=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc.weigh
 num_train_data=0  # 0 to use all training data.
 
 # Covtype
-train_file=imnet
+#train_file=imnet
 #train_file_path=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/mlr/datasets/covtype.scale.train.small
 #test_file_path=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/mlr/datasets/covtype.scale.test.small
 #train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.50.train
 #test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.10.test
-train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train
-test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.test
+#train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train
+#test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.test
+train_file=covtype
+train_file_path=/nfs/nas-0-16/wdai/mlr_datasets/covtype/covtype.scale.train
+test_file_path=/nfs/nas-0-16/wdai/mlr_datasets/covtype/covtype.scale.test
 global_data=true
 perform_test=true
 
-# Synth
-train_file=lr10sp_dim100000_s100000_nnz100.0
-train_file_path=/tank/projects/biglearning/wdai/datasets/mlr_datasets/synth_bin/$train_file
-#test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.test
-global_data=true
-perform_test=false
-
 # Execution parameters:
-num_epochs=8
+num_epochs=10
 num_batches_per_epoch=32
 #learning_rate=1
 learning_rate=1.4
-decay_rate=1
+decay_rate=0.97
 num_epochs_per_eval=1
-num_train_eval=200   # large number to use all data.
+num_train_eval=10000   # large number to use all data.
 num_test_eval=200
 num_secs_per_checkpoint=200000
 
 # System parameters:
-#host_filename="../../machinefiles/servers.4"
 host_filename="../../machinefiles/localserver"
+#host_filename="../../machinefiles/localserver"
 consistency_model="SSPPush"
-num_worker_threads=64
+num_worker_threads=1
 num_comm_channels_per_client=1
-table_staleness=2
+table_staleness=0
 row_oplog_type=0
 
 # SSPAggr parameters:

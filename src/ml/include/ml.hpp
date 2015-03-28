@@ -8,4 +8,5 @@
 
 #include <ml/feature/sparse_feature.hpp>
 #include <ml/feature/dense_feature.hpp>
+#include <ml/feature/dense_decay_feature.hpp>
 #include <ml/feature/abstract_feature.hpp>

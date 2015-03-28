@@ -84,11 +84,12 @@ namespace {
 
 // Return the label. feature_one_based = true assumes
 // feature index starts from 1. Analogous for label_one_based.
+// feature_ids_cache and feature_vals_cache are assume to be feature_dim and
+// is not resized.
 int32_t ParseLibSVMLine(const std::string& line, std::vector<int32_t>* feature_ids,
     std::vector<float>* feature_vals, bool feature_one_based,
-    bool label_one_based) {
-  feature_ids->clear();
-  feature_vals->clear();
+    bool label_one_based, std::vector<int32_t>* feature_ids_cache,
+    std::vector<float>* feature_vals_cache) {
   char *ptr = 0, *endptr = 0;
   // Read label.
   int label = strtol(line.data(), &endptr, base);
@@ -96,21 +97,28 @@ int32_t ParseLibSVMLine(const std::string& line, std::vector<int32_t>* feature_i
   ptr = endptr;
 
   while (isspace(*ptr) && ptr - line.data() < line.size()) ++ptr;
+  int nnz = 0;
   while (ptr - line.data() < line.size()) {
     // read a feature_id:feature_val pair
     int32_t feature_id = strtol(ptr, &endptr, base);
     if (feature_one_based) {
       --feature_id;
     }
-    feature_ids->push_back(feature_id);
+
+    (*feature_ids_cache)[nnz] = feature_id;
     ptr = endptr;
     CHECK_EQ(':', *ptr);
     ++ptr;
 
-    feature_vals->push_back(strtod(ptr, &endptr));
+    (*feature_vals_cache)[nnz] = strtod(ptr, &endptr);
     ptr = endptr;
+    ++nnz;
     while (isspace(*ptr) && ptr - line.data() < line.size()) ++ptr;
   }
+  feature_ids->resize(nnz);
+  feature_vals->resize(nnz);
+  std::copy(feature_ids_cache->begin(), feature_ids_cache->begin() + nnz, feature_ids->begin());
+  std::copy(feature_vals_cache->begin(), feature_vals_cache->begin() + nnz, feature_vals->begin());
   return label;
 }
 
@@ -148,12 +156,15 @@ void ReadDataLabelLibSVM(const std::string& filename,
     SnappyOpenFileToString(filename) : OpenFileToString(filename);
   std::istringstream data_stream(file_str);
   int32_t i = 0;
-  std::vector<int32_t> feature_ids(feature_dim);
-  std::vector<float> feature_vals(feature_dim);
+  std::vector<int32_t> feature_ids_cache(feature_dim);
+  std::vector<float> feature_vals_cache(feature_dim);
   for (std::string line; std::getline(data_stream, line) && i < num_data;
       ++i) {
+    std::vector<int32_t> feature_ids;
+    std::vector<float> feature_vals;
     int32_t label = ParseLibSVMLine(line, &feature_ids,
-        &feature_vals, feature_one_based, label_one_based);
+        &feature_vals, feature_one_based, label_one_based,
+        &feature_ids_cache, &feature_vals_cache);
     (*labels)[i] = label;
     (*features)[i] = new SparseFeature<float>(feature_ids, feature_vals,
         feature_dim);
@@ -174,13 +185,16 @@ void ReadDataLabelLibSVM(const std::string& filename,
   std::string file_str = snappy_compressed ?
     SnappyOpenFileToString(filename) : OpenFileToString(filename);
   std::istringstream data_stream(file_str);
-  std::vector<int32_t> feature_ids(feature_dim);
-  std::vector<float> feature_vals(feature_dim);
+  std::vector<int32_t> feature_ids_cache(feature_dim);
+  std::vector<float> feature_vals_cache(feature_dim);
   int i = 0;
   for (std::string line; std::getline(data_stream, line) && i < num_data;
       ++i) {
+    std::vector<int32_t> feature_ids;
+    std::vector<float> feature_vals;
     int32_t label = ParseLibSVMLine(line, &feature_ids,
-        &feature_vals, feature_one_based, label_one_based);
+        &feature_vals, feature_one_based, label_one_based,
+        &feature_ids_cache, &feature_vals_cache);
     (*labels)[i] = label;
     (*features)[i].resize(feature_dim);
     for (int j = 0; j < feature_ids.size(); ++j) {

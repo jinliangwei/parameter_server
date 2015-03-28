@@ -36,15 +36,15 @@ public:
   }
 
   // Makes it behave like std::vector.
-  inline V& operator[](int32_t feature_id) {
+  virtual inline V& operator[](int32_t feature_id) {
     return data_[feature_id];
   }
 
-  inline const std::vector<V>& GetVector() const {
+  virtual inline const std::vector<V>& GetVector() const {
     return data_;
   }
 
-  inline std::vector<V>& GetVector() {
+  virtual inline std::vector<V>& GetVector() {
     return data_;
   }
 
@@ -60,29 +60,29 @@ public:  // AbstractFeature override.
     return *this;
   }
 
-  inline V operator[](int32_t feature_id) const {
+  virtual inline V operator[](int32_t feature_id) const {
     return data_[feature_id];
   }
 
-  void SetFeatureVal(int32_t feature_id, const V& val) {
+  virtual void SetFeatureVal(int32_t feature_id, const V& val) {
     data_[feature_id] = val;
   }
 
   // Number of (non-zero) entries in the underlying vector.
-  inline int32_t GetNumEntries() const {
+  virtual inline int32_t GetNumEntries() const {
     return data_.size();
   }
 
   // idx is the same as feature id in DenseFeature.
-  inline int32_t GetFeatureId(int32_t idx) const {
+  virtual inline int32_t GetFeatureId(int32_t idx) const {
     return idx;
   }
 
-  inline V GetFeatureVal(int32_t idx) const {
+  virtual inline V GetFeatureVal(int32_t idx) const {
     return data_[idx];
   }
 
-  std::string ToString() const {
+  virtual std::string ToString() const {
     std::stringstream ss;
     for (int i = 0; i < data_.size(); ++i) {
       ss << i << ":" << data_[i] << " ";
@@ -92,7 +92,9 @@ public:  // AbstractFeature override.
   }
 
 protected:
-  std::vector<V> data_;
+  // Comment(wdai): Ugly hack. mutable is needed as DenseDecayFeature modifies
+  // data_ upon read.
+  mutable std::vector<V> data_;
 };
 
 }  // namespace ml
