@@ -1,0 +1,30 @@
+MATRIXFACT_DIR := $(shell readlink $(dir $(lastword $(MAKEFILE_LIST))) -f)
+MATRIXFACT_SRC=$(MATRIXFACT_DIR)/src
+PETUUM_ROOT = $(MATRIXFACT_DIR)/../../
+
+include $(PETUUM_ROOT)/defns.mk
+
+MATRIXFACT_BIN = $(MATRIXFACT_DIR)/bin
+
+adagrad_mf: $(MATRIXFACT_BIN)/adagrad_mf
+mf: $(MATRIXFACT_BIN)/mf
+
+$(MATRIXFACT_BIN):
+	mkdir -p $(MATRIXFACT_BIN)
+
+$(MATRIXFACT_BIN)/adagrad_mf: $(MATRIXFACT_SRC)/adagrad_mf.cpp $(PETUUM_PS_LIB) \
+	$(MATRIXFACT_BIN)
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
+	$(MATRIXFACT_SRC)/adagrad_mf.cpp \
+	$(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
+
+$(MATRIXFACT_BIN)/mf: $(MATRIXFACT_SRC)/mf.cpp $(PETUUM_PS_LIB) \
+	$(MATRIXFACT_BIN)
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
+	$(MATRIXFACT_SRC)/mf.cpp \
+	$(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
+
+clean:
+	rm -rf $(MATRIXFACT_BIN)
+
+.PHONY: adagrad_mf mf clean
