@@ -196,8 +196,9 @@ void InitMF(
     petuum::Table<float>& R_table,
     int col_begin, int col_end) {
   // Create a uniform RNG in the range (-1,1)
-  std::random_device rd;
-  std::mt19937 gen(rd());
+  //std::random_device rd;
+  //std::mt19937 gen(rd());
+  std::mt19937 gen(1234);
   std::normal_distribution<float> dist(0, 0.1);
 
   for (auto &L_row : L_table) {
@@ -212,6 +213,7 @@ void InitMF(
     for (int k = 0; k < FLAGS_K; ++k) {
       double init_val = dist(gen);
       R_updates[k] = init_val;
+      //LOG(INFO) << "j = " << j << " k = " << k << " " << init_val;
     }
     R_table.DenseBatchInc(j, R_updates);
   }
@@ -360,7 +362,7 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
   int num_cols_per_thread = X_num_cols / total_num_workers;
   int col_begin = global_worker_id * num_cols_per_thread;
   int col_end = (global_worker_id == total_num_workers - 1) ?
-                (X_num_cols - 1) : col_begin + num_cols_per_thread;
+                X_num_cols : (col_begin + num_cols_per_thread);
 
   // Cache for DenseRow bulk-read
   std::vector<float> Rj_cache(FLAGS_K);
