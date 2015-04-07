@@ -45,10 +45,10 @@ DEFINE_uint64(M_client_send_oplog_upper_bound, 100, "M client upper bound");
 
 // Data variables
 size_t X_num_rows, X_num_cols; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
-std::vector<int> X_row; // Row index of each nonzero entry in the data matrix
-std::vector<int> X_col; // Column index of each nonzero entry in the data matrix
+std::vector<int32_t> X_row; // Row index of each nonzero entry in the data matrix
+std::vector<int32_t> X_col; // Column index of each nonzero entry in the data matrix
 std::vector<float> X_val; // Value of each nonzero entry in the data matrix
-std::vector<int> X_partition_starts;
+std::vector<int32_t> X_partition_starts;
 
 int kLossTableColIdxClock = 0;
 int kLossTableColIdxComputeTime = 1;
@@ -63,23 +63,26 @@ void ReadBinaryMatrix(const std::string &filename, int32_t partition_id) {
   FILE *bin_input = fopen(bin_file.c_str(), "rb");
   CHECK(bin_input != 0) << "failed to read " << bin_file;
 
-  size_t num_nnz_this_partition = 0,
+  uint64_t num_nnz_this_partition = 0,
         num_rows_this_partition = 0,
         num_cols_this_partition = 0;
-  size_t read_size = fread(&num_nnz_this_partition, sizeof(size_t), 1, bin_input);
+  size_t read_size = fread(&num_nnz_this_partition, sizeof(uint64_t), 1, bin_input);
   CHECK_EQ(read_size, 1);
-  read_size = fread(&num_rows_this_partition, sizeof(size_t), 1, bin_input);
+  read_size = fread(&num_rows_this_partition, sizeof(uint64_t), 1, bin_input);
   CHECK_EQ(read_size, 1);
-  read_size = fread(&num_cols_this_partition, sizeof(size_t), 1, bin_input);
+  read_size = fread(&num_cols_this_partition, sizeof(uint64_t), 1, bin_input);
   CHECK_EQ(read_size, 1);
+  LOG(INFO) << "num_nnz_this_partition: " << num_nnz_this_partition
+    << " num_rows_this_partition: " << num_rows_this_partition
+    << " num_cols_this_partition: " << num_cols_this_partition;
 
   X_row.resize(num_nnz_this_partition);
   X_col.resize(num_nnz_this_partition);
   X_val.resize(num_nnz_this_partition);
 
-  read_size = fread(X_row.data(), sizeof(int), num_nnz_this_partition, bin_input);
+  read_size = fread(X_row.data(), sizeof(int32_t), num_nnz_this_partition, bin_input);
   CHECK_EQ(read_size, num_nnz_this_partition);
-  read_size = fread(X_col.data(), sizeof(int), num_nnz_this_partition, bin_input);
+  read_size = fread(X_col.data(), sizeof(int32_t), num_nnz_this_partition, bin_input);
   CHECK_EQ(read_size, num_nnz_this_partition);
   read_size = fread(X_val.data(), sizeof(float), num_nnz_this_partition, bin_input);
   CHECK_EQ(read_size, num_nnz_this_partition);
