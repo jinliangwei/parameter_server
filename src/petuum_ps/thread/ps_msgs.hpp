@@ -117,7 +117,7 @@ public:
         + sizeof(size_t)  + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
         + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
         + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t)
-        + sizeof(size_t);
+        + sizeof(size_t) + sizeof(int32_t) + sizeof(bool);
   }
 
   int32_t &get_table_id() {
@@ -273,6 +273,30 @@ public:
         + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t) ));
   }
 
+  int32_t &get_server_table_logic() {
+    return *(reinterpret_cast<int32_t*>(
+        mem_.get_mem()
+        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
+        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
+        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
+        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
+        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
+        + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t)
+        + sizeof(size_t) ));
+  }
+
+  bool &get_version_maintain() {
+    return *(reinterpret_cast<bool*>(
+        mem_.get_mem()
+        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
+        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
+        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
+        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
+        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
+        + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t)
+        + sizeof(size_t) + sizeof(int32_t) ));
+  }
+
 protected:
   void InitMsg() {
     NumberedMsg::InitMsg();
@@ -301,7 +325,8 @@ public:
   size_t get_size() {
     return NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
         + sizeof(int32_t) + sizeof(size_t)
-        + sizeof(bool) + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t);
+        + sizeof(bool) + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
+        + sizeof(int32_t) + sizeof(bool);
   }
 
   int32_t &get_table_id() {
@@ -345,11 +370,27 @@ public:
         + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)));
   }
 
-    size_t &get_server_push_row_upper_bound() {
+  size_t &get_server_push_row_upper_bound() {
     return *(reinterpret_cast<size_t*>(
         mem_.get_mem() + NumberedMsg::get_size()
         + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
         + sizeof(size_t) + sizeof(bool) + sizeof(int32_t) +sizeof(size_t) ));
+  }
+
+  int32_t &get_server_table_logic() {
+    return *(reinterpret_cast<int32_t*>(
+        mem_.get_mem() + NumberedMsg::get_size()
+        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
+        + sizeof(size_t) + sizeof(bool) + sizeof(int32_t) +sizeof(size_t)
+        + sizeof(size_t) ));
+  }
+
+  bool &get_version_maintain() {
+return *(reinterpret_cast<bool*>(
+        mem_.get_mem() + NumberedMsg::get_size()
+        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
+        + sizeof(size_t) + sizeof(bool) + sizeof(int32_t) +sizeof(size_t)
+        + sizeof(size_t) + sizeof(int32_t) ));
   }
 
 protected:

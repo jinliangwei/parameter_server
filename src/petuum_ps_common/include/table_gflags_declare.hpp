@@ -18,3 +18,5 @@ DECLARE_bool(no_oplog_replay);
 
 DECLARE_uint64(server_push_row_upper_bound);
 DECLARE_uint64(client_send_oplog_upper_bound);
+DECLARE_int32(server_table_logic);
+DECLARE_bool(version_maintain);

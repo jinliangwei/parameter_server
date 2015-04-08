@@ -61,6 +61,8 @@ public:
 
   bool AccumedOpLogSinceLastPush();
 
+  void RowSent(int32_t table_id, int32_t row_id, ServerRow *row, size_t num_clients);
+
 private:
   VectorClock bg_clock_;
 

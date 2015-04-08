@@ -3,6 +3,7 @@
 #include <boost/thread.hpp>
 #include <vector>
 #include <boost/shared_array.hpp>
+#include <boost/noncopyable.hpp>
 
 namespace petuum {
 
@@ -10,7 +11,7 @@ namespace petuum {
 // ApplyBatchUpdate() have to be concurrent with each other and with other
 // functions that may be invoked by application threads.  Petuum system does
 // not require thread safety of other functions.
-class AbstractRow {
+class AbstractRow : boost::noncopyable {
 public:
   virtual ~AbstractRow() { }
 

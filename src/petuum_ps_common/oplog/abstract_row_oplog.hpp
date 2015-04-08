@@ -22,6 +22,8 @@ public:
   // clean up the oplogs and allow the RowOpLog to be reused as a fresh one
   virtual void Reset() = 0;
 
+  virtual bool NonEmpty() { return true; }
+
   virtual void* Find(int32_t col_id) = 0;
 
   virtual const void* FindConst(int32_t col_id) const = 0;

@@ -43,15 +43,18 @@ void ReadLibsvmData(const std::string& file) {
   int row_id = 0;
   while (getline(&line, &num_bytes, data_stream) != -1) {
     int nnz_line = strtol(line, &endptr, base);
+    //LOG(INFO) << "nnz " << nnz_line;
     int curr_nnz = 0;
     ptr = endptr;
-    while (*ptr != '\n') {
+    while (curr_nnz < nnz_line) {
       // read a word_id:count pair
       int col_id = strtol(ptr, &endptr, base);
+      //LOG(INFO) << col_id;
       ptr = endptr; // *ptr = colon
       CHECK_EQ(':', *ptr);
 
       float val = strtof(++ptr, &endptr);
+      //LOG(INFO) << val;
       ptr = endptr;
       X_row.push_back(row_id);
       X_col.push_back(col_id);
@@ -59,7 +62,9 @@ void ReadLibsvmData(const std::string& file) {
       row_counts.push_back(row_id);
       ++nnz;
       ++curr_nnz;
-      while (*ptr == ' ') ++ptr; // goto next non-space char
+      //LOG(INFO) << "curr_nnz = " << curr_nnz;
+
+      //while (*ptr == ' ') ++ptr; // goto next non-space char
     }
     CHECK_EQ(nnz_line, curr_nnz);
     ++row_id;

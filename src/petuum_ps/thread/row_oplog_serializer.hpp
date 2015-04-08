@@ -81,14 +81,23 @@ public:
   RowOpLogSerializer(bool dense_serialize,
                      int32_t my_comm_channel_idx):
       dense_serialize_(dense_serialize),
-      my_comm_channel_idx_(my_comm_channel_idx) { }
+      my_comm_channel_idx_(my_comm_channel_idx),
+      total_accum_size_(0),
+      total_accum_num_rows_(0) { }
 
   ~RowOpLogSerializer() {
-    CHECK_EQ(buffer_map_.size(), 0);
+    // CHECK_EQ(buffer_map_.size(), 0);
+  }
+
+  size_t get_total_accum_size() const {
+    return total_accum_size_;
+  }
+
+  size_t get_total_accum_num_rows() const {
+    return total_accum_num_rows_;
   }
 
   size_t AppendRowOpLog(int32_t row_id, AbstractRowOpLog *row_oplog) {
-
     int32_t server_id = GlobalContext::GetPartitionServerID(
         row_id, my_comm_channel_idx_);
 
@@ -109,6 +118,8 @@ public:
       CHECK_GT(serialized_size, 0) << "row id = " << row_id;
       map_iter->second.push_back(new_buffer);
     }
+    total_accum_size_ += serialized_size;
+    total_accum_num_rows_++;
     return serialized_size;
   }
 
@@ -145,6 +156,9 @@ public:
         memcpy(mem + mem_offset, buff->get_mem(), buff->get_size());
         num_rows += buff->get_num_row_oplogs();
         mem_offset += buff->get_size();
+
+        total_accum_size_ -= buff->get_size();
+        total_accum_num_rows_ -= buff->get_num_row_oplogs();
         delete buff;
       }
       buffer_map_.erase(server_id);
@@ -156,6 +170,8 @@ private:
   const int32_t my_comm_channel_idx_;
   std::unordered_map<int32_t, std::vector<SerializedOpLogBuffer*> >
   buffer_map_;
+  size_t total_accum_size_;
+  size_t total_accum_num_rows_;
 };
 
 }

@@ -83,6 +83,8 @@ protected:
   typedef std::function<void(int32_t, void*, const void*)> AddUpdatesFunc;
   AddUpdatesFunc AddUpdates_;
   DenseBatchIncOpLogFunc DenseBatchIncOpLog_;
+
+  bool version_maintain_;
 };
 
 }  // namespace petuum

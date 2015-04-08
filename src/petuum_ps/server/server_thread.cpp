@@ -163,6 +163,14 @@ void ServerThread::HandleCreateTable(int32_t sender_id,
       = create_table_msg.get_row_oplog_type();
   table_info.dense_row_oplog_capacity
       = create_table_msg.get_dense_row_oplog_capacity();
+  table_info.server_table_logic
+      = create_table_msg.get_server_table_logic();
+  table_info.version_maintain
+      = create_table_msg.get_version_maintain();
+
+  LOG(INFO) << "server table logic = " << table_info.server_table_logic
+            << " version maintain = " << table_info.version_maintain;
+
   server_obj_.CreateTable(table_id, table_info);
 
   min_table_staleness_
@@ -210,6 +218,7 @@ void ServerThread::ReplyRowRequest(int32_t bg_id, ServerRow *server_row,
   server_row_request_reply_msg.get_row_size() = row_size;
 
   MemTransfer::TransferMem(comm_bus_, bg_id, &server_row_request_reply_msg);
+  server_obj_.RowSent(table_id, row_id, server_row, 1);
 }
 
 void ServerThread::HandleOpLogMsg(int32_t sender_id,
@@ -222,17 +231,16 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
 
   STATS_SERVER_ADD_PER_CLOCK_OPLOG_SIZE(client_send_oplog_msg.get_size());
 
+  //LOG(INFO) << "server_recv_oplog, is_clock = " << is_clock
+  //        << " from " << sender_id
+  //        << " size = " << client_send_oplog_msg.get_size()
+  //        << " " << my_id_;
+
   STATS_SERVER_ACCUM_APPLY_OPLOG_BEGIN();
   server_obj_.ApplyOpLogUpdateVersion(
       client_send_oplog_msg.get_data(), client_send_oplog_msg.get_avai_size(),
       sender_id, version);
   STATS_SERVER_ACCUM_APPLY_OPLOG_END();
-
-  //if (!is_clock)
-  //  LOG(INFO) << "server_recv_oplog, is_clock = " << is_clock
-  //          << " from " << sender_id
-  //          << " size = " << client_send_oplog_msg.get_size()
-  //          << " " << my_id_;
 
   bool clock_changed = false;
   int32_t old_clock = server_obj_.GetMinClock();

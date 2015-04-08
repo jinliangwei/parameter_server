@@ -11,7 +11,8 @@ class DenseOpLog : public AbstractOpLog {
 public:
   DenseOpLog(int32_t capacity, const AbstractRow *sample_row,
              size_t dense_row_oplog_capacity,
-             int32_t row_oplog_type);
+             int32_t row_oplog_type,
+             bool version_maintain);
   ~DenseOpLog();
 
   void RegisterThread() { }

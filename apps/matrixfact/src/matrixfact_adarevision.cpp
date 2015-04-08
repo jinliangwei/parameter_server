@@ -15,16 +15,14 @@
 #include <petuum_ps_common/include/table_gflags_declare.hpp>
 #include <petuum_ps_common/include/init_table_config.hpp>
 #include <petuum_ps_common/include/init_table_group_config.hpp>
+#include <petuum_ps_common/util/class_register.hpp>
+#include <petuum_ps_common/include/abstract_server_table_logic.hpp>
+#include <petuum_ps/server/adarevision_server_table_logic.hpp>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 // Command-line flags
-DEFINE_double(init_step_size, 0.5, "Initial stochastic gradient descent "
-    "step size");
-DEFINE_double(step_dec, 0.9, "Step size is "
-    "init_step_size * (step_dec)^iter.");
-DEFINE_bool(use_step_dec, false, "False to use sqrt instead of "
-    "multiplicative decay.");
+DECLARE_double(init_step_size);
 DEFINE_double(lambda, 0.001, "L2 regularization strength.");
 DEFINE_int32(K, 100, "Factorization rank");
 
@@ -45,10 +43,10 @@ DEFINE_uint64(M_client_send_oplog_upper_bound, 100, "M client upper bound");
 
 // Data variables
 size_t X_num_rows, X_num_cols; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
-std::vector<int32_t> X_row; // Row index of each nonzero entry in the data matrix
-std::vector<int32_t> X_col; // Column index of each nonzero entry in the data matrix
+std::vector<int> X_row; // Row index of each nonzero entry in the data matrix
+std::vector<int> X_col; // Column index of each nonzero entry in the data matrix
 std::vector<float> X_val; // Value of each nonzero entry in the data matrix
-std::vector<int32_t> X_partition_starts;
+std::vector<int> X_partition_starts;
 
 int kLossTableColIdxClock = 0;
 int kLossTableColIdxComputeTime = 1;
@@ -63,26 +61,23 @@ void ReadBinaryMatrix(const std::string &filename, int32_t partition_id) {
   FILE *bin_input = fopen(bin_file.c_str(), "rb");
   CHECK(bin_input != 0) << "failed to read " << bin_file;
 
-  uint64_t num_nnz_this_partition = 0,
+  size_t num_nnz_this_partition = 0,
         num_rows_this_partition = 0,
         num_cols_this_partition = 0;
-  size_t read_size = fread(&num_nnz_this_partition, sizeof(uint64_t), 1, bin_input);
+  size_t read_size = fread(&num_nnz_this_partition, sizeof(size_t), 1, bin_input);
   CHECK_EQ(read_size, 1);
-  read_size = fread(&num_rows_this_partition, sizeof(uint64_t), 1, bin_input);
+  read_size = fread(&num_rows_this_partition, sizeof(size_t), 1, bin_input);
   CHECK_EQ(read_size, 1);
-  read_size = fread(&num_cols_this_partition, sizeof(uint64_t), 1, bin_input);
+  read_size = fread(&num_cols_this_partition, sizeof(size_t), 1, bin_input);
   CHECK_EQ(read_size, 1);
-  LOG(INFO) << "num_nnz_this_partition: " << num_nnz_this_partition
-    << " num_rows_this_partition: " << num_rows_this_partition
-    << " num_cols_this_partition: " << num_cols_this_partition;
 
   X_row.resize(num_nnz_this_partition);
   X_col.resize(num_nnz_this_partition);
   X_val.resize(num_nnz_this_partition);
 
-  read_size = fread(X_row.data(), sizeof(int32_t), num_nnz_this_partition, bin_input);
+  read_size = fread(X_row.data(), sizeof(int), num_nnz_this_partition, bin_input);
   CHECK_EQ(read_size, num_nnz_this_partition);
-  read_size = fread(X_col.data(), sizeof(int32_t), num_nnz_this_partition, bin_input);
+  read_size = fread(X_col.data(), sizeof(int), num_nnz_this_partition, bin_input);
   CHECK_EQ(read_size, num_nnz_this_partition);
   read_size = fread(X_val.data(), sizeof(float), num_nnz_this_partition, bin_input);
   CHECK_EQ(read_size, num_nnz_this_partition);
@@ -163,6 +158,7 @@ void TakeSnapShot(const std::string &path,
 void InitLTable(size_t row_capacity,
                 int32_t local_worker_id,
                 std::vector<std::vector<float> > *L_table,
+                std::vector<std::vector<float> > *L_hist_gradients,
                 size_t *row_id_offset) {
   int row_id_start = X_row[X_partition_starts[local_worker_id]];
   int row_id_end = (local_worker_id == X_partition_starts.size() - 1) ?
@@ -171,6 +167,8 @@ void InitLTable(size_t row_capacity,
 
   size_t L_table_size = row_id_end - row_id_start + 1;
   L_table->resize(L_table_size, std::vector<float>(row_capacity, 0.0));
+  L_hist_gradients->resize(L_table_size, std::vector<float>(row_capacity, 0.0));
+
   *row_id_offset = row_id_start;
 }
 
@@ -178,6 +176,7 @@ void InitLTable(size_t row_capacity,
 void SgdElement(
     int64_t a, int iter, float step_size, int global_worker_id,
     std::vector<std::vector<float> > &L_table,
+    std::vector<std::vector<float> > &L_hist_gradients,
     size_t L_row_id_offset,
     petuum::Table<float>& R_table,
     petuum::Table<float>& loss_table,
@@ -208,16 +207,23 @@ void SgdElement(
   // The gradient w.r.t. L(i,k) is -2*X(i,j)R(k,j) + 2*L(i,:)*R(:,j)*R(k,j).
   // The gradient w.r.t. R(k,j) is -2*X(i,j)L(i,k) + 2*L(i,:)*R(:,j)*L(i,k).
   petuum::DenseUpdateBatch<float> Rj_update(0, FLAGS_K);
-  float grad_coeff = -2 * (Xij - LiRj);
-  float regularization_coeff = FLAGS_lambda * 2;
+  float grad_coeff = -(Xij - LiRj);
+  float regularization_coeff = FLAGS_lambda;
   for (int k = 0; k < FLAGS_K; ++k) {
     float gradient = 0.0;
     // Compute update for L(i,k)
-    gradient = grad_coeff * Rj[k] + regularization_coeff * Li[k];
-    Li[k] += -gradient * step_size;
+    gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff * Li[k]);
+    L_hist_gradients[i - L_row_id_offset][k]
+        += pow(gradient, 2);
+    CHECK(gradient == gradient);
+
+    Li[k] -= step_size / sqrt(
+        L_hist_gradients[i - L_row_id_offset][k]) * gradient;
     // Compute update for R(k,j)
-    gradient = grad_coeff * Li[k] + regularization_coeff * Rj[k];
-    Rj_update[k] = -gradient * step_size;
+    gradient = 2 * (grad_coeff * Li[k] + regularization_coeff * Rj[k]);
+    CHECK(gradient == gradient);
+
+    Rj_update[k] += gradient;
   }
   R_table.DenseBatchInc(j, Rj_update);
 }
@@ -228,8 +234,7 @@ void InitMF(
     int col_begin, int col_end) {
   // Create a uniform RNG in the range (-1,1)
   //std::random_device rd;
-  //std::mt19937 gen(rd());
-  std::mt19937 gen(1234);
+  std::mt19937 gen(12345);
   std::normal_distribution<float> dist(0, 0.1);
 
   for (auto &L_row : L_table) {
@@ -244,7 +249,6 @@ void InitMF(
     for (int k = 0; k < FLAGS_K; ++k) {
       double init_val = dist(gen);
       R_updates[k] = init_val;
-      //LOG(INFO) << "j = " << j << " k = " << k << " " << init_val;
     }
     R_table.DenseBatchInc(j, R_updates);
   }
@@ -266,8 +270,6 @@ std::string GetExperimentInfo() {
     << "staleness = " << FLAGS_table_staleness << std::endl
     << "ssp_mode = " << FLAGS_consistency_model << std::endl
     << "init_step_size = " << FLAGS_init_step_size << std::endl
-    << "step_dec = " << FLAGS_step_dec << std::endl
-    << "use_step_dec = " << ((FLAGS_use_step_dec) ? "True" : "False") << std::endl
     << "lambda = " << FLAGS_lambda << std::endl
     << "data file = " << FLAGS_datafile << std::endl;
   return ss.str();
@@ -313,13 +315,11 @@ void RecordLoss(
     petuum::Table<float>& loss_table,
     int col_begin, int col_end,
     int global_worker_id, int total_num_workers,
-    int64_t element_begin, int64_t element_end,
+    int element_begin, int element_end,
     std::vector<float>* Rj_cache) {
   float squared_loss = 0.;
   // for (int a = global_worker_id; a < X_row.size(); a += total_num_workers) {
-  LOG(INFO) << "begin = " << element_begin
-            << " end = " << element_end;
-  for (int64_t a = element_begin; a < element_end; ++a) {
+  for (int a = element_begin; a < element_end; ++a) {
     // Let i = X_row[a], j = X_col[a], and X(i,j) = X_val[a]
     const int i = X_row[a];
     const int j = X_col[a];
@@ -338,20 +338,18 @@ void RecordLoss(
     for (int k = 0; k < FLAGS_K; ++k) {
       LiRj += Li[k] * Rj[k];
     }
-    //LOG(INFO) << Xij;
+
     // Update the L2 (non-regularized version) loss function
     squared_loss += pow(Xij - LiRj, 2);
-    //LOG(INFO) << Xij << " " << LiRj << " " << squared_loss;
-    //LOG(INFO) << "sl = " << squared_loss;
   }
   loss_table.Inc(obj_eval_counter, kLossTableColIdxL2Loss, squared_loss);
-
-  //LOG(INFO) << "squared loss = " << squared_loss;
 
   if (global_worker_id == 0) {
     loss_table.Inc(obj_eval_counter, kLossTableColIdxClock, clock);
     loss_table.Inc(obj_eval_counter, kLossTableColIdxIter, iter);
   }
+
+  LOG(INFO) << "squared loss = " << squared_loss;
 
   // Compute loss.
   float L2_reg_loss = 0.;
@@ -361,7 +359,7 @@ void RecordLoss(
     }
   }
 
-  LOG(INFO) << squared_loss + L2_reg_loss;
+  LOG(INFO) << "reg_loss = " << L2_reg_loss;
 
   for (int ii = col_begin; ii < col_end; ++ii) {
     {
@@ -392,8 +390,10 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
       petuum::PSTableGroup::GetTableOrDie<float>(2);
 
   std::vector<std::vector<float> > L_table;
+  std::vector<std::vector<float> > L_hist_gradients;
   size_t row_id_offset = 0;
-  InitLTable(FLAGS_K, thread_id, &L_table, &row_id_offset);
+  InitLTable(FLAGS_K, thread_id, &L_table,
+             &L_hist_gradients, &row_id_offset);
 
   const int total_num_workers = get_total_num_workers();
   // global_worker_id lies in the range [0,total_num_workers)
@@ -402,7 +402,7 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
   int num_cols_per_thread = X_num_cols / total_num_workers;
   int col_begin = global_worker_id * num_cols_per_thread;
   int col_end = (global_worker_id == total_num_workers - 1) ?
-                X_num_cols : (col_begin + num_cols_per_thread);
+                X_num_cols : col_begin + num_cols_per_thread;
 
   // Cache for DenseRow bulk-read
   std::vector<float> Rj_cache(FLAGS_K);
@@ -467,20 +467,18 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
     }
 
     size_t element_counter = 0;
-    float step_size = 0.;
-    if (FLAGS_use_step_dec) {
-      // Use Multiplicative step size to compare with GraphLab.
-      step_size = FLAGS_init_step_size * pow(FLAGS_step_dec, iter);
-    } else {
-      step_size = FLAGS_init_step_size * pow(100.0 + iter, -0.5);
-    }
+    float step_size = FLAGS_init_step_size;
 
     // Overall computation (no eval / communication time)
     STATS_APP_ACCUM_COMP_BEGIN();
     for (int64_t a = element_begin; a < element_end; ++a) {
       SgdElement(a, iter, step_size, global_worker_id, L_table,
+                 L_hist_gradients,
                  row_id_offset, R_table, loss_table, &Rj_cache);
       ++element_counter;
+
+      //if (element_counter % 100000 == 0)
+      //LOG(INFO) << "a = " << a;
 
       if ((element_counter % work_per_clock == 0
            && clock < (iter + 1)*FLAGS_num_clocks_per_iter - 1)
@@ -550,10 +548,9 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
 
   petuum::PSTableGroup::TurnOffEarlyComm();
 
-  TakeSnapShot("L.test.out", L_table);
-
   // Finish propagation
   petuum::PSTableGroup::GlobalBarrier();
+  TakeSnapShot("L.test.out", L_table);
 
   // Output loss function
   if (global_worker_id == 0) {
@@ -598,6 +595,10 @@ int main(int argc, char *argv[]) {
 
   // Configure PS row types
   // Register dense float rows as ID 0
+  petuum::ClassRegistry<petuum::AbstractServerTableLogic>::GetRegistry().AddCreator(
+      1, petuum::CreateObj<petuum::AbstractServerTableLogic,
+      petuum::AdaRevisionServerTableLogic>);
+
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<float> >(0);
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<int64_t> >(1);
 
@@ -646,6 +647,7 @@ int main(int argc, char *argv[]) {
   table_config.table_info.row_capacity = 6;
   table_config.table_info.dense_row_oplog_capacity = 6;
   table_config.table_info.row_oplog_type = 0;
+  table_config.table_info.server_table_logic = -1;
   table_config.process_cache_capacity = 100;
   table_config.thread_cache_capacity = 1;
   table_config.oplog_capacity = 100;

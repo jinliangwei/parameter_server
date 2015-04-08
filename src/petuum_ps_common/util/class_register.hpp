@@ -15,26 +15,27 @@ class ClassRegistry {
 public:
   typedef BaseClass* (*CreateFunc)();
   ClassRegistry():
-    default_creator_(0){};
-  ~ClassRegistry(){};
+    default_creator_(0) { };
+  ~ClassRegistry() { };
 
-  void SetDefaultCreator(CreateFunc creator){
+  void SetDefaultCreator(CreateFunc creator) {
     default_creator_ = creator;
   }
 
-  void AddCreator(int32_t key, CreateFunc creator){
+  void AddCreator(int32_t key, CreateFunc creator) {
+    LOG(INFO) << "creator added with key = " << key;
     creator_map_[key] = creator;
   }
 
   BaseClass *CreateObject(int32_t key){
     typename std::map<int32_t, CreateFunc>::const_iterator it =
         creator_map_.find(key);
-    if(it == creator_map_.end()){
-      if(default_creator_ != 0){
+    if (it == creator_map_.end()) {
+      if(default_creator_ != 0) {
 	return (*default_creator_)();
       }
       return 0;
-    }else{
+    } else {
       CreateFunc creator = it->second;
       return (*creator)();
     }
@@ -51,7 +52,7 @@ private:
 };
 
 template<typename BaseClass, typename ImplClass>
-BaseClass *CreateObj(){
+BaseClass *CreateObj() {
   return dynamic_cast<BaseClass*>(new ImplClass);
 }
 }

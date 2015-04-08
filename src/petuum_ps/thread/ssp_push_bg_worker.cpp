@@ -25,9 +25,9 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &s
 
   //if (!is_clock)
   //LOG(INFO) << "handle_server_push_row, is_clock = " << is_clock
-  //          << " from " << sender_id
-  //          << " size = " << server_push_row_msg.get_size()
-  //          << " " << my_id_;
+  //        << " from " << sender_id
+  //        << " size = " << server_push_row_msg.get_size()
+  //        << " " << my_id_;
 
   if (is_clock) {
     int32_t server_clock = server_push_row_msg.get_clock();
@@ -69,6 +69,7 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &s
 void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,
                                            size_t mem_size) {
   STATS_BG_ACCUM_SERVER_PUSH_ROW_APPLY_BEGIN();
+
   SerializedRowReader row_reader(mem, mem_size);
   bool not_empty = row_reader.Restart();
   // no row to read
@@ -80,8 +81,9 @@ void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,
   const void *data = row_reader.Next(&table_id, &row_id, &row_size);
 
   int32_t curr_table_id = -1;
-  //int32_t row_type = 0;
+  bool curr_table_version_maintain = false;
   ClientTable *client_table = NULL;
+  uint64_t row_version = 0;
   while (data != NULL) {
     STATS_BG_ACCUM_TABLE_ROW_RECVED(table_id, row_id, 1);
     if (curr_table_id != table_id) {
@@ -89,6 +91,11 @@ void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,
       CHECK(table_iter != tables_->end()) << "Cannot find table " << table_id;
       client_table = table_iter->second;
       curr_table_id = table_id;
+      curr_table_version_maintain = table_iter->second->get_version_maintain();
+    }
+
+    if (curr_table_version_maintain) {
+      row_version = ExtractRowVersion(data, &row_size);
     }
 
     STATS_BG_SAMPLE_PROCESS_CACHE_INSERT_BEGIN();
@@ -97,7 +104,9 @@ void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,
         row_id, &row_accessor);
 
     if (client_row != 0) {
-      UpdateExistingRow(table_id, row_id, client_row, client_table, data, row_size, version);
+      UpdateExistingRow(table_id, row_id, client_row, client_table, data,
+                        row_size, version, curr_table_version_maintain,
+                        row_version);
     }
 
     STATS_BG_SAMPLE_PROCESS_CACHE_INSERT_END();

@@ -93,7 +93,9 @@ int32_t ParseLibSVMLine(const std::string& line, std::vector<int32_t>* feature_i
   char *ptr = 0, *endptr = 0;
   // Read label.
   int label = strtol(line.data(), &endptr, base);
-  label = label_one_based ? label - 1 : label;
+  //label = label_one_based ? label - 1 : label;
+  if (label < 0) label += 1;
+
   ptr = endptr;
 
   while (isspace(*ptr) && ptr - line.data() < line.size()) ++ptr;

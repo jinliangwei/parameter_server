@@ -129,7 +129,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
   if (clock_to_push < 0)
     return 0;
 
-  size_t accum_table_oplog_bytes = 0;
+  size_t accum_table_oplog_bytes = row_oplog_serializer->get_total_accum_size();
 
   AbstractOpLog &table_oplog = table->get_oplog();
 
@@ -143,10 +143,9 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
       AbstractRowOpLog* row_oplog = oplog_accessor.get_row_oplog();
       if (row_oplog != 0) {
         MetaRowOpLog *meta_row_oplog = dynamic_cast<MetaRowOpLog*>(row_oplog);
-        //STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
-        STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
 
-        //LOG(INFO) << table_id << " " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
+
+        STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
 
         size_t serialized_oplog_size
             = row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
@@ -157,8 +156,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
 
         accum_table_oplog_bytes += serialized_oplog_size;
         (*accum_num_rows)++;
-    }
-
+      }
       row_id = table_oplog_meta->GetAndClearNextUptoClock();
     }
   }
@@ -176,8 +174,10 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
 
   AbstractOpLog &table_oplog = table->get_oplog();
 
+  if (table->get_client_send_oplog_upper_bound() <= my_accum_num_rows)
+    return accum_table_oplog_bytes;
+
   size_t num_rows_to_add = table->get_client_send_oplog_upper_bound() - my_accum_num_rows;
-  if (num_rows_to_add <= 0) return accum_table_oplog_bytes;
 
   table_oplog_meta->Prepare(num_rows_to_add);
 
@@ -218,8 +218,10 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
 
   AbstractOpLog &table_oplog = table->get_oplog();
 
+  if (table->get_client_send_oplog_upper_bound() <= my_accum_num_rows)
+    return accum_table_oplog_bytes;
+
   size_t num_rows_to_add = table->get_client_send_oplog_upper_bound() - my_accum_num_rows;
-  if (num_rows_to_add <= 0) return accum_table_oplog_bytes;
 
   table_oplog_meta->Prepare(num_rows_to_add);
 
@@ -236,8 +238,6 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
         MetaRowOpLog *meta_row_oplog = dynamic_cast<MetaRowOpLog*>(row_oplog);
         //STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
         STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
-
-        //LOG(INFO) << table_id << " " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
 
         size_t serialized_oplog_size
             = row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
@@ -308,22 +308,14 @@ BgOpLogPartition* SSPAggrBgWorker::PrepareOpLogsAppendOnly(
 void SSPAggrBgWorker::PrepareOpLogsNormalNoReplay(
     int32_t table_id, ClientTable *table, int32_t clock_to_push) {
 
-  auto serializer_iter = row_oplog_serializer_map_.find(table_id);
-
-  if (serializer_iter == row_oplog_serializer_map_.end()) {
-    RowOpLogSerializer *row_oplog_serializer
-        = new RowOpLogSerializer(table->oplog_dense_serialized(),
-                                 my_comm_channel_idx_);
-    row_oplog_serializer_map_.insert(std::make_pair(table_id, row_oplog_serializer));
-    serializer_iter = row_oplog_serializer_map_.find(table_id);
-  }
-  RowOpLogSerializer *row_oplog_serializer = serializer_iter->second;
+  RowOpLogSerializer *row_oplog_serializer = FindAndCreateRowOpLogSerializer(
+      table_id, table);
 
   ReadTableOpLogsIntoOpLogMeta(table_id, table);
 
   AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
-  size_t accum_num_rows = 0;
+  size_t accum_num_rows = row_oplog_serializer->get_total_accum_num_rows();;
 
   size_t accum_table_oplog_bytes = ReadTableOpLogMetaUpToClockNoReplay(
       table_id, table, clock_to_push, table_oplog_meta,
@@ -390,7 +382,6 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   }
 
   if (!msg_tracker_.CheckSendAll()) {
-    //LOG(INFO) << "client has to wait";
     STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK();
     pending_clock_send_oplog_ = true;
     clock_advanced_buffed_ = clock_advanced;
@@ -548,23 +539,16 @@ BgOpLogPartition* SSPAggrBgWorker::PrepareBgIdleOpLogsNormal(int32_t table_id,
 
 void SSPAggrBgWorker::PrepareBgIdleOpLogsNormalNoReplay(int32_t table_id,
                                                         ClientTable *table) {
-  auto serializer_iter = row_oplog_serializer_map_.find(table_id);
-
-  if (serializer_iter == row_oplog_serializer_map_.end()) {
-    RowOpLogSerializer *row_oplog_serializer
-        = new RowOpLogSerializer(table->oplog_dense_serialized(),
-                                 my_comm_channel_idx_);
-    row_oplog_serializer_map_.insert(std::make_pair(table_id, row_oplog_serializer));
-    serializer_iter = row_oplog_serializer_map_.find(table_id);
-  }
-  RowOpLogSerializer *row_oplog_serializer = serializer_iter->second;
+  RowOpLogSerializer *row_oplog_serializer = FindAndCreateRowOpLogSerializer(
+      table_id, table);
 
   ReadTableOpLogsIntoOpLogMeta(table_id, table);
 
   AbstractTableOpLogMeta *table_oplog_meta = oplog_meta_.Get(table_id);
 
   ReadTableOpLogMetaUpToCapacityNoReplay(
-      table_id, table, 0, 0,
+      table_id, table, row_oplog_serializer->get_total_accum_size(),
+      row_oplog_serializer->get_total_accum_num_rows(),
       table_oplog_meta, row_oplog_serializer);
 
   for (const auto &server_id : server_ids_) {
@@ -589,6 +573,8 @@ void SSPAggrBgWorker::PrepareBgIdleOpLogsAppendOnlyNoReplay(int32_t table_id,
 long SSPAggrBgWorker::BgIdleWork() {
   bool found_oplog = false;
 
+  //LOG(INFO) << __func__;
+
   // check if last msg has been sent out
   if (oplog_send_milli_sec_ > 1) {
     double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
@@ -605,13 +591,21 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   STATS_BG_IDLE_INVOKE_INC_ONE();
 
-  if (oplog_meta_.OpLogMetaExists())
+  if (oplog_meta_.OpLogMetaExists()) {
     found_oplog = true;
-  else {
+    //LOG(INFO) << "oplog meta exists";
+  } else {
     for (const auto &table_pair : (*tables_)) {
       if (table_pair.second->GetNumRowOpLogs(my_comm_channel_idx_) > 0) {
         found_oplog = true;
         break;
+      } else {
+        RowOpLogSerializer *row_oplog_serializer = FindAndCreateRowOpLogSerializer(
+            table_pair.first, table_pair.second);
+        if (row_oplog_serializer->get_total_accum_num_rows() > 0) {
+          found_oplog = true;
+          break;
+        }
       }
     }
   }
@@ -636,15 +630,16 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   oplog_send_milli_sec_
       = TransTimeEstimate::EstimateTransMillisec(
-          sent_size, GlobalContext::get_server_bandwidth_mbps());
+          sent_size, GlobalContext::get_client_bandwidth_mbps());
 
   STATS_BG_ACCUM_IDLE_SEND_END();
 
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 
   //LOG(INFO) << "BgIdle send bytes = " << sent_size
-  //      << " send milli sec = " << oplog_send_milli_sec_
-  //      << " size = " << sent_size;
+  //        << " send milli sec = " << oplog_send_milli_sec_
+  //        << " size = " << sent_size
+  //        << " bw = " << GlobalContext::get_client_bandwidth_mbps();
   return oplog_send_milli_sec_;
 }
 

@@ -85,8 +85,7 @@ struct TableGroupConfig {
       naive_table_oplog_meta(true),
       suppression_on(false),
       use_approx_sort(false),
-      num_zmq_threads(1)
-  { }
+    num_zmq_threads(1) { }
 
   std::string stats_path;
 
@@ -179,7 +178,9 @@ struct TableInfo {
       oplog_dense_serialized(false),
       row_oplog_type(1),
       dense_row_oplog_capacity(0),
-      server_push_row_upper_bound(100) { }
+      server_push_row_upper_bound(100),
+      server_table_logic(-1),
+      version_maintain(false) { }
 
   // table_staleness is used for SSP and ClockVAP.
   int32_t table_staleness;
@@ -200,6 +201,10 @@ struct TableInfo {
   size_t dense_row_oplog_capacity;
 
   size_t server_push_row_upper_bound;
+
+  int32_t server_table_logic;
+
+  bool version_maintain;
 };
 
 // ClientTableConfig is used by client only.

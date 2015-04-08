@@ -120,9 +120,6 @@ void Server::Init(int32_t server_id,
      const void *oplog, size_t oplog_size, int32_t bg_thread_id,
      uint32_t version) {
 
-   //LOG(INFO) << "Apply oplog from " << bg_thread_id
-   //        << " oplog size = " << oplog_size;
-
    CHECK_EQ(bg_version_map_[bg_thread_id] + 1, version)
        << "bg_thread_id = " << bg_thread_id;
    bg_version_map_[bg_thread_id] = version;
@@ -131,6 +128,9 @@ void Server::Init(int32_t server_id,
 
    SerializedOpLogReader oplog_reader(oplog, tables_);
    bool to_read = oplog_reader.Restart();
+
+   //LOG(INFO) << "oplog size = " << oplog_size
+   //        << " to read = " << to_read;
 
    if(!to_read) return;
 
@@ -165,7 +165,7 @@ void Server::Init(int32_t server_id,
      }
 
      updates = oplog_reader.Next(&table_id, &row_id, &column_ids,
-       &num_updates, &started_new_table);
+                                 &num_updates, &started_new_table);
 
      if (updates == 0) break;
      if (started_new_table) {
@@ -235,8 +235,11 @@ void Server::Init(int32_t server_id,
     // ServerTable packs the data.
     server_table.InitAppendTableToBuffs();
     int32_t failed_client_id;
-    bool pack_suc = server_table.AppendTableToBuffs(0, &buffs,
-                                                    &failed_client_id, false);
+    size_t num_clients = 0;
+    bool pack_suc = server_table.AppendTableToBuffs(
+        0, &buffs, &failed_client_id, false,
+        &num_clients);
+
     while (!pack_suc) {
       RecordBuff &record_buff = buffs[failed_client_id];
       int32_t *buff_end_ptr = record_buff.GetMemPtrInt32();
@@ -252,8 +255,9 @@ void Server::Init(int32_t server_id,
       record_buff.ResetOffset();
       int32_t *table_id_ptr = record_buff.GetMemPtrInt32();
       *table_id_ptr = table_id;
-      pack_suc = server_table.AppendTableToBuffs(failed_client_id, &buffs,
-                                                 &failed_client_id, true);
+      pack_suc = server_table.AppendTableToBuffs(
+          failed_client_id, &buffs, &failed_client_id, true,
+          &num_clients);
     }
 
     --num_tables_left;
@@ -426,6 +430,13 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
 
 bool Server::AccumedOpLogSinceLastPush() {
   return accum_oplog_count_ > 0;
+}
+
+void Server::RowSent(int32_t table_id, int32_t row_id,
+                     ServerRow *row, size_t num_clients) {
+  auto table_iter = tables_.find(table_id);
+  CHECK(table_iter != tables_.end());
+  table_iter->second.RowSent(row_id, row, num_clients);
 }
 
 }  // namespace petuum

@@ -37,6 +37,8 @@ void InitTableConfig(ClientTableConfig *config) {
       = FLAGS_server_push_row_upper_bound;
   config->client_send_oplog_upper_bound
       = FLAGS_client_send_oplog_upper_bound;
+  config->table_info.server_table_logic = FLAGS_server_table_logic;
+  config->table_info.version_maintain = FLAGS_version_maintain;
 }
 
 }

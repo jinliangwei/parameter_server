@@ -118,19 +118,19 @@ void SparseFeature<V>::Init(int32_t feature_dim) {
 template<typename V>
 SparseFeature<V>::SparseFeature(const std::vector<int32_t>& feature_ids,
     const std::vector<V>& val, int32_t feature_dim) :
-  AbstractFeature<V>(feature_dim),
-  entries_(new Entry<V>[feature_ids.size()]),
-  num_entries_(feature_ids.size()), capacity_(num_entries_) {
-    CHECK_EQ(feature_ids.size(), val.size());
-    int32_t prev_idx = -1;
-    for (int i = 0; i < num_entries_; ++i) {
-      CHECK_LT(prev_idx, feature_ids[i]);
-      prev_idx = feature_ids[i];
-      entries_[i].first = feature_ids[i];
-      entries_[i].second = val[i];
-    }
-    CHECK_LT(prev_idx, this->feature_dim_);
+    AbstractFeature<V>(feature_dim),
+    entries_(new Entry<V>[feature_ids.size()]),
+    num_entries_(feature_ids.size()), capacity_(num_entries_) {
+  CHECK_EQ(feature_ids.size(), val.size());
+  int32_t prev_idx = -1;
+  for (int i = 0; i < num_entries_; ++i) {
+    CHECK_LT(prev_idx, feature_ids[i]);
+    prev_idx = feature_ids[i];
+    entries_[i].first = feature_ids[i];
+    entries_[i].second = val[i];
   }
+  CHECK_LT(prev_idx, this->feature_dim_);
+}
 
 template<typename V>
 void SparseFeature<V>::Init(const std::vector<int32_t>& feature_ids,

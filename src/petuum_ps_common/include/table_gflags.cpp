@@ -20,3 +20,5 @@ DEFINE_bool(no_oplog_replay, false, "oplog replay?");
 
 DEFINE_uint64(server_push_row_upper_bound, 100, "Server push row threshold");
 DEFINE_uint64(client_send_oplog_upper_bound, 100, "client send oplog upper bound");
+DEFINE_int32(server_table_logic, -1, "server table logic");
+DEFINE_bool(version_maintain, false, "version maintain");

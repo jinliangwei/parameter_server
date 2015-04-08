@@ -2,6 +2,7 @@
 
 #include <petuum_ps/oplog/row_oplog_meta.hpp>
 #include <petuum_ps_common/oplog/dense_row_oplog.hpp>
+#include <petuum_ps_common/oplog/version_dense_row_oplog.hpp>
 #include <petuum_ps_common/oplog/dense_row_oplog_float16.hpp>
 #include <petuum_ps_common/oplog/sparse_row_oplog.hpp>
 #include <petuum_ps_common/oplog/sparse_vector_row_oplog.hpp>
@@ -47,6 +48,19 @@ public:
       AbstractRowOpLog(update_size),
       DenseRowOpLog(InitUpdate, CheckZeroUpdate,
                     update_size, row_size) { }
+
+};
+
+class VersionDenseMetaRowOpLog : public MetaRowOpLog, public VersionDenseRowOpLog {
+public:
+  VersionDenseMetaRowOpLog(
+      InitUpdateFunc InitUpdate,
+      CheckZeroUpdateFunc CheckZeroUpdate,
+      size_t update_size,
+      size_t row_size):
+      AbstractRowOpLog(update_size),
+      VersionDenseRowOpLog(InitUpdate, CheckZeroUpdate,
+                           update_size, row_size) { }
 
 };
 

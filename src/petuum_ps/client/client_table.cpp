@@ -75,7 +75,8 @@ ClientTable::ClientTable(int32_t table_id, const ClientTableConfig &config):
   switch (config.oplog_type) {
     case Sparse:
       oplog_ = new SparseOpLog(config.oplog_capacity, sample_row_,
-                               dense_row_oplog_capacity_, row_oplog_type_);
+                               dense_row_oplog_capacity_, row_oplog_type_,
+                               config.table_info.version_maintain);
       break;
     case AppendOnly:
       oplog_ = new AppendOnlyOpLog(
@@ -90,7 +91,8 @@ ClientTable::ClientTable(int32_t table_id, const ClientTableConfig &config):
           config.oplog_capacity,
           sample_row_,
           dense_row_oplog_capacity_,
-          row_oplog_type_);
+          row_oplog_type_,
+          config.table_info.version_maintain);
       break;
     default:
       LOG(FATAL) << "Unknown oplog type = " << config.oplog_type;

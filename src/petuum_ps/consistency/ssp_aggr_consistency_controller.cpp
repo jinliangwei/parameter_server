@@ -18,7 +18,7 @@ SSPAggrConsistencyController::SSPAggrConsistencyController(
                                  sample_row, thread_cache, oplog_index, row_oplog_type) { }
 
 void SSPAggrConsistencyController::Inc(int32_t row_id, int32_t column_id,
-  const void *delta) {
+                                       const void *delta) {
   size_t thread_update_count
       = thread_cache_->IndexUpdateAndGetCount(row_id, 1);
 
@@ -32,11 +32,14 @@ void SSPAggrConsistencyController::Inc(int32_t row_id, int32_t column_id,
       = dynamic_cast<MetaRowOpLog*>(oplog_accessor.get_row_oplog());
   meta_row_oplog->GetMeta().set_clock(ThreadContext::get_clock());
 
-  RowAccessor row_accessor;
-  ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
-  if (client_row != 0) {
-    client_row->GetRowDataPtr()->ApplyInc(column_id, delta);
+  if (!version_maintain_) {
+    RowAccessor row_accessor;
+    ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
+    if (client_row != 0) {
+      client_row->GetRowDataPtr()->ApplyInc(column_id, delta);
+    }
   }
+
   CheckAndFlushThreadCache(thread_update_count);
 }
 
@@ -62,11 +65,13 @@ void SSPAggrConsistencyController::BatchInc(int32_t row_id,
       = dynamic_cast<MetaRowOpLog*>(oplog_accessor.get_row_oplog());
   meta_row_oplog->GetMeta().set_clock(ThreadContext::get_clock());
 
-  RowAccessor row_accessor;
-  ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
-  if (client_row != 0) {
-    client_row->GetRowDataPtr()->ApplyBatchInc(column_ids, updates,
-                                               num_updates);
+  if (!version_maintain_) {
+    RowAccessor row_accessor;
+    ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
+    if (client_row != 0) {
+      client_row->GetRowDataPtr()->ApplyBatchInc(column_ids, updates,
+                                                 num_updates);
+    }
   }
   CheckAndFlushThreadCache(thread_update_count);
 }
@@ -92,13 +97,14 @@ void SSPAggrConsistencyController::DenseBatchInc(
       = dynamic_cast<MetaRowOpLog*>(row_oplog);
   meta_row_oplog->GetMeta().set_clock(ThreadContext::get_clock());
 
-  RowAccessor row_accessor;
-  ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
-  if (client_row != 0) {
-    client_row->GetRowDataPtr()->ApplyDenseBatchInc(
-        updates, index_st, num_updates);
+  if (!version_maintain_) {
+    RowAccessor row_accessor;
+    ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
+    if (client_row != 0) {
+      client_row->GetRowDataPtr()->ApplyDenseBatchInc(
+          updates, index_st, num_updates);
+    }
   }
-
   CheckAndFlushThreadCache(thread_update_count);
 }
 

@@ -109,6 +109,10 @@ public:
     return client_table_config_.process_storage_type;
   }
 
+  bool get_version_maintain() const {
+    return client_table_config_.table_info.version_maintain;
+  }
+
 private:
   const int32_t table_id_;
   const int32_t row_type_;

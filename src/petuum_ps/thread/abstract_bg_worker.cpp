@@ -69,7 +69,7 @@ void AbstractBgWorker::AppThreadDeregister() {
 }
 
 bool AbstractBgWorker::CreateTable(int32_t table_id,
-                           const ClientTableConfig& table_config) {
+                                   const ClientTableConfig& table_config) {
   {
     const TableInfo &table_info = table_config.table_info;
     BgCreateTableMsg bg_create_table_msg;
@@ -108,6 +108,12 @@ bool AbstractBgWorker::CreateTable(int32_t table_id,
         = table_config.table_info.server_push_row_upper_bound;
     bg_create_table_msg.get_client_send_oplog_upper_bound()
         = table_config.client_send_oplog_upper_bound;
+
+    bg_create_table_msg.get_server_table_logic()
+        = table_info.server_table_logic;
+
+    bg_create_table_msg.get_version_maintain()
+        = table_info.version_maintain;
 
     size_t sent_size = SendMsg(
         reinterpret_cast<MsgBase*>(&bg_create_table_msg));
@@ -326,6 +332,10 @@ void AbstractBgWorker::HandleCreateTables() {
           = bg_create_table_msg.get_dense_row_oplog_capacity();
       client_table_config.table_info.server_push_row_upper_bound
           = bg_create_table_msg.get_server_push_row_upper_bound();
+      client_table_config.table_info.server_table_logic
+          = bg_create_table_msg.get_server_table_logic();
+      client_table_config.table_info.version_maintain
+          = bg_create_table_msg.get_version_maintain();
 
       client_table_config.oplog_type
           = bg_create_table_msg.get_oplog_type();
@@ -358,6 +368,11 @@ void AbstractBgWorker::HandleCreateTables() {
           = bg_create_table_msg.get_dense_row_oplog_capacity();
       create_table_msg.get_server_push_row_upper_bound()
           = bg_create_table_msg.get_server_push_row_upper_bound();
+      create_table_msg.get_server_table_logic()
+          = bg_create_table_msg.get_server_table_logic();
+
+      create_table_msg.get_version_maintain()
+          = bg_create_table_msg.get_version_maintain();
 
       table_id = create_table_msg.get_table_id();
 
@@ -760,7 +775,8 @@ void AbstractBgWorker::CheckForwardRowRequestToServer(
 void AbstractBgWorker::UpdateExistingRow(
     int32_t table_id,
     int32_t row_id, ClientRow *client_row, ClientTable *client_table,
-    const void *data, size_t row_size, uint32_t version) {
+    const void *data, size_t row_size, uint32_t version,
+    bool version_maintain, uint64_t row_version) {
   AbstractRow *row_data = client_row->GetRowDataPtr();
   if (client_table->get_oplog_type() == Sparse
       || client_table->get_oplog_type() == Dense) {
@@ -787,6 +803,23 @@ void AbstractBgWorker::UpdateExistingRow(
         update = oplog_accessor.get_row_oplog()->NextConst(&column_id);
       }
     }
+
+    if (oplog_found && version_maintain) {
+      //LOG(INFO) << __func__ << " id = " << row_id;
+      CHECK(no_oplog_replay);
+      RowOpLogSerializer *row_oplog_serializer = FindAndCreateRowOpLogSerializer(
+          table_id, client_table);
+      AbstractRowOpLog *row_oplog = oplog_accessor.get_row_oplog();
+      // todo: why reinterpret_cast fails?
+      VersionDenseRowOpLog *version_dense_row_oplog
+          = dynamic_cast<VersionDenseRowOpLog*>(row_oplog);
+      version_dense_row_oplog->SetEndOfVersion(true);
+      row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
+      row_oplog->Reset();
+      version_dense_row_oplog->SetVersion(row_version);
+      version_dense_row_oplog->SetEndOfVersion(false);
+    }
+
     row_data->ReleaseWriteLock();
   } else if (client_table->get_oplog_type() == AppendOnly) {
     row_data->GetWriteLock();
@@ -891,9 +924,14 @@ void AbstractBgWorker::HandleServerRowRequestReply(
   const void *data = server_row_request_reply_msg.get_row_data();
   size_t row_size = server_row_request_reply_msg.get_row_size();
 
+  bool table_version_maintain = client_table->get_version_maintain();
+  uint64_t row_version = 0;
+  if (table_version_maintain)
+    row_version = ExtractRowVersion(data, &row_size);
+
   if (client_row != 0) {
     UpdateExistingRow(table_id, row_id, client_row, client_table, data,
-                      row_size, version);
+                      row_size, version, table_version_maintain, row_version);
     client_row->SetClock(clock);
   } else { // not found
     InsertNonexistentRow(table_id, row_id, client_table, data, row_size, version, clock);
@@ -988,6 +1026,29 @@ void AbstractBgWorker::SendClientShutDownMsgs() {
 }
 
 void AbstractBgWorker::HandleAdjustSuppressionLevel() { }
+
+uint64_t AbstractBgWorker::ExtractRowVersion(const void *bytes,
+                                             size_t *num_bytes) {
+  CHECK(*num_bytes > sizeof(uint64_t));
+  *num_bytes -= sizeof(uint64_t);
+  return *(reinterpret_cast<const uint64_t*>(
+      reinterpret_cast<const uint8_t*>(bytes) + *num_bytes));
+}
+
+RowOpLogSerializer *AbstractBgWorker::FindAndCreateRowOpLogSerializer(
+    int32_t table_id, ClientTable *table) {
+  auto serializer_iter = row_oplog_serializer_map_.find(table_id);
+
+  if (serializer_iter == row_oplog_serializer_map_.end()) {
+    RowOpLogSerializer *row_oplog_serializer
+        = new RowOpLogSerializer(table->oplog_dense_serialized(),
+                                 my_comm_channel_idx_);
+    row_oplog_serializer_map_.insert(std::make_pair(table_id, row_oplog_serializer));
+    serializer_iter = row_oplog_serializer_map_.find(table_id);
+  }
+
+  return serializer_iter->second;
+}
 
 void *AbstractBgWorker::operator() () {
   STATS_REGISTER_THREAD(kBgThread);

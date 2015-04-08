@@ -22,7 +22,8 @@ SSPConsistencyController::SSPConsistencyController(
   staleness_(info.table_staleness),
   thread_cache_(thread_cache),
   oplog_index_(oplog_index),
-  oplog_(oplog) {
+  oplog_(oplog),
+  version_maintain_(info.version_maintain) {
   AddUpdates_ = std::bind(&AbstractRow::AddUpdates,
                           sample_row_, std::placeholders::_1,
                           std::placeholders::_2, std::placeholders::_3);
@@ -86,10 +87,12 @@ void SSPConsistencyController::Inc(int32_t row_id, int32_t column_id,
   void *oplog_delta = oplog_accessor.get_row_oplog()->FindCreate(column_id);
   sample_row_->AddUpdates(column_id, oplog_delta, delta);
 
-  RowAccessor row_accessor;
-  ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
-  if (client_row != 0) {
-    client_row->GetRowDataPtr()->ApplyInc(column_id, delta);
+  if (!version_maintain_) {
+    RowAccessor row_accessor;
+    ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
+    if (client_row != 0) {
+      client_row->GetRowDataPtr()->ApplyInc(column_id, delta);
+    }
   }
 }
 
@@ -112,14 +115,16 @@ void SSPConsistencyController::BatchInc(int32_t row_id,
   }
   STATS_APP_SAMPLE_BATCH_INC_OPLOG_END();
 
-  STATS_APP_SAMPLE_BATCH_INC_PROCESS_STORAGE_BEGIN();
-  RowAccessor row_accessor;
-  ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
-  if (client_row != 0) {
-    client_row->GetRowDataPtr()->ApplyBatchInc(column_ids, updates,
-                                               num_updates);
+  if (!version_maintain_) {
+    STATS_APP_SAMPLE_BATCH_INC_PROCESS_STORAGE_BEGIN();
+    RowAccessor row_accessor;
+    ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
+    if (client_row != 0) {
+      client_row->GetRowDataPtr()->ApplyBatchInc(column_ids, updates,
+                                                 num_updates);
+    }
+    STATS_APP_SAMPLE_BATCH_INC_PROCESS_STORAGE_END();
   }
-  STATS_APP_SAMPLE_BATCH_INC_PROCESS_STORAGE_END();
 }
 
 void SSPConsistencyController::DenseBatchInc(
@@ -140,16 +145,19 @@ void SSPConsistencyController::DenseBatchInc(
     (this->*DenseBatchIncOpLog_)(row_oplog, deltas_uint8,
                                  index_st, num_updates);
   }
+
   STATS_APP_SAMPLE_BATCH_INC_OPLOG_END();
 
-  STATS_APP_SAMPLE_BATCH_INC_PROCESS_STORAGE_BEGIN();
-  RowAccessor row_accessor;
-  ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
-  if (client_row != 0) {
-    client_row->GetRowDataPtr()->ApplyDenseBatchInc(
-        updates, index_st, num_updates);
+  if (!version_maintain_) {
+    STATS_APP_SAMPLE_BATCH_INC_PROCESS_STORAGE_BEGIN();
+    RowAccessor row_accessor;
+    ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
+    if (client_row != 0) {
+      client_row->GetRowDataPtr()->ApplyDenseBatchInc(
+          updates, index_st, num_updates);
+    }
+    STATS_APP_SAMPLE_BATCH_INC_PROCESS_STORAGE_END();
   }
-  STATS_APP_SAMPLE_BATCH_INC_PROCESS_STORAGE_END();
 }
 
 void SSPConsistencyController::DenseBatchIncDenseOpLog(

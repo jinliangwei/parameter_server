@@ -12,7 +12,8 @@ namespace petuum {
 
 DenseOpLog::DenseOpLog(int capacity, const AbstractRow *sample_row,
                        size_t dense_row_oplog_capacity,
-                       int32_t row_oplog_type):
+                       int32_t row_oplog_type,
+                       bool version_maintain):
   update_size_(sample_row->get_update_size()),
   locks_(GlobalContext::GetLockPoolSize(capacity)),
   oplog_vec_(capacity, reinterpret_cast<AbstractRowOpLog*>(0)),
@@ -20,18 +21,24 @@ DenseOpLog::DenseOpLog(int capacity, const AbstractRow *sample_row,
   dense_row_oplog_capacity_(dense_row_oplog_capacity),
   capacity_(capacity) {
   if (GlobalContext::get_consistency_model() == SSPAggr) {
-    if (row_oplog_type == RowOpLogType::kDenseRowOpLog)
-      CreateRowOpLog_ = CreateRowOpLog::CreateDenseMetaRowOpLog;
-    else if (row_oplog_type == RowOpLogType::kSparseRowOpLog)
+    if (row_oplog_type == RowOpLogType::kDenseRowOpLog) {
+      if (!version_maintain)
+        CreateRowOpLog_ = CreateRowOpLog::CreateDenseMetaRowOpLog;
+      else
+        CreateRowOpLog_ = CreateRowOpLog::CreateVersionDenseMetaRowOpLog;
+    } else if (row_oplog_type == RowOpLogType::kSparseRowOpLog)
       CreateRowOpLog_ = CreateRowOpLog::CreateSparseMetaRowOpLog;
     else if(row_oplog_type == RowOpLogType::kDenseRowOpLogFloat16)
       CreateRowOpLog_ = CreateRowOpLog::CreateDenseMetaRowOpLogFloat16;
     else
       CreateRowOpLog_ = CreateRowOpLog::CreateSparseVectorMetaRowOpLog;
   } else {
-    if (row_oplog_type == RowOpLogType::kDenseRowOpLog)
-      CreateRowOpLog_ = CreateRowOpLog::CreateDenseRowOpLog;
-    else if (row_oplog_type == RowOpLogType::kSparseRowOpLog)
+    if (row_oplog_type == RowOpLogType::kDenseRowOpLog) {
+      if (!version_maintain)
+        CreateRowOpLog_ = CreateRowOpLog::CreateDenseRowOpLog;
+      else
+        CreateRowOpLog_ = CreateRowOpLog::CreateVersionDenseRowOpLog;
+    } else if (row_oplog_type == RowOpLogType::kSparseRowOpLog)
       CreateRowOpLog_ = CreateRowOpLog::CreateSparseRowOpLog;
     else if(row_oplog_type == RowOpLogType::kDenseRowOpLogFloat16)
       CreateRowOpLog_ = CreateRowOpLog::CreateDenseRowOpLogFloat16;

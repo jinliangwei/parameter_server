@@ -12,6 +12,17 @@ AbstractRowOpLog *CreateRowOpLog::CreateDenseRowOpLog(
       update_size, row_capacity);
 }
 
+AbstractRowOpLog *CreateRowOpLog::CreateVersionDenseRowOpLog(
+    size_t update_size, const AbstractRow *sample_row, size_t row_capacity) {
+  return new VersionDenseRowOpLog(
+      std::bind(&AbstractRow::InitUpdate,
+                sample_row, std::placeholders::_1,
+                std::placeholders::_2),
+      std::bind(&AbstractRow::CheckZeroUpdate,
+                sample_row, std::placeholders::_1),
+      update_size, row_capacity);
+}
+
 AbstractRowOpLog *CreateRowOpLog::CreateSparseRowOpLog(
     size_t update_size, const AbstractRow *sample_row,
     size_t row_capacity __attribute__((unused))) {
@@ -52,6 +63,17 @@ AbstractRowOpLog *CreateRowOpLog::CreateDenseRowOpLogFloat16(
 AbstractRowOpLog *CreateRowOpLog::CreateDenseMetaRowOpLog(
     size_t update_size, const AbstractRow *sample_row, size_t row_capacity) {
   return new DenseMetaRowOpLog(
+      std::bind(&AbstractRow::InitUpdate,
+                sample_row, std::placeholders::_1,
+                std::placeholders::_2),
+      std::bind(&AbstractRow::CheckZeroUpdate,
+                sample_row, std::placeholders::_1),
+      update_size, row_capacity);
+}
+
+AbstractRowOpLog *CreateRowOpLog::CreateVersionDenseMetaRowOpLog(
+    size_t update_size, const AbstractRow *sample_row, size_t row_capacity) {
+  return new VersionDenseMetaRowOpLog(
       std::bind(&AbstractRow::InitUpdate,
                 sample_row, std::placeholders::_1,
                 std::placeholders::_2),

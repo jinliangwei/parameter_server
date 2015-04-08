@@ -142,7 +142,9 @@ protected:
 
   virtual void UpdateExistingRow(int32_t table_id, int32_t row_id,
                                  ClientRow *clien_row, ClientTable *client_table,
-                                 const void *data, size_t row_size, uint32_t version);
+                                 const void *data, size_t row_size,
+                                 uint32_t version, bool version_maintain,
+                                 uint64_t row_version);
 
   virtual void InsertNonexistentRow(int32_t table_id,
                                     int32_t row_id, ClientTable *client_table, const void *data,
@@ -154,6 +156,11 @@ protected:
   void SendClientShutDownMsgs();
 
   virtual void HandleAdjustSuppressionLevel();
+
+  uint64_t ExtractRowVersion(const void *bytes, size_t *num_bytes);
+
+  RowOpLogSerializer *FindAndCreateRowOpLogSerializer(
+    int32_t table_id, ClientTable *table);
 
   int32_t my_id_;
   int32_t my_comm_channel_idx_;
