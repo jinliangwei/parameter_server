@@ -26,6 +26,7 @@ DEFINE_int32(num_workers, 1, "number of worker threads per client");
 DEFINE_int64(refresh_freq, -1, "refresh rate");
 DEFINE_string(datafile, "", "data file");
 DEFINE_string(loss_file, "", "loss file");
+DEFINE_string(output_textfile, "", "output text");
 
 class AdaGradMF {
 public:
@@ -38,6 +39,7 @@ private:
   void LoadData(const std::string &train_file, int32_t partition_id);
   void PartitionWorkLoad(size_t num_local_workers);
   void InitModel();
+  void TakeSnapShot(const std::string &path);
 
   friend class AdaGradMFWorker;
 
@@ -144,8 +146,8 @@ void AdaGradMF::InitModel() {
   z_max_.resize(X_num_cols_);
 
   // Create a uniform RNG in the range (-1,1)
-  std::random_device rd;
-  std::mt19937 gen(rd());
+  //std::random_device rd;
+  std::mt19937 gen(12345);
   std::normal_distribution<float> dist(0, 0.1);
 
   for (auto &L_row : L_mat_) {
@@ -219,6 +221,17 @@ private:
   uint64_t X_partition_end_;
 };
 
+
+void RowToString(
+    const std::vector<float> &row,
+    std::string *str) {
+  *str = "";
+  for (int i = 0; i < row.size(); ++i) {
+    *str += std::to_string(row[i]);
+    *str += " ";
+  }
+}
+
 void AdaGradMF::Train(const std::string &train_file,
                       int num_iters) {
   boost::barrier process_barrier(FLAGS_num_workers);
@@ -251,8 +264,40 @@ void AdaGradMF::Train(const std::string &train_file,
     wptr->Join();
   }
 
+  if (FLAGS_output_textfile != "")
+    TakeSnapShot(FLAGS_output_textfile);
+
   for (auto &wptr : worker) {
     delete wptr;
+  }
+}
+
+void AdaGradMF::TakeSnapShot(const std::string &path) {
+  {
+    std::ofstream text_file;
+    text_file.open(path + ".R");
+    CHECK(text_file.good());
+    std::string str;
+    for (int i = 0; i < R_mat_.size(); ++i) {
+      const auto &row_vec = R_mat_[i];
+      RowToString(row_vec, &str);
+      text_file << i
+                << " " << str << "\n";
+    }
+    text_file.close();
+  }
+  {
+    std::ofstream text_file;
+    text_file.open(path + ".L");
+    CHECK(text_file.good());
+    std::string str;
+    for (int i = 0; i < L_mat_.size(); ++i) {
+      const auto &row_vec = L_mat_[i];
+      RowToString(row_vec, &str);
+      text_file << i
+                << " " << str << "\n";
+    }
+    text_file.close();
   }
 }
 
@@ -320,8 +365,10 @@ void *AdaGradMFWorker::operator() () {
 
       if (FLAGS_refresh_freq > 0
           && (element_counter % FLAGS_refresh_freq == 0)) {
+        //LOG(INFO) << "a = " << a
+        //          << " ApplyUpdates()";
         ApplyUpdates();
-        RefreshWeights();
+        //RefreshWeights();
         element_counter = 0;
       }
     }
@@ -341,12 +388,13 @@ void *AdaGradMFWorker::operator() () {
         for (int k = 0; k < FLAGS_K; ++k) {
           LiRj += Li[k] * Rj[k];
         }
+
         squared_loss += pow(Xij - LiRj, 2);
       }
 
       //LOG(INFO) << "squared loss = " << squared_loss;
 
-      double reg_loss = squared_loss;
+      float reg_loss = 0;
       int row_id_start = X_row_[X_partition_start_];
       int row_id_end = X_row_[X_partition_end_ - 1];
       for (int i = row_id_start; i < row_id_end; ++i) {
@@ -368,7 +416,7 @@ void *AdaGradMFWorker::operator() () {
       {
         std::lock_guard<std::mutex> lock(adagrad_mf_.loss_mtx_);
         adagrad_mf_.squared_loss_[iter] += squared_loss;
-        adagrad_mf_.reg_loss_[iter] += reg_loss;
+        adagrad_mf_.reg_loss_[iter] += reg_loss * FLAGS_lambda + squared_loss;
       }
       process_barrier_.wait();
       if (iter % num_workers_ == my_id_) {
@@ -419,6 +467,7 @@ void AdaGradMFWorker::ApplyUpdates() {
         float eta = FLAGS_init_step_size / sqrt(adagrad_mf_.z_max_[i][j]);
         R_mat_shared_[i][j] -= eta * gradient;
         R_mat_shared_[i][j] += (eta_old - eta) * g_bck;
+        adagrad_mf_.accum_gradients_[i][j] += gradient;
       }
       R_gradient_update_row.assign(FLAGS_K, 0);
     }
@@ -456,11 +505,11 @@ void AdaGradMFWorker::SgdElement(int64_t a) {
   float regularization_coeff = FLAGS_lambda;
   for (int k = 0; k < FLAGS_K; ++k) {
     // Compute update for L(i,k)
-    float L_gradient = 2*(grad_coeff * Rj[k] + regularization_coeff * Li[k]);
+    float L_gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff * Li[k]);
     L_hist_gradients_[i - L_hist_gradients_offset_][k]
         += pow(L_gradient, 2);
 
-    Li[k] -= FLAGS_init_step_size / sqrt(
+    Li[k] -= float(FLAGS_init_step_size) / sqrt(
         L_hist_gradients_[i - L_hist_gradients_offset_][k]) * L_gradient;
 
     // Compute update for R(k,j)

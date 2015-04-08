@@ -4,10 +4,10 @@
 #data_filename="/l0/netflix.dat.list.gl.perm"
 #data_filename="/l0/netflix.dat.list.gl.perm.duplicate.x10.bin.6"
 #data_filename="/l0/netflix.dat.list.gl.perm.bin.6"
-data_filename="/l0/netflix.dat.list.gl.perm.bin.24"
+#data_filename="/l0/netflix.dat.list.gl.perm.bin.24"
 #data_filename="/l0/movielens_10m.dat"
 #data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
-#data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm.bin.1"
+data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x4"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x2"
@@ -16,11 +16,11 @@ data_filename="/l0/netflix.dat.list.gl.perm.bin.24"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 #host_filename="../../machinefiles/servers.6.eth1"
-host_filename="../../machinefiles/servers.24"
-#host_filename="../../machinefiles/localserver"
+#host_filename="../../machinefiles/servers.24"
+host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=3500
+K=40
 # works for SSPPush
 #init_step_size=6e-5
 #step_dec=0.995
@@ -50,20 +50,20 @@ K=3500
 #step_dec=0.995
 
 # works for SSPAggr, emu
-init_step_size=1.3e-4
+init_step_size=1e-2
 step_dec=0.995
 
 use_step_dec=true # false to use power decay.
-lambda=0
+lambda=0.05
 data_format=list
 
 # Execution parameters:
-num_iterations=80
-consistency_model="SSPAggr"
-num_worker_threads=16
+num_iterations=16
+consistency_model="SSPPush"
+num_worker_threads=1
 #num_comm_channels_per_client=2
 num_comm_channels_per_client=1
-table_staleness=2 # effective staleness is staleness / num_clocks_per_iter.
+table_staleness=1 # effective staleness is staleness / num_clocks_per_iter.
 #N_cache_size=480190
 #N_cache_size=500000
 M_cache_size=17771
@@ -72,7 +72,7 @@ M_cache_size=17771
 #M_cache_size=71084
 #M_cache_size=20000
 num_clocks_per_iter=1
-num_clocks_per_eval=4
+num_clocks_per_eval=1
 row_oplog_type=0
 
 # SSPAggr parameters:
@@ -104,6 +104,9 @@ server_push_row_upper_bound=100
 oplog_type=Dense
 process_storage_type=BoundedDense
 
+server_table_logic=-1
+version_maintain=false
+
 no_oplog_replay=true
 numa_opt=false
 numa_policy=Even
@@ -129,12 +132,12 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_mar_4_mbssp_mag"
+output_dir="$app_dir/output"
 output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
 output_dir="${output_dir}_${num_iterations}_${thread_oplog_batch_size}_S${suppression_on}_fixed_${init_step_size}_${step_dec}"
 output_dir="${output_dir}_C${num_comm_channels_per_client}"
-output_dir="${output_dir}_${server_push_row_upper_bound}_P${num_hosts}_T${num_worker_threads}_numa${numa_opt}"
-output_dir="${output_dir}_B${bg_idle_milli}_${M_client_send_oplog_upper_bound}_row_oplog${row_oplog_type}_nsize"
+output_dir="${output_dir}_${server_push_row_upper_bound}_P${num_hosts}_T${num_worker_threads}"
+output_dir="${output_dir}_B${bg_idle_milli}_${M_client_send_oplog_upper_bound}_row_oplog${row_oplog_type}"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
   echo $output_dir
@@ -147,6 +150,10 @@ echo Output Dir is $output_dir
 log_dir=$output_dir/logs
 stats_path=${output_dir}/matrixfact_stats.yaml
 output_prefix=${output_dir}/matrixfact_out
+
+snapshot_dir="${output_dir}/snapshot"
+snapshot_clock=1
+mkdir -p ${snapshot_dir}
 
 # Kill previous instances of this program
 echo "Killing previous instances of '$progname' on servers, please wait..."
@@ -190,6 +197,8 @@ for ip in $host_list; do
     GLOG_vmodule="" \
     ${perf_cmd} \
     $prog_path \
+    --snapshot_dir ${snapshot_dir} \
+    --snapshot_clock ${snapshot_clock} \
     --stats_path ${stats_path}\
     --num_clients $num_hosts \
     --num_comm_channels_per_client $num_comm_channels_per_client \
@@ -225,6 +234,8 @@ for ip in $host_list; do
     --M_cache_size $M_cache_size \
     --M_client_send_oplog_upper_bound ${M_client_send_oplog_upper_bound} \
     --server_push_row_upper_bound ${server_push_row_upper_bound} \
+    --server_table_logic ${server_table_logic} \
+    --version_maintain=${version_maintain} \
     --init_step_size $init_step_size \
     --step_dec $step_dec \
     --use_step_dec $use_step_dec \

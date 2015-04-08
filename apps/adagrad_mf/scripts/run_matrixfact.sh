@@ -5,13 +5,14 @@ host_filename="../../machinefiles/localserver"
 
 K=40
 init_step_size=0.1
-step_dec=0.985
+step_dec=0.995
 lambda=0.05
 
-num_iterations=100
+num_iterations=16
 num_iters_per_eval=1
 num_workers=1
-refresh_freq=-1
+refresh_freq=100000
+output_textfile="test.out".C${num_iterations}
 
 # Find other Petuum paths by using the script's path
 app_dir=`readlink -f $0 | xargs dirname | xargs dirname`
@@ -25,10 +26,14 @@ loss_file=${loss_file}_${num_workers}
 loss_file=${loss_file}_${refresh_freq}_${num_iterations}.loss
 
 rm -rf ${loss_file}
+log_dir="/home/jinliang/parameter_server.git/apps/adagrad_mf/test_log"
+rm -rf ${log_dir}
+mkdir -p ${log_dir}
 
 GLOG_logtostderr=true \
     GLOG_v=-1 \
     GLOG_minloglevel=0 \
+    GLOG_log_dir=${log_dir} \
     $prog_path \
     --init_step_size $init_step_size \
     --lambda $lambda \
@@ -38,4 +43,5 @@ GLOG_logtostderr=true \
     --num_iters_per_eval $num_iters_per_eval \
     --num_workers $num_workers \
     --refresh_freq ${refresh_freq} \
-    --loss_file ${loss_file}
+    --loss_file ${loss_file} \
+    --output_textfile ${output_textfile}

@@ -223,7 +223,7 @@ void AdaRevisionLRWorker::ApplyUpdates() {
     std::lock_guard<std::mutex> lock(ada_grad_.mtx_);
     for (int i = 0; i < gradient_updates_.size(); ++i) {
       float g_bck = ada_grad_.accum_gradients_[i] - old_accum_gradients_[i];
-      CHECK(g_bck == 0);
+      //CHECK(g_bck == 0);
       float eta_old = FLAGS_init_lr / sqrt(ada_grad_.z_max_[i]);
       ada_grad_.z_[i] += gradient_updates_[i] * gradient_updates_[i]
                + 2 * gradient_updates_[i] * g_bck;
@@ -231,6 +231,8 @@ void AdaRevisionLRWorker::ApplyUpdates() {
       float eta = FLAGS_init_lr / sqrt(ada_grad_.z_max_[i]);
       (*ada_grad_.weights_)[i] -= eta * gradient_updates_[i];
       (*ada_grad_.weights_)[i] += (eta_old - eta) * g_bck;
+
+      ada_grad_.accum_gradients_[i] += gradient_updates_[i];
     }
   }
 

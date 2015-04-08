@@ -68,9 +68,9 @@ MLREngine::MLREngine() : thread_counter_(0) {
 }
 
 MLREngine::~MLREngine() {
-  // for (auto p : train_features_) {
-  //delete p;
-  //}
+  for (auto p : train_features_) {
+    delete p;
+  }
   for (auto p : test_features_) {
     delete p;
   }

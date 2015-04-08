@@ -17,8 +17,8 @@
 #include <glog/logging.h>
 
 // Command-line flags
-DEFINE_double(init_step_size, 0.5, "initial step size");
-DEFINE_double(step_size_decay, 0.99, "initial step size");
+DEFINE_double(init_step_size, 1e-2, "initial step size");
+DEFINE_double(step_size_decay, 0.995, "initial step size");
 DEFINE_double(lambda, 0.001, "L2 regularization strength.");
 DEFINE_int32(K, 100, "factorization rank");
 DEFINE_int32(num_iters, 100, "number of iterations");
@@ -27,6 +27,7 @@ DEFINE_int32(num_workers, 1, "number of worker threads per client");
 DEFINE_int64(refresh_freq, -1, "refresh rate");
 DEFINE_string(datafile, "", "data file");
 DEFINE_string(loss_file, "", "loss file");
+DEFINE_string(output_textfile, "", "output text");
 
 class AdaGradMF {
 public:
@@ -39,6 +40,7 @@ private:
   void LoadData(const std::string &train_file, int32_t partition_id);
   void PartitionWorkLoad(size_t num_local_workers);
   void InitModel();
+  void TakeSnapShot(const std::string &path);
 
   friend class AdaGradMFWorker;
 
@@ -139,8 +141,9 @@ void AdaGradMF::InitModel() {
   R_mat_.resize(X_num_cols_);
 
   // Create a uniform RNG in the range (-1,1)
-  std::random_device rd;
-  std::mt19937 gen(rd());
+  //std::random_device rd;
+  //std::mt19937 gen(rd());
+  std::mt19937 gen(1234);
   std::normal_distribution<float> dist(0, 0.1);
 
   for (auto &L_row : L_mat_) {
@@ -173,7 +176,7 @@ public:
   void *operator() ();
 
 private:
-  void SgdElement(int64_t a);
+  void SgdElement(int64_t a, float step_size);
   void ApplyUpdates();
   void RefreshWeights();
 
@@ -233,8 +236,50 @@ void AdaGradMF::Train(const std::string &train_file,
     wptr->Join();
   }
 
+  if (FLAGS_output_textfile != "")
+    TakeSnapShot(FLAGS_output_textfile);
+
   for (auto &wptr : worker) {
     delete wptr;
+  }
+}
+
+void RowToString(
+    const std::vector<float> &row,
+    std::string *str) {
+  *str = "";
+  for (int i = 0; i < row.size(); ++i) {
+    *str += std::to_string(row[i]);
+    *str += " ";
+  }
+}
+
+void AdaGradMF::TakeSnapShot(const std::string &path) {
+  {
+    std::ofstream text_file;
+    text_file.open(path + ".R");
+    CHECK(text_file.good());
+    std::string str;
+    for (int i = 0; i < R_mat_.size(); ++i) {
+      const auto &row_vec = R_mat_[i];
+      RowToString(row_vec, &str);
+      text_file << i
+                << " " << str << "\n";
+    }
+    text_file.close();
+  }
+  {
+    std::ofstream text_file;
+    text_file.open(path + ".L");
+    CHECK(text_file.good());
+    std::string str;
+    for (int i = 0; i < L_mat_.size(); ++i) {
+      const auto &row_vec = L_mat_[i];
+      RowToString(row_vec, &str);
+      text_file << i
+                << " " << str << "\n";
+    }
+    text_file.close();
   }
 }
 
@@ -280,11 +325,12 @@ AdaGradMFWorker::~AdaGradMFWorker() { }
 
 void *AdaGradMFWorker::operator() () {
   petuum::HighResolutionTimer train_timer;
+  float step_size = FLAGS_init_step_size;
   for (int iter = 0; iter < num_iters_; ++iter) {
     size_t element_counter = 0;
     RefreshWeights();
     for (int64_t a = X_partition_start_; a < X_partition_end_; ++a) {
-      SgdElement(a);
+      SgdElement(a, step_size);
       ++element_counter;
 
       if (FLAGS_refresh_freq > 0
@@ -294,12 +340,15 @@ void *AdaGradMFWorker::operator() () {
         element_counter = 0;
       }
     }
+    step_size *= FLAGS_step_size_decay;
     ApplyUpdates();
     process_barrier_.wait();
 
     if (iter % FLAGS_num_iters_per_eval == 0) {
       RefreshWeights();
       float squared_loss = 0;
+      LOG(INFO) << "begin = " << X_partition_start_
+                << " end = " << X_partition_end_;
       for (int64_t a = X_partition_start_; a < X_partition_end_; ++a) {
         const int i = X_row_[a];
         const int j = X_col_[a];
@@ -311,14 +360,17 @@ void *AdaGradMFWorker::operator() () {
           LiRj += Li[k] * Rj[k];
         }
         squared_loss += pow(Xij - LiRj, 2);
+        //LOG(INFO) << Xij << " " << LiRj << " " << squared_loss;
+
+        //LOG(INFO) << "sl = " << squared_loss;
       }
 
-      //LOG(INFO) << "squared loss = " << squared_loss;
+      LOG(INFO) << "squared loss = " << squared_loss;
 
-      double reg_loss = squared_loss;
+      float reg_loss = 0;
       int row_id_start = X_row_[X_partition_start_];
       int row_id_end = X_row_[X_partition_end_ - 1];
-      for (int i = row_id_start; i < row_id_end; ++i) {
+      for (int i = row_id_start; i <= row_id_end; ++i) {
         for (int j = 0; j < FLAGS_K; ++j) {
           reg_loss += pow(L_mat_partitioned_[i][j], 2);
           CHECK(reg_loss == reg_loss)
@@ -341,7 +393,7 @@ void *AdaGradMFWorker::operator() () {
       {
         std::lock_guard<std::mutex> lock(adagrad_mf_.loss_mtx_);
         adagrad_mf_.squared_loss_[iter] += squared_loss;
-        adagrad_mf_.reg_loss_[iter] += reg_loss;
+        adagrad_mf_.reg_loss_[iter] += FLAGS_lambda*reg_loss + squared_loss;
       }
       process_barrier_.wait();
       if (iter % num_workers_ == my_id_) {
@@ -394,7 +446,7 @@ void AdaGradMFWorker::RefreshWeights() {
 }
 
 // Performs stochastic gradient descent on X_row[a], X_col[a], X_val[a].
-void AdaGradMFWorker::SgdElement(int64_t a) {
+void AdaGradMFWorker::SgdElement(int64_t a, float step_size) {
   // Let i = X_row[a], j = X_col[a], and X(i,j) = X_val[a]
   const int i = X_row_[a];
   const int j = X_col_[a];
@@ -414,13 +466,13 @@ void AdaGradMFWorker::SgdElement(int64_t a) {
   for (int k = 0; k < FLAGS_K; ++k) {
     // Compute update for L(i,k)
     float L_gradient = 2*(grad_coeff * Rj[k] + regularization_coeff * Li[k]);
-    Li[k] -= FLAGS_init_step_size / FLAGS_step_size_decay * L_gradient;
+    Li[k] -= step_size * L_gradient;
     CHECK(Li[k] == Li[k]) << a;
     // Compute update for R(k,j)
     float R_gradient = 2*(grad_coeff * Li[k] + regularization_coeff * Rj[k]);
-    Rj[k] -= FLAGS_init_step_size / FLAGS_step_size_decay * R_gradient;
+    Rj[k] -= step_size * R_gradient;
     CHECK(Rj[k] == Rj[k]) << a;
-    R_updates_[j][k] -= FLAGS_init_step_size / FLAGS_step_size_decay * R_gradient;
+    R_updates_[j][k] -= step_size * R_gradient;
   }
 }
 
