@@ -67,6 +67,7 @@ void Server::Init(int32_t server_id,
        return true;
      for (auto table_iter = tables_.begin(); table_iter != tables_.end();
           table_iter++) {
+       //LOG(INFO) << "Take snapshot - new clock = " << new_clock;
        table_iter->second.TakeSnapShot(GlobalContext::get_snapshot_dir(),
                                        server_id_,
                                        table_iter->first, new_clock);

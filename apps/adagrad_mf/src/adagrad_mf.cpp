@@ -147,22 +147,28 @@ void AdaGradMF::InitModel() {
 
   // Create a uniform RNG in the range (-1,1)
   //std::random_device rd;
-  std::mt19937 gen(12345);
-  std::normal_distribution<float> dist(0, 0.1);
+  {
+    std::mt19937 gen(12345);
+    std::normal_distribution<float> dist(0, 0.1);
 
-  for (auto &L_row : L_mat_) {
-    L_row.resize(FLAGS_K, 0);
-    for (int k = 0; k < FLAGS_K; ++k) {
-      double init_val = dist(gen);
-      L_row[k] = init_val;
+    for (auto &L_row : L_mat_) {
+      L_row.resize(FLAGS_K, 0);
+      for (int k = 0; k < FLAGS_K; ++k) {
+        double init_val = dist(gen);
+        L_row[k] = init_val;
+      }
     }
   }
 
-  for (auto &R_row : R_mat_) {
-    R_row.resize(FLAGS_K, 0);
-    for (int k = 0; k < FLAGS_K; ++k) {
-      double init_val = dist(gen);
-      R_row[k] = init_val;
+  {
+    std::mt19937 gen(12345);
+    std::normal_distribution<float> dist(0, 0.1);
+    for (auto &R_row : R_mat_) {
+      R_row.resize(FLAGS_K, 0);
+      for (int k = 0; k < FLAGS_K; ++k) {
+        double init_val = dist(gen);
+        R_row[k] = init_val;
+      }
     }
   }
 
@@ -368,7 +374,7 @@ void *AdaGradMFWorker::operator() () {
         //LOG(INFO) << "a = " << a
         //          << " ApplyUpdates()";
         ApplyUpdates();
-        //RefreshWeights();
+        RefreshWeights();
         element_counter = 0;
       }
     }

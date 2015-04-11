@@ -168,8 +168,8 @@ void ServerThread::HandleCreateTable(int32_t sender_id,
   table_info.version_maintain
       = create_table_msg.get_version_maintain();
 
-  LOG(INFO) << "server table logic = " << table_info.server_table_logic
-            << " version maintain = " << table_info.version_maintain;
+  //LOG(INFO) << "server table logic = " << table_info.server_table_logic
+  //        << " version maintain = " << table_info.version_maintain;
 
   server_obj_.CreateTable(table_id, table_info);
 

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <map>
 #include <utility>
+#include <random>
 
 namespace petuum {
 
@@ -36,18 +37,22 @@ struct RowIDVersionLess {
 
 class AdaRevisionServerTableLogic : public AbstractServerTableLogic {
 public:
-  AdaRevisionServerTableLogic() { }
-  virtual ~AdaRevisionServerTableLogic() { }
+  AdaRevisionServerTableLogic():
+      gen_(0),
+      dist_(0) { }
+  virtual ~AdaRevisionServerTableLogic();
 
-  virtual void Init(const TableInfo &table_info);
+  virtual void Init(const TableInfo &table_info,
+                    ApplyRowBatchIncFunc RowBatchInc);
 
-  virtual void ServerRowCreated(int32_t row_id);
+  virtual void ServerRowCreated(int32_t row_id,
+                                ServerRow *server_row);
+
   virtual void ApplyRowOpLog(
       int32_t row_id,
       const int32_t *col_ids, const void *updates,
       int32_t num_updates, ServerRow *server_row,
-      uint64_t row_version, bool end_of_version,
-      ApplyRowBatchIncFunc RowBatchInc);
+      uint64_t row_version, bool end_of_version);
 
   virtual void ServerRowSent(
       int32_t row_id, uint64_t version, size_t num_clients);
@@ -64,5 +69,9 @@ private:
 
   std::vector<float> deltas_;
   std::vector<int32_t> col_ids_;
+  ApplyRowBatchIncFunc RowBatchInc_;
+
+  std::mt19937 *gen_;
+  std::normal_distribution<float> *dist_;
 };
 }

@@ -1,17 +1,19 @@
 #!/bin/bash -u
 
-data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
+#data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
+#data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
+data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 host_filename="../../machinefiles/localserver"
 
-K=40
+K=100
 init_step_size=0.1
 step_dec=0.995
 lambda=0.05
 
-num_iterations=16
+num_iterations=0
 num_iters_per_eval=1
 num_workers=1
-refresh_freq=100000
+refresh_freq=-1
 output_textfile="test.out".C${num_iterations}
 
 # Find other Petuum paths by using the script's path
@@ -26,7 +28,7 @@ loss_file=${loss_file}_${num_workers}
 loss_file=${loss_file}_${refresh_freq}_${num_iterations}.loss
 
 rm -rf ${loss_file}
-log_dir="/home/jinliang/parameter_server.git/apps/adagrad_mf/test_log"
+log_dir="/tank/projects/biglearning/jinlianw/parameter_server.git/apps/adagrad_mf/test_log"
 rm -rf ${log_dir}
 mkdir -p ${log_dir}
 

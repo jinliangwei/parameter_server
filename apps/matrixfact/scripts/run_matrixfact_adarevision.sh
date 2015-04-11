@@ -3,11 +3,12 @@
 # Input files:
 #data_filename="/l0/netflix.dat.list.gl.perm"
 #data_filename="/l0/netflix.dat.list.gl.perm.duplicate.x10.bin.6"
-#data_filename="/l0/netflix.dat.list.gl.perm.bin.6"
+data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
+#data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 #data_filename="/l0/netflix.dat.list.gl.perm.bin.24"
 #data_filename="/l0/movielens_10m.dat"
 #data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
-data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
+#data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x4"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x2"
@@ -16,11 +17,11 @@ data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 #host_filename="../../machinefiles/servers.6.eth1"
-#host_filename="../../machinefiles/servers.24"
+#host_filename="../../machinefiles/servers"
 host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=40
+K=1000
 # works for SSPPush
 #init_step_size=6e-5
 #step_dec=0.995
@@ -50,15 +51,15 @@ K=40
 #step_dec=0.995
 
 # works for SSPAggr, emu
-init_step_size=0.1
+init_step_size=0.02
 
 lambda=0.05
 data_format=list
 
 # Execution parameters:
-num_iterations=16
-consistency_model="SSPAggr"
-num_worker_threads=2
+num_iterations=8
+consistency_model="SSPPush"
+num_worker_threads=64
 #num_comm_channels_per_client=2
 num_comm_channels_per_client=1
 table_staleness=0 # effective staleness is staleness / num_clocks_per_iter.
@@ -70,7 +71,7 @@ M_cache_size=17771
 #M_cache_size=71084
 #M_cache_size=20000
 num_clocks_per_iter=1
-num_clocks_per_eval=1
+num_clocks_per_eval=4
 row_oplog_type=0
 
 # SSPAggr parameters:
@@ -80,8 +81,8 @@ bg_idle_milli=2
 #server_bandwidth_mbps=4700
 #client_bandwidth_mbps=1200
 #server_bandwidth_mbps=1800
-client_bandwidth_mbps=32
-server_bandwidth_mbps=32
+client_bandwidth_mbps=40
+server_bandwidth_mbps=40
 #client_bandwidth_mbps=6
 #server_bandwidth_mbps=6
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
@@ -130,12 +131,12 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_ada"
-output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
-output_dir="${output_dir}_${num_iterations}_${thread_oplog_batch_size}_S${suppression_on}_fixed_${init_step_size}"
+output_dir="$app_dir/output_ada_perf2"
+output_dir="${output_dir}/${progname}3_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
+output_dir="${output_dir}_${num_iterations}_${init_step_size}"
 output_dir="${output_dir}_C${num_comm_channels_per_client}"
-output_dir="${output_dir}_${server_push_row_upper_bound}_P${num_hosts}_T${num_worker_threads}_numa${numa_opt}"
-output_dir="${output_dir}_B${bg_idle_milli}_${M_client_send_oplog_upper_bound}_row_oplog${row_oplog_type}_nsize"
+output_dir="${output_dir}_${server_push_row_upper_bound}_P${num_hosts}_T${num_worker_threads}"
+output_dir="${output_dir}_${M_client_send_oplog_upper_bound}_${num_clocks_per_iter}"
 if [ -d "$output_dir" ]; then
   echo ======= Directory already exist. Make sure not to overwrite previous experiment. =======
   echo $output_dir

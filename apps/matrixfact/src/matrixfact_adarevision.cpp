@@ -41,6 +41,20 @@ DEFINE_bool(output_LR, false, "Save L and R matrices to disk or not.");
 DEFINE_uint64(M_cache_size, 10000000, "Process cache size for the R table.");
 DEFINE_uint64(M_client_send_oplog_upper_bound, 100, "M client upper bound");
 
+// http://en.wikipedia.org/wiki/Fast_inverse_square_root
+// kept original comments
+float FastInverseSqrt(float x) {
+  float x2 = x * 0.5F;
+  float y = x;
+  long i = * (long *) &y; // evil floating point bit level hacking
+  //i = 0x5f3759df - ( i >> 1 ); // what the fuck?
+  //y = * (float *) &i;
+  //y = y * (1.5F - (x2 * y * y)); // 1st iteration
+  //y  = y * (1.5F - (x2 * y * y)); // 2nd iteration, this can be removed
+
+  return y;
+}
+
 // Data variables
 size_t X_num_rows, X_num_cols; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
 std::vector<int> X_row; // Row index of each nonzero entry in the data matrix
@@ -139,7 +153,7 @@ void RowToString(
 
 void TakeSnapShot(const std::string &path,
                   const std::vector<std::vector<float> > &L_table) {
-  LOG(INFO) << __func__ << " size = " << L_table.size();
+  //LOG(INFO) << __func__ << " size = " << L_table.size();
   {
     std::ofstream text_file;
     text_file.open(path + ".L");
@@ -209,16 +223,16 @@ void SgdElement(
   petuum::DenseUpdateBatch<float> Rj_update(0, FLAGS_K);
   float grad_coeff = -(Xij - LiRj);
   float regularization_coeff = FLAGS_lambda;
+  auto &L_hist_gradients_row = L_hist_gradients[i - L_row_id_offset];
   for (int k = 0; k < FLAGS_K; ++k) {
     float gradient = 0.0;
     // Compute update for L(i,k)
     gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff * Li[k]);
-    L_hist_gradients[i - L_row_id_offset][k]
-        += pow(gradient, 2);
+    L_hist_gradients_row[k] += gradient * gradient;
     CHECK(gradient == gradient);
+    //Li[k] -= step_size * FastInverseSqrt(L_hist_gradients_row[k]) * gradient;
+    Li[k] -= step_size / sqrt(L_hist_gradients_row[k]) * gradient;
 
-    Li[k] -= step_size / sqrt(
-        L_hist_gradients[i - L_row_id_offset][k]) * gradient;
     // Compute update for R(k,j)
     gradient = 2 * (grad_coeff * Li[k] + regularization_coeff * Rj[k]);
     CHECK(gradient == gradient);
@@ -239,18 +253,8 @@ void InitMF(
 
   for (auto &L_row : L_table) {
     for (int k = 0; k < FLAGS_K; ++k) {
-      double init_val = dist(gen);
-      L_row[k] = init_val;
+      L_row[k] = dist(gen);
     }
-  }
-
-  for (int j = col_begin; j < col_end; ++j) {
-    petuum::DenseUpdateBatch<float> R_updates(0, FLAGS_K);
-    for (int k = 0; k < FLAGS_K; ++k) {
-      double init_val = dist(gen);
-      R_updates[k] = init_val;
-    }
-    R_table.DenseBatchInc(j, R_updates);
   }
 }
 
@@ -349,7 +353,7 @@ void RecordLoss(
     loss_table.Inc(obj_eval_counter, kLossTableColIdxIter, iter);
   }
 
-  LOG(INFO) << "squared loss = " << squared_loss;
+  //LOG(INFO) << "squared loss = " << squared_loss;
 
   // Compute loss.
   float L2_reg_loss = 0.;
@@ -359,7 +363,7 @@ void RecordLoss(
     }
   }
 
-  LOG(INFO) << "reg_loss = " << L2_reg_loss;
+  //LOG(INFO) << "reg_loss = " << L2_reg_loss;
 
   for (int ii = col_begin; ii < col_end; ++ii) {
     {
@@ -550,7 +554,7 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
 
   // Finish propagation
   petuum::PSTableGroup::GlobalBarrier();
-  TakeSnapShot("L.test.out", L_table);
+  //TakeSnapShot("L.test.out", L_table);
 
   // Output loss function
   if (global_worker_id == 0) {

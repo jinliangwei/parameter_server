@@ -317,8 +317,8 @@ void RecordLoss(
     std::vector<float>* Rj_cache) {
   float squared_loss = 0.;
   // for (int a = global_worker_id; a < X_row.size(); a += total_num_workers) {
-  LOG(INFO) << "begin = " << element_begin
-            << " end = " << element_end;
+  //LOG(INFO) << "begin = " << element_begin
+  //        << " end = " << element_end;
   for (int64_t a = element_begin; a < element_end; ++a) {
     // Let i = X_row[a], j = X_col[a], and X(i,j) = X_val[a]
     const int i = X_row[a];
@@ -361,7 +361,7 @@ void RecordLoss(
     }
   }
 
-  LOG(INFO) << squared_loss + L2_reg_loss;
+  //LOG(INFO) << squared_loss + L2_reg_loss;
 
   for (int ii = col_begin; ii < col_end; ++ii) {
     {
@@ -550,7 +550,7 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
 
   petuum::PSTableGroup::TurnOffEarlyComm();
 
-  TakeSnapShot("L.test.out", L_table);
+  //TakeSnapShot("L.test.out", L_table);
 
   // Finish propagation
   petuum::PSTableGroup::GlobalBarrier();

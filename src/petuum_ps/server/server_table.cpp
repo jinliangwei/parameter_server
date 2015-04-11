@@ -81,30 +81,35 @@ ServerTable::ServerTable(int32_t table_id, const TableInfo &table_info):
     GetPartialTableToSend_ = &ServerTable::GetPartialTableToSendRegular;
 
   if (table_info_.server_table_logic >= 0) {
-    LOG(INFO) << "sever table logic = " << table_info_.server_table_logic;
+    //LOG(INFO) << "sever table logic = " << table_info_.server_table_logic;
 
     server_table_logic_
         = ClassRegistry<AbstractServerTableLogic>::GetRegistry().CreateObject(
     table_info_.server_table_logic);
 
     CHECK(server_table_logic_ != 0);
-    server_table_logic_->Init(table_info_);
+    server_table_logic_->Init(table_info_,
+                              ApplyRowBatchInc_);
   }
 }
 
 ServerTable::~ServerTable() {
   if (sample_row_)
     delete sample_row_;
+
   if (sample_row_oplog_)
     delete sample_row_oplog_;
+
   for (auto &row_pair : storage_) {
     if (row_pair.second != 0)
       delete row_pair.second;
   }
+
   if (server_table_logic_ != 0) {
     delete server_table_logic_;
     server_table_logic_ = 0;
   }
+
 }
 
 ServerTable::ServerTable(ServerTable && other):
@@ -124,9 +129,8 @@ ServerTable::ServerTable(ServerTable && other):
   sample_row_oplog_ = other.sample_row_oplog_;
   other.sample_row_oplog_ = 0;
 
-  auto tmp_server_table_logic = other.server_table_logic_;
-  other.server_table_logic_ = server_table_logic_;
-  server_table_logic_ = tmp_server_table_logic;
+  server_table_logic_ = other.server_table_logic_;
+  other.server_table_logic_ = 0;
 }
 
 ServerRow *ServerTable::FindRow(int32_t row_id) {
@@ -141,15 +145,17 @@ ServerRow *ServerTable::CreateRow (int32_t row_id) {
   AbstractRow *row_data
       = ClassRegistry<AbstractRow>::GetRegistry().CreateObject(row_type);
   row_data->Init(table_info_.row_capacity);
+  ServerRow *server_row = 0;
   if (table_info_.version_maintain) {
-    storage_.insert(std::make_pair(row_id, new VersionServerRow(row_data)));
+    server_row = new VersionServerRow(row_data);
   } else {
-    storage_.insert(std::make_pair(row_id, new ServerRow(row_data)));
+    server_row = new ServerRow(row_data);
   }
+  storage_.insert(std::make_pair(row_id, server_row));
   push_row_iter_ = storage_.end();
 
   if (server_table_logic_ != 0) {
-    server_table_logic_->ServerRowCreated(row_id);
+    server_table_logic_->ServerRowCreated(row_id, server_row);
   }
 
   return storage_[row_id];
@@ -170,14 +176,13 @@ bool ServerTable::ApplyRowOpLog (int32_t row_id, const int32_t *column_ids,
   }
 
   // TODO: fix this one
-  if (server_table_logic_ == 0 || row_version == 0) {
+  if (server_table_logic_ == 0) {
     ApplyRowBatchInc_(column_ids, updates, num_updates, row_iter->second);
   } else {
     server_table_logic_->ApplyRowOpLog(
         row_id,
         column_ids, updates, num_updates,
-        row_iter->second, row_version, end_of_version,
-        ApplyRowBatchInc_);
+        row_iter->second, row_version, end_of_version);
   }
 
   return true;

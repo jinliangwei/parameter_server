@@ -9,6 +9,7 @@ MATRIXFACT_BIN = $(MATRIXFACT_DIR)/bin
 matrixfact: $(MATRIXFACT_BIN)/matrixfact
 matrixfact_split: $(MATRIXFACT_BIN)/matrixfact_split
 matrixfact_adarevision: $(MATRIXFACT_BIN)/matrixfact_adarevision
+matrixfact_adahalf: $(MATRIXFACT_BIN)/matrixfact_adahalf
 matrixfact_split16: $(MATRIXFACT_BIN)/matrixfact_split16
 process_snapshot: $(MATRIXFACT_BIN)/process_snapshot
 randomize: $(MATRIXFACT_BIN)/randomize
@@ -34,6 +35,12 @@ $(MATRIXFACT_BIN)/matrixfact_adarevision: $(MATRIXFACT_SRC)/matrixfact_adarevisi
 	$(MATRIXFACT_BIN)
 	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
 	$(MATRIXFACT_SRC)/matrixfact_adarevision.cpp \
+	$(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
+
+$(MATRIXFACT_BIN)/matrixfact_adahalf: $(MATRIXFACT_SRC)/matrixfact_adahalf.cpp $(PETUUM_PS_LIB) \
+	$(MATRIXFACT_BIN)
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) $(PETUUM_INCFLAGS) \
+	$(MATRIXFACT_SRC)/matrixfact_adahalf.cpp \
 	$(PETUUM_PS_LIB) $(PETUUM_LDFLAGS) -o $@
 
 $(MATRIXFACT_BIN)/matrixfact_split16: $(MATRIXFACT_SRC)/matrixfact_split16.cpp $(PETUUM_PS_LIB) \
@@ -70,4 +77,4 @@ clean:
 	rm -rf $(MATRIXFACT_BIN)
 
 .PHONY: matrixfact duplicate data_split matrixfact_split matrixfact_adarevision \
-	matrixfact_split16 process_snapshot clean
+	matrixfact_adahalf matrixfact_split16 process_snapshot clean

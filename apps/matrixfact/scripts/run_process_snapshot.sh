@@ -1,8 +1,8 @@
 #!/bin/bash -u
 
-snapshot_dir="/home/jinliang/parameter_server.git/apps/matrixfact/output_ada/matrixfact_adarevision_SSPPush_RelativeMagnitude_40_0_100_100_1_1600000_Sfalse_fixed_0.1_C1_100_P1_T1_numafalse_B2_100_row_oplog0_nsize/snapshot"
+snapshot_dir="/tank/projects/biglearning/jinlianw/parameter_server.git/apps/matrixfact/output_ada/matrixfact_adarevision_SSPPush_Random_100_0_100_100_1_40_Sfalse_fixed_0.1_C1_100_P1_T1_B2_100_row_oplog0/snapshot/"
 table_id=1
-clock=3
+clock=4
 num_clients=1
 num_comm_channels_per_client=1
 output_textfile=test.out.C${clock}

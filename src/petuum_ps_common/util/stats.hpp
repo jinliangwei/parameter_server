@@ -909,7 +909,7 @@ private:
   static void YamlPrintSequence(YAML::Emitter *yaml_out,
                                 const std::vector<T> &sequence);
 
-  static const int32_t kGetSampleFreq = 10000;
+  static const int32_t kGetSampleFreq = 1;
   static const int32_t kIncSampleFreq = 10000;
   static const int32_t kBatchIncSampleFreq = 10000;
   static const int32_t kBatchIncOplogSampleFreq = 10000;

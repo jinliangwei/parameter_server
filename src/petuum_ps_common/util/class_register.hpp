@@ -23,7 +23,6 @@ public:
   }
 
   void AddCreator(int32_t key, CreateFunc creator) {
-    LOG(INFO) << "creator added with key = " << key;
     creator_map_[key] = creator;
   }
 
