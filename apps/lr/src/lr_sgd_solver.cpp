@@ -45,7 +45,6 @@ void LRSGDSolver::SingleDataSGD(
     float fval = feature.GetFeatureVal(i);
     if (fval == 0) continue;
     float gradient = -diff * fval + lambda_ * w_cache_[fid];
-    LOG(INFO) << " fid: " << fid << " g: " << gradient << " fv: " << fval;
     if (gradient == 0) continue;
     gradients_[fid] += gradient;
   }
@@ -102,7 +101,7 @@ void LRSGDSolver::ApplyUpdates() {
     w_table_.DenseBatchInc(num_full_rows, w_update_batch);
   }
 
-  gradients_.resize(feature_dim_, 0);
+  gradients_.assign(feature_dim_, 0);
 }
 
 void LRSGDSolver::ReadFreshParams() {

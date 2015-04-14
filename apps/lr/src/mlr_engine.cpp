@@ -227,7 +227,6 @@ void MLREngine::Start() {
     workload_mgr.Restart();
     while (!workload_mgr.IsEnd()) {
       int32_t data_idx = workload_mgr.GetDataIdxAndAdvance();
-      LOG(INFO) << "data_idx = " <<data_idx;
       mlr_solver->SingleDataSGD(
         *train_features_[data_idx],
         train_labels_[data_idx], 0);

@@ -4,14 +4,14 @@
 num_train_data=32561
 
 data=a9a
-train_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/a9a
-test_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/a9a
+train_file_path=/home/jinliang/parameter_server.git/apps/adagrad/data/a9a
+test_file_path=/home/jinliang/parameter_server.git/apps/adagrad/data/a9a
 global_data=true
 perform_test=false
 lambda=1e-4
 w_table_num_cols=100
 # Execution parameters:
-num_epochs=2
+num_epochs=40
 num_batches_per_epoch=1
 init_step_size=0.1 # 1 for single thread.
 num_epochs_per_eval=1
@@ -119,7 +119,7 @@ for ip in $host_list; do
   numa_index=$(( client_id%num_unique_hosts ))
 
   cmd="rm -rf ${log_path}; mkdir -p ${log_path}; \
-GLOG_logtostderr=false \
+GLOG_logtostderr=true \
     GLOG_log_dir=$log_path \
       GLOG_v=-1 \
       GLOG_minloglevel=0 \

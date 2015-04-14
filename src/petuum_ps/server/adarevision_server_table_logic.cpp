@@ -52,6 +52,8 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
     int32_t num_updates, ServerRow *server_row,
     uint64_t row_version, bool end_of_version) {
 
+  LOG(INFO) <<  __func__ << " row = " << row_id;
+
   //LOG(INFO) << "row id = " << row_id
   //        << " row version = " << row_version
   //        << " end of version = " << end_of_version;
@@ -60,11 +62,12 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
   CHECK(adarev_iter != adarevision_info_.end());
   auto &adarev_row = adarev_iter->second;
   CHECK(num_updates == table_info_.row_capacity);
+  // assuming dense row with float
+  const float *updates_float
+      = reinterpret_cast<const float *>(updates);
 
   if (row_version == 0) {
     float old_accum_grad = 0;
-    const float *updates_float
-        = reinterpret_cast<const float *>(updates);
 
     for (int i = 0; i < num_updates; ++i) {
       float g_bck = adarev_row.accum_gradients_[i] - old_accum_grad;
@@ -86,10 +89,6 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
     auto &old_accum_grad = old_accum_grad_iter->second.first;
     auto &old_accum_grad_client_count
         = old_accum_grad_iter->second.second;
-
-    // assuming dense row with float
-    const float *updates_float
-        = reinterpret_cast<const float *>(updates);
 
     for (int i = 0; i < num_updates; ++i) {
       float g_bck = adarev_row.accum_gradients_[i] - old_accum_grad[i];
@@ -114,14 +113,6 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
 
   RowBatchInc_(col_ids_.data(), reinterpret_cast<void*>(deltas_.data()),
                num_updates, server_row);
-
-  //LOG(INFO) <<  __func__ << " row = " << row_id;
-
-  //DenseRow *row_data = server_row.get_row_data();
-
-  //for (int i = 0; i < num_updates; ++i) {
-  //
-  //}
 }
 
 void AdaRevisionServerTableLogic::ServerRowSent(
