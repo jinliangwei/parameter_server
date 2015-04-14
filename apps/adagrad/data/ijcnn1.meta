@@ -1,0 +1,8 @@
+num_train_total: 49990
+num_train_this_partition: 49990
+feature_dim: 22
+num_labels: 2
+format: libsvm
+feature_one_based: 1
+label_one_based: 1
+snappy_compressed: 0
