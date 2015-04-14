@@ -254,10 +254,14 @@ void *AdaRevisionLRWorker::operator() () {
   float lr = FLAGS_init_lr;
   size_t num_datum = 0;
   for (int epoch = 0; epoch < num_epochs_; ++epoch) {
+    LOG(INFO) << "epoch " << epoch;
     lr *= FLAGS_lr_decay;
     RefreshWeights();
+    int i = 0;
     for (const auto &datum : data_) {
       //LOG(INFO) << "process data";
+      LOG(INFO) << "data_idx = " << i;
+      ++i;
       const petuum::ml::AbstractFeature<float>& feature
           = *(datum.second);
       int32_t label = datum.first;
@@ -274,6 +278,8 @@ void *AdaRevisionLRWorker::operator() () {
 
           float gradient = diff * fval + FLAGS_lambda * weights_vec[fid];
           if (gradient == 0) continue;
+
+          LOG(INFO) << "fid: " << fid << " g: " << gradient << " fval: " << fval;
 
           gradient_updates_[fid] += gradient;
         }

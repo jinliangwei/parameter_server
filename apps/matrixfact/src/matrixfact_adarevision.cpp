@@ -41,20 +41,6 @@ DEFINE_bool(output_LR, false, "Save L and R matrices to disk or not.");
 DEFINE_uint64(M_cache_size, 10000000, "Process cache size for the R table.");
 DEFINE_uint64(M_client_send_oplog_upper_bound, 100, "M client upper bound");
 
-// http://en.wikipedia.org/wiki/Fast_inverse_square_root
-// kept original comments
-float FastInverseSqrt(float x) {
-  float x2 = x * 0.5F;
-  float y = x;
-  long i = * (long *) &y; // evil floating point bit level hacking
-  //i = 0x5f3759df - ( i >> 1 ); // what the fuck?
-  //y = * (float *) &i;
-  //y = y * (1.5F - (x2 * y * y)); // 1st iteration
-  //y  = y * (1.5F - (x2 * y * y)); // 2nd iteration, this can be removed
-
-  return y;
-}
-
 // Data variables
 size_t X_num_rows, X_num_cols; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
 std::vector<int> X_row; // Row index of each nonzero entry in the data matrix
@@ -181,7 +167,7 @@ void InitLTable(size_t row_capacity,
 
   size_t L_table_size = row_id_end - row_id_start + 1;
   L_table->resize(L_table_size, std::vector<float>(row_capacity, 0.0));
-  L_hist_gradients->resize(L_table_size, std::vector<float>(row_capacity, 0.0));
+  L_hist_gradients->resize(L_table_size, std::vector<float>(row_capacity, 1));
 
   *row_id_offset = row_id_start;
 }
@@ -225,19 +211,27 @@ void SgdElement(
   float regularization_coeff = FLAGS_lambda;
   auto &L_hist_gradients_row = L_hist_gradients[i - L_row_id_offset];
   for (int k = 0; k < FLAGS_K; ++k) {
-    float gradient = 0.0;
     // Compute update for L(i,k)
-    gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff * Li[k]);
-    L_hist_gradients_row[k] += gradient * gradient;
-    CHECK(gradient == gradient);
-    //Li[k] -= step_size * FastInverseSqrt(L_hist_gradients_row[k]) * gradient;
-    Li[k] -= step_size / sqrt(L_hist_gradients_row[k]) * gradient;
+    float L_gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff * Li[k]);
+    float R_gradient = 2 * (grad_coeff * Li[k] + regularization_coeff * Rj[k]);
+
+    L_hist_gradients_row[k] += L_gradient * L_gradient;
+    CHECK(L_gradient == L_gradient) << "client = " << FLAGS_client_id
+                                    << " L_gradient = " << L_gradient
+                                    << " a = " << a
+                                    << " k = " << k;
+    Li[k] -= step_size / sqrt(L_hist_gradients_row[k]) * L_gradient;
 
     // Compute update for R(k,j)
-    gradient = 2 * (grad_coeff * Li[k] + regularization_coeff * Rj[k]);
-    CHECK(gradient == gradient);
+    CHECK(R_gradient == R_gradient) << "client = " << FLAGS_client_id
+                                    << " gradient = " << R_gradient
+                                    << " a = " << a
+                                    << " k = " << k
+                                    << " hist_gradients = " << L_hist_gradients_row[k]
+                                    << " LiRj = " << LiRj
+                                    << " Xij = " << Xij;
 
-    Rj_update[k] += gradient;
+    Rj_update[k] += R_gradient;
   }
   R_table.DenseBatchInc(j, Rj_update);
 }
@@ -481,15 +475,17 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
                  row_id_offset, R_table, loss_table, &Rj_cache);
       ++element_counter;
 
-      //if (element_counter % 100000 == 0)
-      //LOG(INFO) << "a = " << a;
-
       if ((element_counter % work_per_clock == 0
            && clock < (iter + 1)*FLAGS_num_clocks_per_iter - 1)
           || (element_counter == element_end - element_begin)) {
         petuum::PSTableGroup::Clock();
         ++clock;
         STATS_APP_ACCUM_COMP_END();
+
+        // Do a fake get to avoid initial block time.
+        const int i = X_col[a];
+        petuum::RowAccessor Ri_acc;
+        R_table.Get(i, &Ri_acc);
 
         // Evaluate (if needed) before clocking.
         if (clock % FLAGS_num_clocks_per_eval == 0) {
@@ -534,12 +530,8 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
                 total_time);
           }
           ++obj_eval_counter;
-        } else {
-          // Do a fake get to avoid initial block time.
-          const int i = X_col[a];
-          petuum::RowAccessor Ri_acc;
-          R_table.Get(i, &Ri_acc);
         }
+
         // Overall computation (no eval / communication time)
         STATS_APP_ACCUM_COMP_BEGIN();
       }
@@ -652,6 +644,7 @@ int main(int argc, char *argv[]) {
   table_config.table_info.dense_row_oplog_capacity = 6;
   table_config.table_info.row_oplog_type = 0;
   table_config.table_info.server_table_logic = -1;
+  table_config.table_info.version_maintain = false;
   table_config.process_cache_capacity = 100;
   table_config.thread_cache_capacity = 1;
   table_config.oplog_capacity = 100;

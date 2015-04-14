@@ -489,6 +489,11 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
         ++clock;
         STATS_APP_ACCUM_COMP_END();
 
+        // Do a fake get to avoid initial block time.
+        const int i = X_col[a];
+        petuum::RowAccessor Ri_acc;
+        R_table.Get(i, &Ri_acc);
+
         // Evaluate (if needed) before clocking.
         if (clock % FLAGS_num_clocks_per_eval == 0) {
           STATS_APP_ACCUM_OBJ_COMP_BEGIN();
@@ -532,11 +537,6 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
                 total_time);
           }
           ++obj_eval_counter;
-        } else {
-          // Do a fake get to avoid initial block time.
-          const int i = X_col[a];
-          petuum::RowAccessor Ri_acc;
-          R_table.Get(i, &Ri_acc);
         }
         // Overall computation (no eval / communication time)
         STATS_APP_ACCUM_COMP_BEGIN();

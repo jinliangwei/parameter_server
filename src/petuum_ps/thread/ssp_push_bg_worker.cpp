@@ -92,6 +92,9 @@ void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,
       client_table = table_iter->second;
       curr_table_id = table_id;
       curr_table_version_maintain = table_iter->second->get_version_maintain();
+      if (table_id == 2) {
+        CHECK(!curr_table_version_maintain) << "current table not version maintain";
+      }
     }
 
     if (curr_table_version_maintain) {

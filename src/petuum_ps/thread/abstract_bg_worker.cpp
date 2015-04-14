@@ -806,7 +806,8 @@ void AbstractBgWorker::UpdateExistingRow(
 
     if (oplog_found && version_maintain) {
       //LOG(INFO) << __func__ << " id = " << row_id;
-      CHECK(no_oplog_replay);
+      CHECK(no_oplog_replay) << "table = " << table_id
+                             << " row = " << row_id;
       RowOpLogSerializer *row_oplog_serializer = FindAndCreateRowOpLogSerializer(
           table_id, client_table);
       AbstractRowOpLog *row_oplog = oplog_accessor.get_row_oplog();

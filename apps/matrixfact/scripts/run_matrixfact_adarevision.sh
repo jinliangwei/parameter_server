@@ -17,8 +17,8 @@ data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 #host_filename="../../machinefiles/servers.6.eth1"
-#host_filename="../../machinefiles/servers"
-host_filename="../../machinefiles/localserver"
+host_filename="../../machinefiles/servers"
+#host_filename="../../machinefiles/localserver"
 
 # MF parameters:
 K=1000
@@ -51,13 +51,13 @@ K=1000
 #step_dec=0.995
 
 # works for SSPAggr, emu
-init_step_size=0.02
+init_step_size=0.2
 
 lambda=0.05
 data_format=list
 
 # Execution parameters:
-num_iterations=8
+num_iterations=32
 consistency_model="SSPPush"
 num_worker_threads=64
 #num_comm_channels_per_client=2
@@ -71,7 +71,7 @@ M_cache_size=17771
 #M_cache_size=71084
 #M_cache_size=20000
 num_clocks_per_iter=1
-num_clocks_per_eval=4
+num_clocks_per_eval=1
 row_oplog_type=0
 
 # SSPAggr parameters:
@@ -131,8 +131,8 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_ada_perf2"
-output_dir="${output_dir}/${progname}3_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
+output_dir="$app_dir/output_ada"
+output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
 output_dir="${output_dir}_${num_iterations}_${init_step_size}"
 output_dir="${output_dir}_C${num_comm_channels_per_client}"
 output_dir="${output_dir}_${server_push_row_upper_bound}_P${num_hosts}_T${num_worker_threads}"

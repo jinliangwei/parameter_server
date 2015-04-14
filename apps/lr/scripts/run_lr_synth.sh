@@ -7,35 +7,36 @@ weight_file=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc.weigh
 # Data parameters:
 num_train_data=0  # 0 to use all training data.
 
-# Covtype
-#train_file=imnet
-#train_file_path=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/mlr/datasets/covtype.scale.train.small
-#test_file_path=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/mlr/datasets/covtype.scale.test.small
-#train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.50.train
-#test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.10.test
-#train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train
-#test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.test
-train_file=covtype
-train_file_path=/tank/projects/biglearning/jinlianw/data/binary/day_0/data.bin
-test_file_path=/tank/projects/biglearning/jinlianw/data/binary/day_0/data.bin
-global_data=false
+# synth data
+train_file=lr2sp_dim500_s5000_nnz200x1.libsvm.0
+train_file_path=/tank/projects/biglearning/wdai/datasets/lr/synth/$train_file
+#train_file=lr2sp_dim1000000_s2000000_nnz200x1.sfb.0
+#train_file=lr2sp_dim50000_s500000_nnz200x1.sfb.0
+#train_file_path=/nfs/nas-0-16/wdai/datasets/mlr/synth/$train_file
+#test_file_path=/l0/url_reputation/url.test
+global_data=true
 perform_test=false
-feature_dim=155
+#lambda=0.0001
+lambda=1e-1
+#lambda=0
+use_minibatch_lambda=true
+w_table_num_cols=400
+# Execution parameters:
+num_epochs=40
+num_batches_per_epoch=4
+learning_rate=1
+use_minibatch_lr=true
+decay_rate=0.8
+num_epochs_per_eval=1
+num_train_eval=100000   # large number to use all data.
+num_test_eval=100000
 
 # Execution parameters:
-num_epochs=1
-num_batches_per_epoch=1
-#learning_rate=1
-learning_rate=1.4
-decay_rate=0.97
-num_epochs_per_eval=1
-num_train_eval=10000   # large number to use all data.
-num_test_eval=200
 num_secs_per_checkpoint=200000
 
 # System parameters:
+#host_filename="../../machinefiles/susitna-4"
 host_filename="../../machinefiles/localserver"
-#host_filename="../../machinefiles/localserver"
 consistency_model="SSPPush"
 num_worker_threads=1
 num_comm_channels_per_client=1
@@ -89,7 +90,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 host_list=`cat $host_file | awk '{ print $2 }'`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
-output_dir="${app_dir}/output_feb_16_4x1_mbssp_debug"
+output_dir="${app_dir}/output_feb_19_4x1_mbssp_debug"
 output_dir="${output_dir}/mlr.${train_file}.S${table_staleness}.E${num_epochs}"
 output_dir="${output_dir}.M${num_unique_hosts}"
 output_dir="${output_dir}.T${num_worker_threads}"
@@ -122,7 +123,7 @@ for ip in $host_list; do
   numa_index=$(( client_id%num_unique_hosts ))
 
   cmd="rm -rf ${log_path}; mkdir -p ${log_path}; \
-GLOG_logtostderr=false \
+GLOG_logtostderr=true \
     GLOG_log_dir=$log_path \
       GLOG_v=-1 \
       GLOG_minloglevel=0 \
@@ -174,12 +175,15 @@ GLOG_logtostderr=false \
     --num_epochs=$num_epochs \
     --num_batches_per_epoch=$num_batches_per_epoch \
     --learning_rate=$learning_rate \
+    --use_minibatch_lr=${use_minibatch_lr} \
     --decay_rate=$decay_rate \
-    --num_epochs_per_eval=$num_epochs_per_eval
+    --num_epochs_per_eval=$num_epochs_per_eval \
     --sparse_weight=false \
     --output_file_prefix=$output_file_prefix \
-    --num_secs_per_checkpoint=${num_secs_per_checkpoint} \
-    --feature_dim ${feature_dim}"
+    --lambda=$lambda \
+    --use_minibatch_lambda=${use_minibatch_lambda} \
+    --w_table_num_cols=$w_table_num_cols \
+    --num_secs_per_checkpoint=${num_secs_per_checkpoint}"
 
   #ssh $ssh_options $ip $cmd &
   eval $cmd  # Use this to run locally (on one machine).

@@ -1,5 +1,7 @@
 data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.bin.8"
+#data_filename="/tank/projects/biglearning/jinlianw/data/clueweb_matrixfact_bin/clueweb_disk1.bin.8/atom"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
+#local_data_filename="/l0/clueweb_bin.8.atom"
 local_data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
 #local_data_filename="/l0/movielens_10m.dat"
 host_filename="../machinefiles/servers"

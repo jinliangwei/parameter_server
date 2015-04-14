@@ -34,7 +34,8 @@ public:
 
   size_t get_capacity() const;
 
-  const void Copy(void *to) const;
+  const void CopyToVector(void *to) const;
+  const void CopyToMem(void *to) const;
 
   const void *GetDataPtr() const;
 
@@ -110,9 +111,14 @@ size_t VectorStore<V>::get_capacity() const {
 }
 
 template<typename V>
-const void VectorStore<V>::Copy(void *to) const {
-  std::vector<V> *vec = reinterpret_cast<std::vector<V>*>(to);
-  memcpy(vec->data(), data_.data(), data_.size()*sizeof(V));
+const void VectorStore<V>::CopyToVector(void *to) const {
+  auto &vec = *(reinterpret_cast<std::vector<V>*>(to));
+  memcpy(vec.data(), data_.data(), data_.size()*sizeof(V));
+}
+
+template<typename V>
+const void VectorStore<V>::CopyToMem(void *to) const {
+  memcpy(to, data_.data(), data_.size()*sizeof(V));
 }
 
 template<typename V>

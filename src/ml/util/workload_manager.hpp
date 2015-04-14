@@ -67,11 +67,14 @@ public:
 
     // We will allow wrap-around on [data_idx_begin_, data_idx_end_)  when
     // data points aren't divisible.
-    batch_size_ = std::ceil(static_cast<float>(data_idx_end_ - data_idx_begin_)
+    batch_size_ = std::ceil(
+        static_cast<float>(data_idx_end_ - data_idx_begin_)
         / num_batches_per_epoch);
-    CHECK_LT(0, batch_size_) << "Batch size cannot be 0. # data this thread: "
-      << (data_idx_end_ - data_idx_begin_) << " num_batches_per_epoch: "
-      << num_batches_per_epoch;
+    CHECK_LT(0, batch_size_)
+        << "Batch size cannot be 0. # data this thread: "
+        << (data_idx_end_ - data_idx_begin_)
+        << " num_batches_per_epoch: "
+        << num_batches_per_epoch;
     num_data_per_epoch_ = batch_size_ * num_batches_per_epoch;
     Restart();
   }

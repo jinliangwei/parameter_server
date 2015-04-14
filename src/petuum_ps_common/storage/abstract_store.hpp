@@ -34,7 +34,7 @@ public:
   virtual V Get (int32_t col_id) const = 0;
   virtual void Inc(int32_t col_id, V delta) = 0;
 
-  virtual const void Copy(void *to) const = 0;
+  virtual const void CopyToVector(void *to) const = 0;
 
   // contiguous memory
   virtual V *GetPtr(int32_t col_id) {

@@ -65,7 +65,7 @@ private:
                      std::pair<std::vector<float>, size_t>,
                      RowIDVersionLess>
   old_accum_gradients_;
-  float init_step_size;
+  float init_step_size_;
 
   std::vector<float> deltas_;
   std::vector<int32_t> col_ids_;

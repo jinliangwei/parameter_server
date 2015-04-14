@@ -26,7 +26,12 @@ public:
   // Bulk read. Thread-safe.
   void CopyToVector(std::vector<V> *to) const {
     std::unique_lock<std::mutex> lock(DenseRowCore<V>::mtx_);
-    DenseRowCore<V>::store_.Copy(to);
+    DenseRowCore<V>::store_.CopyToVector(to);
+  }
+
+  void CopyToMem(void *to) const {
+    std::unique_lock<std::mutex> lock(DenseRowCore<V>::mtx_);
+    DenseRowCore<V>::store_.CopyToMem(to);
   }
 
   // not thread-safe

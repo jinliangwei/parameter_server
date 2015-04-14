@@ -32,7 +32,7 @@ public:
   V Get(int32_t key) const;
   void Inc(int32_t key, V delta);
 
-  const void Copy(void *to) const;
+  const void CopyToVector(void *to) const;
 
   // Number of (non-zero) entries in the underlying vector.
   size_t num_entries() const;
@@ -197,7 +197,7 @@ void SortedVectorMapStore<V>::Inc(int32_t key, V delta) {
 }
 
 template<typename V>
-const void SortedVectorMapStore<V>::Copy(void *to) const {
+const void SortedVectorMapStore<V>::CopyToVector(void *to) const {
   std::vector<Entry<V> > *vec
       = reinterpret_cast<std::vector<Entry<V> >* >(to);
   vec->resize(num_entries_);

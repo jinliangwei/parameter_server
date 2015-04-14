@@ -37,7 +37,7 @@ public:
   V Get(int32_t col_id) const;
   void Inc(int32_t col_id, V delta);
 
-  const void Copy(void *to) const;
+  const void CopyToVector(void *to) const;
 
   size_t num_entries() const;
 
@@ -65,7 +65,7 @@ void MapStore<V>::Inc(int32_t col_id, V delta) {
 }
 
 template<typename V>
-const void MapStore<V>::Copy(void *to) const {
+const void MapStore<V>::CopyToVector(void *to) const {
   std::vector<std::pair<int32_t, V> > *vec
       = reinterpret_cast<std::vector<std::pair<int32_t, V> >*>(to);
   vec->resize(data_.size());

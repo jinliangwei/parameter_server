@@ -16,8 +16,8 @@ data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 #host_filename="../../machinefiles/servers.6.eth1"
-#host_filename="../../machinefiles/servers.2"
-host_filename="../../machinefiles/localserver"
+host_filename="../../machinefiles/servers"
+#host_filename="../../machinefiles/localserver"
 
 # MF parameters:
 K=1000
@@ -50,7 +50,7 @@ K=1000
 #step_dec=0.995
 
 # works for SSPAggr, emu
-init_step_size=2e-3
+init_step_size=4e-5
 step_dec=0.995
 
 use_step_dec=true # false to use power decay.
@@ -58,7 +58,7 @@ lambda=0.05
 data_format=list
 
 # Execution parameters:
-num_iterations=8
+num_iterations=32
 consistency_model="SSPPush"
 num_worker_threads=64
 #num_comm_channels_per_client=2
@@ -72,7 +72,7 @@ M_cache_size=17771
 #M_cache_size=71084
 #M_cache_size=20000
 num_clocks_per_iter=1
-num_clocks_per_eval=4
+num_clocks_per_eval=1
 row_oplog_type=0
 
 # SSPAggr parameters:
@@ -90,7 +90,7 @@ server_bandwidth_mbps=100
 #thread_oplog_batch_size=112000
 thread_oplog_batch_size=1600000
 server_idle_milli=2
-update_sort_policy=RelativeMagnitude
+update_sort_policy=Random
 row_candidate_factor=10
 
 append_only_buffer_capacity=$((1024*1024*4))
@@ -132,7 +132,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_perf"
+output_dir="$app_dir/output_split"
 output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
 output_dir="${output_dir}_${num_iterations}_${thread_oplog_batch_size}_S${suppression_on}_fixed_${init_step_size}_${step_dec}"
 output_dir="${output_dir}_C${num_comm_channels_per_client}"
@@ -152,7 +152,7 @@ stats_path=${output_dir}/matrixfact_stats.yaml
 output_prefix=${output_dir}/matrixfact_out
 
 snapshot_dir="${output_dir}/snapshot"
-snapshot_clock=1
+snapshot_clock=-1
 mkdir -p ${snapshot_dir}
 
 # Kill previous instances of this program

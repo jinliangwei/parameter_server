@@ -16,7 +16,7 @@ AdaRevisionServerTableLogic::~AdaRevisionServerTableLogic() {
 void AdaRevisionServerTableLogic::Init(const TableInfo &table_info,
                                        ApplyRowBatchIncFunc RowBatchInc) {
   table_info_ = table_info;
-  init_step_size = FLAGS_init_step_size;
+  init_step_size_ = FLAGS_init_step_size;
 
   deltas_.resize(table_info.row_capacity, 0);
   col_ids_.resize(table_info.row_capacity, 0);
@@ -68,10 +68,10 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
 
     for (int i = 0; i < num_updates; ++i) {
       float g_bck = adarev_row.accum_gradients_[i] - old_accum_grad;
-      float eta_old = init_step_size / sqrt(adarev_row.z_max_[i]);
+      float eta_old = init_step_size_ / sqrt(adarev_row.z_max_[i]);
       adarev_row.z_[i] += updates_float[i] * updates_float[i] + 2 * updates_float[i] * g_bck;
       adarev_row.z_max_[i] = std::max(adarev_row.z_[i], adarev_row.z_max_[i]);
-      float eta = init_step_size / sqrt(adarev_row.z_max_[i]);
+      float eta = init_step_size_ / sqrt(adarev_row.z_max_[i]);
       float delta = -(eta * updates_float[i]) + (eta_old - eta) * g_bck;
       //row_data->ApplyIncUnsafe(i, &delta);
       adarev_row.accum_gradients_[i] += updates_float[i];
@@ -93,10 +93,10 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
 
     for (int i = 0; i < num_updates; ++i) {
       float g_bck = adarev_row.accum_gradients_[i] - old_accum_grad[i];
-      float eta_old = init_step_size / sqrt(adarev_row.z_max_[i]);
+      float eta_old = init_step_size_ / sqrt(adarev_row.z_max_[i]);
       adarev_row.z_[i] += updates_float[i] * updates_float[i] + 2 * updates_float[i] * g_bck;
       adarev_row.z_max_[i] = std::max(adarev_row.z_[i], adarev_row.z_max_[i]);
-      float eta = init_step_size / sqrt(adarev_row.z_max_[i]);
+      float eta = init_step_size_ / sqrt(adarev_row.z_max_[i]);
       float delta = -(eta * updates_float[i]) + (eta_old - eta) * g_bck;
       //row_data->ApplyIncUnsafe(i, &delta);
       adarev_row.accum_gradients_[i] += updates_float[i];
@@ -114,6 +114,14 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
 
   RowBatchInc_(col_ids_.data(), reinterpret_cast<void*>(deltas_.data()),
                num_updates, server_row);
+
+  //LOG(INFO) <<  __func__ << " row = " << row_id;
+
+  //DenseRow *row_data = server_row.get_row_data();
+
+  //for (int i = 0; i < num_updates; ++i) {
+  //
+  //}
 }
 
 void AdaRevisionServerTableLogic::ServerRowSent(

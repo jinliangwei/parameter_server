@@ -14,6 +14,7 @@
 #include <petuum_ps_common/include/table_gflags_declare.hpp>
 #include <petuum_ps_common/include/init_table_config.hpp>
 #include <petuum_ps_common/include/init_table_group_config.hpp>
+#include <petuum_ps/server/adarevision_server_table_logic.hpp>
 
 // Data Parameters
 DEFINE_int32(num_train_data, 0, "Number of training data. Cannot exceed the "
@@ -33,18 +34,11 @@ DEFINE_int32(num_test_eval, 20, "Use the first num_test_eval test data for "
     "intermediate eval. 0 for using all. The final eval will always use all "
     "test data.");
 DEFINE_bool(perform_test, false, "Ignore test_file if true.");
-DEFINE_bool(use_weight_file, false, "True to use init_weight_file as init");
-DEFINE_string(weight_file, "", "Use this file to initialize weight. "
-  "Format of the file is libsvm (see SaveWeight in MLRSGDSolver).");
 
 // MLR Parameters
 DEFINE_int32(num_epochs, 1, "Number of data sweeps.");
 DEFINE_int32(num_batches_per_epoch, 10, "Since we Clock() at the end of each batch, "
     "num_batches_per_epoch is effectively the number of clocks per epoch (iteration)");
-DEFINE_double(learning_rate, 0.1, "Initial step size");
-DEFINE_bool(use_minibatch_lr, true, "true to use learning_rate per "
-    "minibatch, not per instance.");
-DEFINE_double(decay_rate, 1, "multiplicative decay");
 DEFINE_int32(num_epochs_per_eval, 10, "Number of batches per evaluation");
 DEFINE_bool(sparse_weight, false, "Use sparse feature for model parameters");
 DEFINE_double(lambda, 0.1, "L2 regularization parameter, only used for binary LR.");
@@ -54,15 +48,21 @@ DEFINE_bool(use_minibatch_lambda, true, "If true, apply 1 weight decay per "
 // Misc
 DEFINE_string(output_file_prefix, "", "Results go here.");
 DEFINE_int32(w_table_num_cols, 100, "# of columns in w_table. Only used for binary LR.");
-DEFINE_int32(num_secs_per_checkpoint, 600,
-               "# of seconds between each saving to disk");
+
+DEFINE_int32(num_labels, 2, "num labels");
+DEFINE_string(data_format, "", "format");
+DEFINE_bool(feature_one_based, false, "feature one based");
+DEFINE_bool(label_one_based, false, "label one based");
+DEFINE_bool(snappy_compressed, false, "snappy compressed");
 
 const int32_t kDenseRowFloatTypeID = 0;
-//const int32_t kSparseFeatureRowFloatTypeID = 1;
 
 int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
+
+  LOG(INFO) << "num train data = " << FLAGS_num_train_data
+            << " fdim = " << FLAGS_feature_dim;
 
   mlr::MLREngine mlr_engine;
   //STATS_APP_LOAD_DATA_BEGIN();
@@ -71,6 +71,10 @@ int main(int argc, char *argv[]) {
 
   int32_t feature_dim = mlr_engine.GetFeatureDim();
   int32_t num_labels = mlr_engine.GetNumLabels();
+
+  petuum::ClassRegistry<petuum::AbstractServerTableLogic>::GetRegistry().AddCreator(
+      1, petuum::CreateObj<petuum::AbstractServerTableLogic,
+                           petuum::AdaRevisionServerTableLogic>);
 
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<float> >
     (kDenseRowFloatTypeID);
@@ -91,7 +95,7 @@ int main(int argc, char *argv[]) {
 
   table_config.table_info.row_type = kDenseRowFloatTypeID;
   table_config.table_info.row_capacity =
-    (num_labels == 2) ? FLAGS_w_table_num_cols : feature_dim;
+      (num_labels == 2) ? FLAGS_w_table_num_cols : feature_dim;
   table_config.table_info.dense_row_oplog_capacity =
     (num_labels == 2) ? FLAGS_w_table_num_cols : feature_dim;
   // Treat binary LR as special case.
@@ -108,6 +112,8 @@ int main(int argc, char *argv[]) {
   table_config.table_info.row_capacity = mlr::kNumColumnsLossTable;
   table_config.table_info.dense_row_oplog_capacity
       = mlr::kNumColumnsLossTable;
+  table_config.table_info.server_table_logic = -1;
+  table_config.table_info.version_maintain = false;
   table_config.process_cache_capacity = 1000;
   table_config.oplog_capacity = table_config.process_cache_capacity;
   petuum::PSTableGroup::CreateTable(kLossTableID, table_config);

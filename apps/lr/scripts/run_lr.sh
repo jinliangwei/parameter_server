@@ -1,46 +1,43 @@
 #!/bin/bash -u
 
-# Init weights
-use_weight_file=false
-weight_file=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc.weight
-
 # Data parameters:
-num_train_data=0  # 0 to use all training data.
+num_train_data=32561
 
-# Covtype
-#train_file=imnet
-#train_file_path=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/mlr/datasets/covtype.scale.train.small
-#test_file_path=/tank/projects/biglearning/jinlianw/parameter_server.git/apps/mlr/datasets/covtype.scale.test.small
-#train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.50.train
-#test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train.10.test
-#train_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.train
-#test_file_path=/tank/projects/biglearning/jinlianw/data/mlr_data/imagenet_llc/imnet.test
-train_file=covtype
-train_file_path=/tank/projects/biglearning/jinlianw/data/binary/day_0/data.bin
-test_file_path=/tank/projects/biglearning/jinlianw/data/binary/day_0/data.bin
-global_data=false
+data=a9a
+train_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/a9a
+test_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/a9a
+global_data=true
 perform_test=false
-feature_dim=155
-
+lambda=1e-4
+w_table_num_cols=100
 # Execution parameters:
-num_epochs=1
+num_epochs=2
 num_batches_per_epoch=1
-#learning_rate=1
-learning_rate=1.4
-decay_rate=0.97
+init_step_size=0.1 # 1 for single thread.
 num_epochs_per_eval=1
-num_train_eval=10000   # large number to use all data.
-num_test_eval=200
-num_secs_per_checkpoint=200000
+
+num_train_eval=100000   # large number to use all data.
+num_test_eval=100000
+
+num_labels=2
+data_format=libsvm
+feature_one_based=true
+label_one_based=true
+snappy_compressed=false
+feature_dim=123
 
 # System parameters:
 host_filename="../../machinefiles/localserver"
-#host_filename="../../machinefiles/localserver"
+#host_filename="../../machinefiles/servers"
 consistency_model="SSPPush"
 num_worker_threads=1
 num_comm_channels_per_client=1
 table_staleness=0
 row_oplog_type=0
+
+server_table_logic=1
+version_maintain=true
+random_init="zero"
 
 # SSPAggr parameters:
 bg_idle_milli=2
@@ -89,11 +86,11 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 host_list=`cat $host_file | awk '{ print $2 }'`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
-output_dir="${app_dir}/output_feb_16_4x1_mbssp_debug"
-output_dir="${output_dir}/mlr.${train_file}.S${table_staleness}.E${num_epochs}"
+output_dir="${app_dir}/output"
+output_dir="${output_dir}/lr.${data}.S${table_staleness}.E${num_epochs}"
 output_dir="${output_dir}.M${num_unique_hosts}"
 output_dir="${output_dir}.T${num_worker_threads}"
-output_dir="${output_dir}.B${num_batches_per_epoch}.${consistency_model}.${learning_rate}_full"
+output_dir="${output_dir}.B${num_batches_per_epoch}.${consistency_model}.${init_step_size}"
 
 output_file_prefix=$output_dir/mlr_out  # prefix for program outputs
 rm -rf ${output_dir}
@@ -162,24 +159,30 @@ GLOG_logtostderr=false \
     --no_oplog_replay=${no_oplog_replay} \
     --client_send_oplog_upper_bound ${client_send_oplog_upper_bound} \
     --server_push_row_upper_bound ${server_push_row_upper_bound} \
-    --num_train_data=$num_train_data \
+    --server_table_logic ${server_table_logic} \
+    --version_maintain=${version_maintain} \
+    --random_init ${random_init} \
     --train_file=$train_file_path \
     --global_data=$global_data \
     --test_file=$test_file_path \
     --num_train_eval=$num_train_eval \
     --num_test_eval=$num_test_eval \
     --perform_test=$perform_test \
-    --use_weight_file=$use_weight_file \
-    --weight_file=$weight_file \
     --num_epochs=$num_epochs \
     --num_batches_per_epoch=$num_batches_per_epoch \
-    --learning_rate=$learning_rate \
-    --decay_rate=$decay_rate \
-    --num_epochs_per_eval=$num_epochs_per_eval
+    --init_step_size $init_step_size \
+    --num_epochs_per_eval=$num_epochs_per_eval \
     --sparse_weight=false \
     --output_file_prefix=$output_file_prefix \
-    --num_secs_per_checkpoint=${num_secs_per_checkpoint} \
-    --feature_dim ${feature_dim}"
+    --lambda=$lambda \
+    --w_table_num_cols=$w_table_num_cols \
+    --num_labels ${num_labels} \
+    --data_format ${data_format} \
+    --feature_one_based=${feature_one_based} \
+    --label_one_based=${label_one_based} \
+    --snappy_compressed=${snappy_compressed} \
+    --feature_dim ${feature_dim} \
+    --num_train_data ${num_train_data}"
 
   #ssh $ssh_options $ip $cmd &
   eval $cmd  # Use this to run locally (on one machine).

@@ -3,8 +3,8 @@
 prog_name=lr_l2_mt
 num_workers=1
 lambda=1e-8
-data=a9a
-test_data=${data}.t
+data=/tank/projects/biglearning/jinlianw/data/lr_data/a1a
+test_data=${data}
 prog=bin/${prog_name}
 init_lr=2
 
