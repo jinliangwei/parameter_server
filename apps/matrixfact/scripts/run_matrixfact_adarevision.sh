@@ -51,18 +51,23 @@ K=1000
 #step_dec=0.995
 
 # works for SSPAggr, emu
-init_step_size=0.2
+init_step_size=0.02
 
 lambda=0.05
 data_format=list
+#nnz_per_row=208
+#nnz_per_col=5882
+
+nnz_per_row=1
+nnz_per_col=1
 
 # Execution parameters:
 num_iterations=32
 consistency_model="SSPPush"
 num_worker_threads=64
 #num_comm_channels_per_client=2
-num_comm_channels_per_client=1
-table_staleness=0 # effective staleness is staleness / num_clocks_per_iter.
+num_comm_channels_per_client=8
+table_staleness=2 # effective staleness is staleness / num_clocks_per_iter.
 #N_cache_size=480190
 #N_cache_size=500000
 M_cache_size=17771
@@ -131,7 +136,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_ada"
+output_dir="$app_dir/output_ada_ap15"
 output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
 output_dir="${output_dir}_${num_iterations}_${init_step_size}"
 output_dir="${output_dir}_C${num_comm_channels_per_client}"
@@ -158,7 +163,7 @@ for ip in $unique_host_list; do
   echo $ip
 done
 echo "All done!"
-# exit
+#exit
 
 mkdir -p $log_dir
 snapshot_dir="${output_dir}/snapshot"
@@ -242,7 +247,9 @@ for ip in $host_list; do
     --num_iterations $num_iterations \
     --num_clocks_per_iter $num_clocks_per_iter \
     --num_clocks_per_eval $num_clocks_per_eval \
-    --num_worker_threads $num_worker_threads"
+    --num_worker_threads $num_worker_threads \
+    --nnz_per_row ${nnz_per_row} \
+    --nnz_per_col ${nnz_per_col}"
 
   #echo $cmd
   ssh $ssh_options $ip $cmd&

@@ -77,7 +77,10 @@ void ThreadTable::UpdateOpLogClockSSPAggr(AbstractRowOpLog *row_oplog) {
 
 void ThreadTable::IndexUpdate(int32_t row_id) {
   int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
+  //LOG(INFO) << "partition num = " << partition_num
+  //          << " row id = " << row_id;
   oplog_index_[partition_num].insert(row_id);
+  //LOG(INFO) << "done";
 }
 
 size_t ThreadTable::IndexUpdateAndGetCount(int32_t row_id, size_t num_updates) {

@@ -223,6 +223,7 @@ void ServerThread::ReplyRowRequest(int32_t bg_id, ServerRow *server_row,
 
 void ServerThread::HandleOpLogMsg(int32_t sender_id,
                                   ClientSendOpLogMsg &client_send_oplog_msg) {
+  //LOG(INFO) << __func__;
   bool is_clock = client_send_oplog_msg.get_is_clock();
 
   uint32_t version = client_send_oplog_msg.get_version();

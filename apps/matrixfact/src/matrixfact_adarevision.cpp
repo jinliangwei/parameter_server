@@ -40,6 +40,8 @@ DEFINE_bool(output_LR, false, "Save L and R matrices to disk or not.");
 
 DEFINE_uint64(M_cache_size, 10000000, "Process cache size for the R table.");
 DEFINE_uint64(M_client_send_oplog_upper_bound, 100, "M client upper bound");
+DEFINE_int32(nnz_per_row, 1, "nnz per row");
+DEFINE_int32(nnz_per_col, 1, "nnz per col");
 
 // Data variables
 size_t X_num_rows, X_num_cols; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
@@ -212,8 +214,8 @@ void SgdElement(
   auto &L_hist_gradients_row = L_hist_gradients[i - L_row_id_offset];
   for (int k = 0; k < FLAGS_K; ++k) {
     // Compute update for L(i,k)
-    float L_gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff * Li[k]);
-    float R_gradient = 2 * (grad_coeff * Li[k] + regularization_coeff * Rj[k]);
+    float L_gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff / float(FLAGS_nnz_per_row) * Li[k]);
+    float R_gradient = 2 * (grad_coeff * Li[k] + regularization_coeff / float(FLAGS_nnz_per_col) * Rj[k]);
 
     L_hist_gradients_row[k] += L_gradient * L_gradient;
     CHECK(L_gradient == L_gradient) << "client = " << FLAGS_client_id

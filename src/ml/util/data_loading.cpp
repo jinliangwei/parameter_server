@@ -94,8 +94,11 @@ int32_t ParseLibSVMLine(
   char *ptr = 0, *endptr = 0;
   // Read label.
   int label = strtol(line.data(), &endptr, base);
-  //label = label_one_based ? label - 1 : label;
-  if (label < 0) label += 1;
+  label = label_one_based ? label - 1 : label;
+  //if (label < 0) label += 1;
+
+  CHECK((label == 0)
+        || (label == 1));
 
   ptr = endptr;
 
@@ -112,6 +115,8 @@ int32_t ParseLibSVMLine(
     ptr = endptr;
     CHECK_EQ(':', *ptr);
     ++ptr;
+
+    CHECK(feature_id >= 0 && feature_id < 29890095);
 
     (*feature_vals_cache)[nnz] = strtod(ptr, &endptr);
     ptr = endptr;

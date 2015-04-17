@@ -257,11 +257,8 @@ void *AdaRevisionLRWorker::operator() () {
     LOG(INFO) << "epoch " << epoch;
     lr *= FLAGS_lr_decay;
     RefreshWeights();
-    int i = 0;
     for (const auto &datum : data_) {
       //LOG(INFO) << "process data";
-      LOG(INFO) << "data_idx = " << i;
-      ++i;
       const petuum::ml::AbstractFeature<float>& feature
           = *(datum.second);
       int32_t label = datum.first;
@@ -279,13 +276,13 @@ void *AdaRevisionLRWorker::operator() () {
           float gradient = diff * fval + FLAGS_lambda * weights_vec[fid];
           if (gradient == 0) continue;
 
-          LOG(INFO) << "fid: " << fid << " g: " << gradient << " fval: " << fval;
-
           gradient_updates_[fid] += gradient;
         }
       }
+      num_datum++;
       if (FLAGS_refresh_freq > 0
           && num_datum % FLAGS_refresh_freq == 0) {
+        LOG(INFO) << "refresh";
         ApplyUpdates();
         RefreshWeights();
         num_datum = 0;

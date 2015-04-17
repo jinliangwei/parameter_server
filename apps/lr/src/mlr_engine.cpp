@@ -130,10 +130,10 @@ void MLREngine::Start() {
 
     if (num_labels_ == 2) {
       LOG(INFO) << "num_labels = " << num_labels_;
-      num_rows = feature_dim_ / FLAGS_w_table_num_cols;
-      if (feature_dim_ % FLAGS_w_table_num_cols != 0)
-        num_rows++;
+      num_rows = std::ceil(float(feature_dim_) / FLAGS_w_table_num_cols);
     }
+
+    LOG(INFO) << "num_rows = " << num_rows;
 
     for (int i = 0; i < num_rows; ++i) {
       w_table_.GetAsyncForced(i);
@@ -214,7 +214,8 @@ void MLREngine::Start() {
 
   petuum::PSTableGroup::TurnOnEarlyComm();
   for (int epoch = 0; epoch < num_epochs; ++epoch) {
-    LOG(INFO) << "epoch ... " << epoch;
+    if (client_id == 0 && thread_id == 0)
+      LOG(INFO) << "epoch ... " << epoch;
 
     // refresh cache if it is not refreshed from computing obj value
     if (epoch == 0
@@ -227,14 +228,19 @@ void MLREngine::Start() {
     workload_mgr.Restart();
     while (!workload_mgr.IsEnd()) {
       int32_t data_idx = workload_mgr.GetDataIdxAndAdvance();
+      if (client_id == 0 && thread_id == 0)
+        LOG_EVERY_N(INFO, 10000) << "processed " << google::COUNTER;
+
       mlr_solver->SingleDataSGD(
         *train_features_[data_idx],
         train_labels_[data_idx], 0);
 
       if (workload_mgr.IsEndOfBatch()) {
-        mlr_solver->ApplyUpdates();
-
         if (!workload_mgr.IsEnd()) {
+          mlr_solver->ApplyUpdates();
+          if (FLAGS_clock_per_minibatch) {
+            petuum::PSTableGroup::Clock();
+          }
           STATS_APP_ACCUM_COMP_END();
           mlr_solver->ReadFreshParams();
           STATS_APP_ACCUM_COMP_BEGIN();
@@ -243,12 +249,16 @@ void MLREngine::Start() {
       }
     }
     CHECK_EQ(0, batch_counter % num_batches_per_epoch);
+    LOG(INFO) << "CK1";
     mlr_solver->ApplyUpdates();
     petuum::PSTableGroup::Clock();
+    LOG(INFO) << "CK2";
 
     if (epoch % num_epochs_per_eval == 0) {
+      LOG(INFO) << "CK3";
       STATS_APP_ACCUM_COMP_END();
       mlr_solver->ReadFreshParams();
+      LOG(INFO) << "CK4";
 
       petuum::HighResolutionTimer eval_timer;
       ComputeTrainError(mlr_solver.get(), &workload_mgr_train_error,
@@ -268,7 +278,8 @@ void MLREngine::Start() {
         petuum::UpdateBatch<float> update_batch(3);
         update_batch.UpdateSet(0, kColIdxLossTableEpoch, epoch + 1);
         update_batch.UpdateSet(1, kColIdxLossTableBatch, batch_counter);
-        update_batch.UpdateSet(2, kColIdxLossTableTime, total_timer.elapsed());
+        update_batch.UpdateSet(2, kColIdxLossTableTime,
+                               total_timer.elapsed() - eval_timer.elapsed());
         loss_table_.BatchInc(eval_counter, update_batch);
 
         if (eval_counter > loss_table_staleness) {

@@ -78,7 +78,6 @@ ClientRow *SSPConsistencyController::Get(int32_t row_id, RowAccessor* row_access
 void SSPConsistencyController::Inc(int32_t row_id, int32_t column_id,
     const void* delta) {
   //LOG(INFO) << "row_id = " << row_id;
-
   thread_cache_->IndexUpdate(row_id);
 
   OpLogAccessor oplog_accessor;
@@ -160,16 +159,30 @@ void SSPConsistencyController::DenseBatchInc(
   }
 }
 
+//void SSPConsistencyController::DenseBatchIncDenseOpLog(
+//    AbstractRowOpLog *row_oplog, const uint8_t *updates,
+//    int32_t index_st, int32_t num_updates) {
+//  size_t update_size = sample_row_->get_update_size();
+//  uint8_t *oplog_delta = reinterpret_cast<uint8_t*>(
+//      row_oplog->FindCreate(index_st));
+//  for (int i = 0; i < num_updates; ++i) {
+//    int32_t col_id = i + index_st;
+//    AddUpdates_(col_id, oplog_delta, updates + update_size*i);
+//    oplog_delta += update_size;
+//  }
+//}
+
 void SSPConsistencyController::DenseBatchIncDenseOpLog(
     AbstractRowOpLog *row_oplog, const uint8_t *updates,
     int32_t index_st, int32_t num_updates) {
   size_t update_size = sample_row_->get_update_size();
-  uint8_t *oplog_delta = reinterpret_cast<uint8_t*>(
+  CHECK_EQ(update_size, sizeof(float));
+  float *oplog_delta = reinterpret_cast<float*>(
       row_oplog->FindCreate(index_st));
+  const float *updates_float = reinterpret_cast<const float*>(updates);
   for (int i = 0; i < num_updates; ++i) {
     int32_t col_id = i + index_st;
-    AddUpdates_(col_id, oplog_delta, updates + update_size*i);
-    oplog_delta += update_size;
+    oplog_delta[col_id] += updates_float[col_id];
   }
 }
 

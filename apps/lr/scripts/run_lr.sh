@@ -1,38 +1,49 @@
 #!/bin/bash -u
 
 # Data parameters:
-num_train_data=32561
+#data=kdda
+#train_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/kdda
+#test_file_path=/tank/projects/biglearning/jinlianw/data/lr_data/kdda
+#num_train_data=8407752
+#num_labels=2
+#data_format=libsvm
+#feature_one_based=true
+#label_one_based=false
+#snappy_compressed=false
+#feature_dim=20216830
 
-data=a9a
-train_file_path=/home/jinliang/parameter_server.git/apps/adagrad/data/a9a
-test_file_path=/home/jinliang/parameter_server.git/apps/adagrad/data/a9a
-global_data=true
-perform_test=false
-lambda=1e-4
-w_table_num_cols=100
-# Execution parameters:
-num_epochs=40
-num_batches_per_epoch=1
-init_step_size=0.1 # 1 for single thread.
-num_epochs_per_eval=1
-
-num_train_eval=100000   # large number to use all data.
-num_test_eval=100000
-
+data=kddb
+train_file_path=/tank/projects/biglearning/jinlianw_marmot/data/kddb
+test_file_path=/tank/projects/biglearning/jinlianw_marmot/data/kddb
+num_train_data=19264097
 num_labels=2
 data_format=libsvm
 feature_one_based=true
-label_one_based=true
+label_one_based=false
 snappy_compressed=false
-feature_dim=123
+feature_dim=29890095
+
+global_data=true
+perform_test=false
+lambda=1e-5
+w_table_num_cols=100000
+# Execution parameters:
+num_epochs=10
+num_batches_per_epoch=100
+init_step_size=0.004 # 1 for single thread.
+num_epochs_per_eval=1
+clock_per_minibatch=false
+
+num_train_eval=10000000   # large number to use all data.
+num_test_eval=100000
 
 # System parameters:
 host_filename="../../machinefiles/localserver"
 #host_filename="../../machinefiles/servers"
-consistency_model="SSPPush"
-num_worker_threads=1
-num_comm_channels_per_client=1
-table_staleness=0
+consistency_model="SSPAggr"
+num_worker_threads=4
+num_comm_channels_per_client=24
+table_staleness=2
 row_oplog_type=0
 
 server_table_logic=1
@@ -45,7 +56,7 @@ bg_idle_milli=2
 client_bandwidth_mbps=540
 server_bandwidth_mbps=540
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
-thread_oplog_batch_size=21504000
+thread_oplog_batch_size=29000000
 server_idle_milli=2
 update_sort_policy=Random
 row_candidate_factor=5
@@ -91,6 +102,7 @@ output_dir="${output_dir}/lr.${data}.S${table_staleness}.E${num_epochs}"
 output_dir="${output_dir}.M${num_unique_hosts}"
 output_dir="${output_dir}.T${num_worker_threads}"
 output_dir="${output_dir}.B${num_batches_per_epoch}.${consistency_model}.${init_step_size}"
+output_dir="${output_dir}.C${num_comm_channels_per_client}.lambda${lambda}"
 
 output_file_prefix=$output_dir/mlr_out  # prefix for program outputs
 rm -rf ${output_dir}
@@ -165,8 +177,8 @@ GLOG_logtostderr=true \
     --train_file=$train_file_path \
     --global_data=$global_data \
     --test_file=$test_file_path \
-    --num_train_eval=$num_train_eval \
-    --num_test_eval=$num_test_eval \
+    --num_train_eval $num_train_eval \
+    --num_test_eval $num_test_eval \
     --perform_test=$perform_test \
     --num_epochs=$num_epochs \
     --num_batches_per_epoch=$num_batches_per_epoch \
@@ -175,14 +187,15 @@ GLOG_logtostderr=true \
     --sparse_weight=false \
     --output_file_prefix=$output_file_prefix \
     --lambda=$lambda \
-    --w_table_num_cols=$w_table_num_cols \
+    --w_table_num_cols $w_table_num_cols \
     --num_labels ${num_labels} \
     --data_format ${data_format} \
     --feature_one_based=${feature_one_based} \
     --label_one_based=${label_one_based} \
     --snappy_compressed=${snappy_compressed} \
     --feature_dim ${feature_dim} \
-    --num_train_data ${num_train_data}"
+    --num_train_data ${num_train_data} \
+    --clock_per_minibatch=${clock_per_minibatch}"
 
   #ssh $ssh_options $ip $cmd &
   eval $cmd  # Use this to run locally (on one machine).

@@ -42,8 +42,6 @@ DEFINE_int32(num_batches_per_epoch, 10, "Since we Clock() at the end of each bat
 DEFINE_int32(num_epochs_per_eval, 10, "Number of batches per evaluation");
 DEFINE_bool(sparse_weight, false, "Use sparse feature for model parameters");
 DEFINE_double(lambda, 0.1, "L2 regularization parameter, only used for binary LR.");
-DEFINE_bool(use_minibatch_lambda, true, "If true, apply 1 weight decay per "
-    "minibatch rather than per instance.");
 
 // Misc
 DEFINE_string(output_file_prefix, "", "Results go here.");
@@ -54,6 +52,7 @@ DEFINE_string(data_format, "", "format");
 DEFINE_bool(feature_one_based, false, "feature one based");
 DEFINE_bool(label_one_based, false, "label one based");
 DEFINE_bool(snappy_compressed, false, "snappy compressed");
+DEFINE_bool(clock_per_minibatch, false, "clock per minibatch");
 
 const int32_t kDenseRowFloatTypeID = 0;
 
@@ -99,8 +98,9 @@ int main(int argc, char *argv[]) {
   table_config.table_info.dense_row_oplog_capacity =
     (num_labels == 2) ? FLAGS_w_table_num_cols : feature_dim;
   // Treat binary LR as special case.
-  table_config.process_cache_capacity = (num_labels == 2) ?
-    std::ceil(static_cast<float>(feature_dim) / FLAGS_w_table_num_cols) : num_labels;
+  table_config.process_cache_capacity
+      = (num_labels == 2) ?
+      std::ceil(static_cast<float>(feature_dim) / FLAGS_w_table_num_cols) : num_labels;
   LOG(INFO) << "feature dim = " << feature_dim;
   LOG(INFO) << "process cache capacity = " << table_config.process_cache_capacity;
   table_config.oplog_capacity = table_config.process_cache_capacity;

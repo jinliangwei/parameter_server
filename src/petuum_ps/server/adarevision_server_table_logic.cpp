@@ -52,8 +52,6 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
     int32_t num_updates, ServerRow *server_row,
     uint64_t row_version, bool end_of_version) {
 
-  LOG(INFO) <<  __func__ << " row = " << row_id;
-
   //LOG(INFO) << "row id = " << row_id
   //        << " row version = " << row_version
   //        << " end of version = " << end_of_version;

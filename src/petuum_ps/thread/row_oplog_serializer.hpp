@@ -68,7 +68,7 @@ public:
   }
 
 private:
-  static const size_t capacity_ = 16*k1_Mi;
+  static const size_t capacity_ = 4*k1_Mi;
   size_t size_;
   uint8_t* mem_;
   AbstractRowOpLog::SerializeFunc SerializeOpLog_;

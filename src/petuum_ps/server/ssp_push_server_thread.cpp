@@ -42,6 +42,7 @@ void SSPPushServerThread::ServerPushRow() {
     pending_clock_push_row_ = true;
     return;
   }
+  //LOG(INFO) << __func__;
   STATS_SERVER_ACCUM_PUSH_ROW_BEGIN();
   server_obj_.CreateSendServerPushRowMsgs(SendServerPushRowMsg);
   STATS_SERVER_ACCUM_PUSH_ROW_END();

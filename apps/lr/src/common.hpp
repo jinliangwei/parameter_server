@@ -21,7 +21,6 @@ DECLARE_int32(num_batches_per_epoch);
 DECLARE_int32(num_epochs_per_eval);
 DECLARE_bool(sparse_weight);
 DECLARE_double(lambda);
-DECLARE_bool(use_minibatch_lambda);
 
 DECLARE_string(output_file_prefix);
 DECLARE_int32(num_secs_per_checkpoint);
@@ -32,6 +31,7 @@ DECLARE_string(data_format);
 DECLARE_bool(feature_one_based);
 DECLARE_bool(label_one_based);
 DECLARE_bool(snappy_compressed);
+DECLARE_bool(clock_per_minibatch);
 
 const int32_t kWTableID = 0;
 const int32_t kLossTableID = 1;
