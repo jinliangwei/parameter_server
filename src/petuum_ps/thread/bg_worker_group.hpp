@@ -48,7 +48,6 @@ protected:
 
 private:
   virtual void CreateBgWorkers();
-
 };
 
 }

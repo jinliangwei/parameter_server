@@ -12,7 +12,7 @@ namespace petuum {
 /*
  * A thin layer to manage a chunk of contiguous memory which may be allocated
  * outside (via MemAlloc) or inside (via Alloc) the class.
- * This class is meant to be simple (cheap) so it does not chech any assumption
+ * This class is meant to be simple (cheap) so it does not check any assumption
  * that a function assumes when that function is invoked. If the assumption is
  * not satisfied the behavior of the current and future operation on MemBlock
  * is undefined.

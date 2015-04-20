@@ -136,13 +136,7 @@ void NameNodeThread::HandleCreateTable (int32_t sender_id,
   CreateTableMsg &create_table_msg) {
   int32_t table_id = create_table_msg.get_table_id();
   if (create_table_map_.count(table_id) == 0) {
-    TableInfo table_info;
-    table_info.table_staleness = create_table_msg.get_staleness();
-    table_info.row_type = create_table_msg.get_row_type();
-    table_info.row_capacity = create_table_msg.get_row_capacity();
-    table_info.oplog_dense_serialized = create_table_msg.get_oplog_dense_serialized();
-    table_info.row_oplog_type = create_table_msg.get_row_oplog_type();
-    table_info.dense_row_oplog_capacity = create_table_msg.get_dense_row_oplog_capacity();
+    TableInfo table_info = create_table_msg.get_table_info();
     server_obj_.CreateTable(table_id, table_info);
 
     create_table_map_.insert(std::make_pair(table_id, CreateTableInfo())); // access it to call default constructor

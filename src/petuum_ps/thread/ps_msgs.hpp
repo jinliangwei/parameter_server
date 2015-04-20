@@ -111,13 +111,8 @@ public:
     NumberedMsg(msg) {}
 
   size_t get_size() {
-    return NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t)  + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
-        + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(int32_t) + sizeof(bool);
+    return NumberedMsg::get_size() + sizeof(int32_t)
+        + sizeof(ClientTableConfig);
   }
 
   int32_t &get_table_id() {
@@ -125,176 +120,10 @@ public:
       + NumberedMsg::get_size()));
   }
 
-  int32_t &get_staleness() {
-    return *(reinterpret_cast<int32_t *>(mem_.get_mem()
-      + NumberedMsg::get_size() + sizeof(int32_t)));
-  }
-
-  int32_t &get_row_type() {
-    return *(reinterpret_cast<int32_t*>(mem_.get_mem()
-      + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)));
-  }
-
-  size_t &get_row_capacity() {
-    return *(reinterpret_cast<size_t*>(mem_.get_mem()
-     + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-     + sizeof(int32_t)));
-  }
-
-  size_t &get_process_cache_capacity() {
-    return *(reinterpret_cast<size_t*>(mem_.get_mem()
-     + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-     + sizeof(int32_t) + sizeof(size_t)));
-  }
-
-  size_t &get_thread_cache_capacity() {
-    return *(reinterpret_cast<size_t*>(mem_.get_mem()
-     + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-     + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)));
-  }
-
-  size_t &get_oplog_capacity() {
-    return *(reinterpret_cast<size_t*>(mem_.get_mem()
-      + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-      + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-      + sizeof(size_t)));
-  }
-
-  bool &get_oplog_dense_serialized() {
-    return *(reinterpret_cast<bool*>(mem_.get_mem()
-      + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-      + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-      + sizeof(size_t) + sizeof(size_t)));
-  }
-
-  int32_t &get_row_oplog_type() {
-    return *(reinterpret_cast<int32_t*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool)));
-  }
-
-  size_t &get_dense_row_oplog_capacity() {
-    return *(reinterpret_cast<size_t*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)));
-  }
-
-  OpLogType &get_oplog_type() {
-    return *(reinterpret_cast<OpLogType*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t)));
-  }
-
-  AppendOnlyOpLogType &get_append_only_oplog_type() {
-    return *(reinterpret_cast<AppendOnlyOpLogType*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) ));
-  }
-
-  size_t &get_append_only_buff_capacity() {
-    return *(reinterpret_cast<size_t*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType) ));
-  }
-
-  size_t &get_per_thread_append_only_buff_pool_size() {
-   return *(reinterpret_cast<size_t*>(
-       mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) ));
-  }
-
-  int32_t &get_bg_apply_append_oplog_freq() {
-   return *(reinterpret_cast<int32_t*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) + sizeof(size_t) ));
-  }
-
-  ProcessStorageType &get_process_storage_type() {
-   return *(reinterpret_cast<ProcessStorageType*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t) ));
-  }
-
-  bool &get_no_oplog_replay() {
-    return *(reinterpret_cast<bool*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
-        + sizeof(ProcessStorageType) ));
-  }
-
-  size_t &get_server_push_row_upper_bound() {
-    return *(reinterpret_cast<size_t*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
-        + sizeof(ProcessStorageType) + sizeof(bool) ));
-  }
-
-  size_t &get_client_send_oplog_upper_bound() {
-    return *(reinterpret_cast<size_t*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
-        + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t) ));
-  }
-
-  int32_t &get_server_table_logic() {
-    return *(reinterpret_cast<int32_t*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
-        + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t)
-        + sizeof(size_t) ));
-  }
-
-  bool &get_version_maintain() {
-    return *(reinterpret_cast<bool*>(
-        mem_.get_mem()
-        + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(OpLogType) +sizeof(AppendOnlyOpLogType)
-        + sizeof(size_t) + sizeof(size_t) + sizeof(int32_t)
-        + sizeof(ProcessStorageType) + sizeof(bool) + sizeof(size_t)
-        + sizeof(size_t) + sizeof(int32_t) ));
+  ClientTableConfig &get_client_table_config() {
+    return *(reinterpret_cast<ClientTableConfig*>(
+        mem_.get_mem() + sizeof(int32_t)
+        + NumberedMsg::get_size()));
   }
 
 protected:
@@ -323,74 +152,19 @@ public:
     NumberedMsg(msg) {}
 
   size_t get_size() {
-    return NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(size_t)
-        + sizeof(bool) + sizeof(int32_t) + sizeof(size_t) + sizeof(size_t)
-        + sizeof(int32_t) + sizeof(bool);
+    return NumberedMsg::get_size() + sizeof(int32_t)
+        + sizeof(TableInfo);
   }
 
   int32_t &get_table_id() {
     return *(reinterpret_cast<int32_t*>(mem_.get_mem()
-      + NumberedMsg::get_size()));
+                                        + NumberedMsg::get_size()));
   }
 
-  int32_t &get_staleness() {
-    return *(reinterpret_cast<int32_t*>(mem_.get_mem()
-      + NumberedMsg::get_size() + sizeof(int32_t)));
-  }
-
-  int32_t &get_row_type() {
-    return *(reinterpret_cast<int32_t*>(mem_.get_mem() + NumberedMsg::get_size()
-      + sizeof(int32_t) + sizeof(int32_t)));
-  }
-
-  size_t &get_row_capacity() {
-    return *(reinterpret_cast<size_t*>(mem_.get_mem() + NumberedMsg::get_size()
-      + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)));
-  }
-
-  bool &get_oplog_dense_serialized() {
-    return *(reinterpret_cast<bool*>(
+  TableInfo &get_table_info() {
+    return *(reinterpret_cast<TableInfo*>(
         mem_.get_mem() + NumberedMsg::get_size()
-        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(size_t)));
-  }
-
-  int32_t &get_row_oplog_type() {
-    return *(reinterpret_cast<int32_t*>(
-        mem_.get_mem() + NumberedMsg::get_size()
-        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(bool)));
-  }
-
-  size_t &get_dense_row_oplog_capacity() {
-    return *(reinterpret_cast<size_t*>(
-        mem_.get_mem() + NumberedMsg::get_size()
-        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(bool) + sizeof(int32_t)));
-  }
-
-  size_t &get_server_push_row_upper_bound() {
-    return *(reinterpret_cast<size_t*>(
-        mem_.get_mem() + NumberedMsg::get_size()
-        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(bool) + sizeof(int32_t) +sizeof(size_t) ));
-  }
-
-  int32_t &get_server_table_logic() {
-    return *(reinterpret_cast<int32_t*>(
-        mem_.get_mem() + NumberedMsg::get_size()
-        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(bool) + sizeof(int32_t) +sizeof(size_t)
-        + sizeof(size_t) ));
-  }
-
-  bool &get_version_maintain() {
-return *(reinterpret_cast<bool*>(
-        mem_.get_mem() + NumberedMsg::get_size()
-        + sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t)
-        + sizeof(size_t) + sizeof(bool) + sizeof(int32_t) +sizeof(size_t)
-        + sizeof(size_t) + sizeof(int32_t) ));
+        + sizeof(int32_t)));
   }
 
 protected:

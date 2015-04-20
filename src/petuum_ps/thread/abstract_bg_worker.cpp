@@ -71,49 +71,9 @@ void AbstractBgWorker::AppThreadDeregister() {
 bool AbstractBgWorker::CreateTable(int32_t table_id,
                                    const ClientTableConfig& table_config) {
   {
-    const TableInfo &table_info = table_config.table_info;
     BgCreateTableMsg bg_create_table_msg;
     bg_create_table_msg.get_table_id() = table_id;
-    bg_create_table_msg.get_staleness() = table_info.table_staleness;
-    bg_create_table_msg.get_row_type() = table_info.row_type;
-    bg_create_table_msg.get_row_capacity() = table_info.row_capacity;
-    bg_create_table_msg.get_process_cache_capacity()
-      = table_config.process_cache_capacity;
-    bg_create_table_msg.get_thread_cache_capacity()
-      = table_config.thread_cache_capacity;
-    bg_create_table_msg.get_oplog_capacity() = table_config.oplog_capacity;
-
-    bg_create_table_msg.get_oplog_dense_serialized()
-        = table_info.oplog_dense_serialized;
-    bg_create_table_msg.get_row_oplog_type()
-        = table_info.row_oplog_type;
-    bg_create_table_msg.get_dense_row_oplog_capacity()
-        = table_info.dense_row_oplog_capacity;
-
-    bg_create_table_msg.get_oplog_type()
-        = table_config.oplog_type;
-    bg_create_table_msg.get_append_only_oplog_type()
-        = table_config.append_only_oplog_type;
-    bg_create_table_msg.get_append_only_buff_capacity()
-        = table_config.append_only_buff_capacity;
-    bg_create_table_msg.get_per_thread_append_only_buff_pool_size()
-        = table_config.per_thread_append_only_buff_pool_size;
-    bg_create_table_msg.get_bg_apply_append_oplog_freq()
-        = table_config.bg_apply_append_oplog_freq;
-    bg_create_table_msg.get_process_storage_type()
-        = table_config.process_storage_type;
-    bg_create_table_msg.get_no_oplog_replay()
-        = table_config.no_oplog_replay;
-    bg_create_table_msg.get_server_push_row_upper_bound()
-        = table_config.table_info.server_push_row_upper_bound;
-    bg_create_table_msg.get_client_send_oplog_upper_bound()
-        = table_config.client_send_oplog_upper_bound;
-
-    bg_create_table_msg.get_server_table_logic()
-        = table_info.server_table_logic;
-
-    bg_create_table_msg.get_version_maintain()
-        = table_info.version_maintain;
+    bg_create_table_msg.get_client_table_config() = table_config;
 
     size_t sent_size = SendMsg(
         reinterpret_cast<MsgBase*>(&bg_create_table_msg));
@@ -300,8 +260,9 @@ void AbstractBgWorker::HandleCreateTables() {
   for (int32_t num_created_tables = 0;
        num_created_tables < GlobalContext::get_num_tables();
        ++num_created_tables) {
-    int32_t table_id;
-    int32_t sender_id;
+
+    int32_t table_id = 0;
+    int32_t sender_id = 0;
     ClientTableConfig client_table_config;
 
     {
@@ -311,70 +272,12 @@ void AbstractBgWorker::HandleCreateTables() {
       CHECK_EQ(msg_type, kBgCreateTable);
       BgCreateTableMsg bg_create_table_msg(zmq_msg.data());
       // set up client table config
-      client_table_config.table_info.table_staleness
-        = bg_create_table_msg.get_staleness();
-      client_table_config.table_info.row_type
-	= bg_create_table_msg.get_row_type();
-      client_table_config.table_info.row_capacity
-	= bg_create_table_msg.get_row_capacity();
-      client_table_config.process_cache_capacity
-        = bg_create_table_msg.get_process_cache_capacity();
-      client_table_config.thread_cache_capacity
-	= bg_create_table_msg.get_thread_cache_capacity();
-      client_table_config.oplog_capacity
-	= bg_create_table_msg.get_oplog_capacity();
-
-      client_table_config.table_info.oplog_dense_serialized
-          = bg_create_table_msg.get_oplog_dense_serialized();
-      client_table_config.table_info.row_oplog_type
-          = bg_create_table_msg.get_row_oplog_type();
-      client_table_config.table_info.dense_row_oplog_capacity
-          = bg_create_table_msg.get_dense_row_oplog_capacity();
-      client_table_config.table_info.server_push_row_upper_bound
-          = bg_create_table_msg.get_server_push_row_upper_bound();
-      client_table_config.table_info.server_table_logic
-          = bg_create_table_msg.get_server_table_logic();
-      client_table_config.table_info.version_maintain
-          = bg_create_table_msg.get_version_maintain();
-
-      client_table_config.oplog_type
-          = bg_create_table_msg.get_oplog_type();
-      client_table_config.append_only_oplog_type
-          = bg_create_table_msg.get_append_only_oplog_type();
-      client_table_config.append_only_buff_capacity
-          = bg_create_table_msg.get_append_only_buff_capacity();
-      client_table_config.per_thread_append_only_buff_pool_size
-          = bg_create_table_msg.get_per_thread_append_only_buff_pool_size();
-      client_table_config.bg_apply_append_oplog_freq
-          = bg_create_table_msg.get_bg_apply_append_oplog_freq();
-      client_table_config.process_storage_type
-          = bg_create_table_msg.get_process_storage_type();
-      client_table_config.no_oplog_replay
-          = bg_create_table_msg.get_no_oplog_replay();
-      client_table_config.client_send_oplog_upper_bound
-          = bg_create_table_msg.get_client_send_oplog_upper_bound();
+      client_table_config = bg_create_table_msg.get_client_table_config();
+      table_id = bg_create_table_msg.get_table_id();
 
       CreateTableMsg create_table_msg;
-      create_table_msg.get_table_id() = bg_create_table_msg.get_table_id();
-      create_table_msg.get_staleness() = bg_create_table_msg.get_staleness();
-      create_table_msg.get_row_type() = bg_create_table_msg.get_row_type();
-      create_table_msg.get_row_capacity()
-	= bg_create_table_msg.get_row_capacity();
-      create_table_msg.get_oplog_dense_serialized()
-          = bg_create_table_msg.get_oplog_dense_serialized();
-      create_table_msg.get_row_oplog_type()
-          = bg_create_table_msg.get_row_oplog_type();
-      create_table_msg.get_dense_row_oplog_capacity()
-          = bg_create_table_msg.get_dense_row_oplog_capacity();
-      create_table_msg.get_server_push_row_upper_bound()
-          = bg_create_table_msg.get_server_push_row_upper_bound();
-      create_table_msg.get_server_table_logic()
-          = bg_create_table_msg.get_server_table_logic();
-
-      create_table_msg.get_version_maintain()
-          = bg_create_table_msg.get_version_maintain();
-
-      table_id = create_table_msg.get_table_id();
+      create_table_msg.get_table_id() = table_id;
+      create_table_msg.get_table_info() = client_table_config.table_info;
 
       // send msg to name node
       int32_t name_node_id = GlobalContext::get_name_node_id();

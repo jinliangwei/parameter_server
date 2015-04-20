@@ -145,29 +145,7 @@ bool ServerThread::HandleShutDownMsg() {
 void ServerThread::HandleCreateTable(int32_t sender_id,
                                      CreateTableMsg &create_table_msg) {
   int32_t table_id = create_table_msg.get_table_id();
-
-  // I'm not name node
-  CreateTableReplyMsg create_table_reply_msg;
-  create_table_reply_msg.get_table_id() = create_table_msg.get_table_id();
-  size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(sender_id,
-    create_table_reply_msg.get_mem(), create_table_reply_msg.get_size());
-  CHECK_EQ(sent_size, create_table_reply_msg.get_size());
-
-  TableInfo table_info;
-  table_info.table_staleness = create_table_msg.get_staleness();
-  table_info.row_type = create_table_msg.get_row_type();
-  table_info.row_capacity = create_table_msg.get_row_capacity();
-  table_info.oplog_dense_serialized
-      = create_table_msg.get_oplog_dense_serialized();
-  table_info.row_oplog_type
-      = create_table_msg.get_row_oplog_type();
-  table_info.dense_row_oplog_capacity
-      = create_table_msg.get_dense_row_oplog_capacity();
-  table_info.server_table_logic
-      = create_table_msg.get_server_table_logic();
-  table_info.version_maintain
-      = create_table_msg.get_version_maintain();
-
+  TableInfo table_info = create_table_msg.get_table_info();
   //LOG(INFO) << "server table logic = " << table_info.server_table_logic
   //        << " version maintain = " << table_info.version_maintain;
 
@@ -176,6 +154,14 @@ void ServerThread::HandleCreateTable(int32_t sender_id,
   min_table_staleness_
       = std::min(min_table_staleness_,
                  table_info.table_staleness);
+
+  // I'm not name node
+  CreateTableReplyMsg create_table_reply_msg;
+  create_table_reply_msg.get_table_id() = table_id;
+  size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(sender_id,
+    create_table_reply_msg.get_mem(), create_table_reply_msg.get_size());
+  CHECK_EQ(sent_size, create_table_reply_msg.get_size());
+
 
   //LOG(INFO) << "table_info.table_staleness = "
   //        << table_info.table_staleness

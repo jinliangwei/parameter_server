@@ -180,7 +180,9 @@ struct TableInfo {
       dense_row_oplog_capacity(0),
       server_push_row_upper_bound(100),
       server_table_logic(-1),
-      version_maintain(false) { }
+      version_maintain(false) {
+    CHECK(std::is_pod<TableInfo>::value);
+  }
 
   // table_staleness is used for SSP and ClockVAP.
   int32_t table_staleness;
@@ -208,6 +210,7 @@ struct TableInfo {
 };
 
 // ClientTableConfig is used by client only.
+// must be POD
 struct ClientTableConfig {
   ClientTableConfig():
       process_cache_capacity(0),
@@ -220,7 +223,9 @@ struct ClientTableConfig {
       bg_apply_append_oplog_freq(1),
       process_storage_type(BoundedDense),
       no_oplog_replay(false),
-      client_send_oplog_upper_bound(100) { }
+      client_send_oplog_upper_bound(100) {
+    CHECK(std::is_pod<ClientTableConfig>::value);
+  }
 
   TableInfo table_info;
 

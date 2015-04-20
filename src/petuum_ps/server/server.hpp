@@ -38,21 +38,29 @@ public:
             MsgTracker *msg_tracker);
 
   void CreateTable(int32_t table_id, TableInfo &table_info);
+
   ServerRow *FindCreateRow(int32_t table_id, int32_t row_id);
+
   bool ClockUntil(int32_t bg_id, int32_t clock);
+
   void AddRowRequest(int32_t bg_id, int32_t table_id, int32_t row_id,
-    int32_t clock);
+                     int32_t clock);
+
   void GetFulfilledRowRequests(std::vector<ServerRowRequest> *requests);
+
   void ApplyOpLogUpdateVersion(
       const void *oplog, size_t oplog_size, int32_t bg_thread_id,
       uint32_t version);
+
   int32_t GetMinClock();
+
   int32_t GetBgVersion(int32_t bg_thread_id);
 
   typedef void (*PushMsgSendFunc)(int32_t bg_id, ServerPushRowMsg *msg,
                                   bool is_last, int32_t version,
                                   int32_t server_min_clock,
                                   MsgTracker *msg_tracker);
+
   size_t CreateSendServerPushRowMsgs(PushMsgSendFunc PushMsgSender,
                                      bool clock_changed = true);
 
@@ -67,6 +75,7 @@ private:
   VectorClock bg_clock_;
 
   boost::unordered_map<int32_t, ServerTable> tables_;
+
   // mapping <clock, table id> to an array of read requests
   std::map<int32_t,
     boost::unordered_map<int32_t,
