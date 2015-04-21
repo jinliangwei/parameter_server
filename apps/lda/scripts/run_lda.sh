@@ -48,7 +48,8 @@ for ip in $host_list; do
   log_path=${log_dir}.${client_id}
   numa_index=$(( client_id%num_unique_hosts ))
 
-  cmd="rm -rf ${log_path}; mkdir -p ${log_path};
+  cmd="ls /l0;
+rm -rf ${log_path}; mkdir -p ${log_path};
 GLOG_logtostderr=true \
       GLOG_log_dir=${log_path} \
       GLOG_v=-1 \
@@ -87,6 +88,8 @@ GLOG_logtostderr=true \
     --bg_apply_append_oplog_freq ${bg_apply_append_oplog_freq} \
     --process_storage_type ${process_storage_type} \
     --no_oplog_replay=${no_oplog_replay} \
+    --server_push_row_upper_bound ${server_push_row_upper_bound} \
+    --client_send_oplog_upper_bound ${client_send_oplog_upper_bound} \
     --alpha $alpha \
     --beta $beta \
     --num_topics $num_topics \

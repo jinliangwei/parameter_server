@@ -105,6 +105,8 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
       old_accum_grad_client_count--;
       if (old_accum_grad_client_count == 0) {
         old_accum_gradients_.erase(old_accum_grad_iter);
+	//LOG(INFO) << "D " << row_id 
+	//	  << " V " << row_version << " S " << old_accum_gradients_.size();
       }
     }
   }
@@ -123,6 +125,9 @@ void AdaRevisionServerTableLogic::ServerRowSent(
       std::make_pair(
           std::make_pair(row_id, version),
           std::make_pair(adarev_row.accum_gradients_, num_clients)));
+
+  //LOG(INFO) << "A " << row_id << " V " << version
+  //	    << " S " << old_accum_gradients_.size();
 }
 
 bool AdaRevisionServerTableLogic::AllowSend() {

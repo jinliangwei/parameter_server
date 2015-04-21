@@ -3,7 +3,8 @@
 # Input files:
 #data_filename="/l0/netflix.dat.list.gl.perm"
 #data_filename="/l0/netflix.dat.list.gl.perm.duplicate.x10.bin.6"
-data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
+#data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
+data_filename="/l0/netflix.8.bin"
 #data_filename="/l0/netflix.dat.list.gl.perm.bin.24"
 #data_filename="/l0/movielens_10m.dat"
 #data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
@@ -16,11 +17,11 @@ data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 #host_filename="../../machinefiles/servers.6.eth1"
-host_filename="../../machinefiles/servers"
+host_filename="../../machinefiles/servers.mf.8"
 #host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=1000
+K=400
 # works for SSPPush
 #init_step_size=6e-5
 #step_dec=0.995
@@ -56,17 +57,22 @@ step_dec=0.995
 use_step_dec=true # false to use power decay.
 lambda=0.05
 data_format=list
+#nnz_per_row=3328
+#nnz_per_col=94112
+nnz_per_row=208
+nnz_per_col=5882
 
 # Execution parameters:
 num_iterations=32
 consistency_model="SSPPush"
-num_worker_threads=64
+num_worker_threads=16
 #num_comm_channels_per_client=2
-num_comm_channels_per_client=1
-table_staleness=0 # effective staleness is staleness / num_clocks_per_iter.
+num_comm_channels_per_client=4
+table_staleness=2 # effective staleness is staleness / num_clocks_per_iter.
 #N_cache_size=480190
 #N_cache_size=500000
 M_cache_size=17771
+#M_cache_size=284336
 #M_cache_size=177700
 #M_cache_size=35542
 #M_cache_size=71084
@@ -132,7 +138,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_split"
+output_dir="$app_dir/output_split_large.ap_21.test"
 output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
 output_dir="${output_dir}_${num_iterations}_${thread_oplog_batch_size}_S${suppression_on}_fixed_${init_step_size}_${step_dec}"
 output_dir="${output_dir}_C${num_comm_channels_per_client}"
@@ -175,7 +181,6 @@ perf_cmd=""
 # Spawn program instances
 client_id=0
 for ip in $host_list; do
-
     client_id_mod=$(( client_id%10 ))
     if [ $client_id_mod -eq 0 ]
     then
@@ -246,7 +251,9 @@ for ip in $host_list; do
     --num_iterations $num_iterations \
     --num_clocks_per_iter $num_clocks_per_iter \
     --num_clocks_per_eval $num_clocks_per_eval \
-    --num_worker_threads $num_worker_threads"
+    --num_worker_threads $num_worker_threads \
+    --nnz_per_row ${nnz_per_row} \
+    --nnz_per_col ${nnz_per_col}"
 
   #echo $cmd
   ssh $ssh_options $ip $cmd&

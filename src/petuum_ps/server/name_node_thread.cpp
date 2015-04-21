@@ -21,51 +21,51 @@ NameNodeThread::NameNodeThread(pthread_barrier_t *init_barrier):
 
 /* Private Functions */
 int32_t NameNodeThread::GetConnection(bool *is_client, int32_t *client_id) {
-  int32_t sender_id;
-  zmq::message_t zmq_msg;
-  (comm_bus_->*(comm_bus_->RecvAny_))(&sender_id, &zmq_msg);
-  MsgType msg_type = MsgBase::get_msg_type(zmq_msg.data());
-  if (msg_type == kClientConnect) {
-    ClientConnectMsg msg(zmq_msg.data());
-    *is_client = true;
-    *client_id = msg.get_client_id();
-  } else {
-    CHECK_EQ(msg_type, kServerConnect);
-    *is_client = false;
-  }
-  return sender_id;
-}
+   int32_t sender_id;
+   zmq::message_t zmq_msg;
+   (comm_bus_->*(comm_bus_->RecvAny_))(&sender_id, &zmq_msg);
+   MsgType msg_type = MsgBase::get_msg_type(zmq_msg.data());
+   if (msg_type == kClientConnect) {
+     ClientConnectMsg msg(zmq_msg.data());
+     *is_client = true;
+     *client_id = msg.get_client_id();
+   } else {
+     CHECK_EQ(msg_type, kServerConnect);
+     *is_client = false;
+   }
+   return sender_id;
+ }
 
-void NameNodeThread::SendToAllBgThreads(MsgBase *msg){
-  for (const auto &bg_id : bg_worker_ids_) {
-    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-        bg_id, msg->get_mem(), msg->get_size());
-    CHECK_EQ(sent_size, msg->get_size());
-  }
-}
+ void NameNodeThread::SendToAllBgThreads(MsgBase *msg){
+   for (const auto &bg_id : bg_worker_ids_) {
+     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+	 bg_id, msg->get_mem(), msg->get_size());
+     CHECK_EQ(sent_size, msg->get_size());
+   }
+ }
 
-void NameNodeThread::SendToAllServers(MsgBase *msg){
-  std::vector<int32_t> server_ids = GlobalContext::get_all_server_ids();
-  for (const auto &server_id : server_ids) {
-    size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
-        server_id, msg->get_mem(), msg->get_size());
-    CHECK_EQ(sent_size, msg->get_size());
-  }
-}
+ void NameNodeThread::SendToAllServers(MsgBase *msg){
+   std::vector<int32_t> server_ids = GlobalContext::get_all_server_ids();
+   for (const auto &server_id : server_ids) {
+     size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+	 server_id, msg->get_mem(), msg->get_size());
+     CHECK_EQ(sent_size, msg->get_size());
+   }
+ }
 
-void NameNodeThread::InitNameNode() {
-  int32_t num_bgs = 0;
-  int32_t num_servers = 0;
-  int32_t num_expected_conns = 2*GlobalContext::get_num_total_comm_channels();
+ void NameNodeThread::InitNameNode() {
+   int32_t num_bgs = 0;
+   int32_t num_servers = 0;
+   int32_t num_expected_conns = 2*GlobalContext::get_num_total_comm_channels();
 
-  for (int32_t num_connections = 0; num_connections < num_expected_conns;
-    ++num_connections) {
-    int32_t client_id;
-    bool is_client;
-    int32_t sender_id = GetConnection(&is_client, &client_id);
-    LOG(INFO) << "get connection from " << sender_id
-              << " client ? " << is_client
-              << " num_connections = " << num_connections;
+   for (int32_t num_connections = 0; num_connections < num_expected_conns;
+     ++num_connections) {
+     int32_t client_id;
+     bool is_client;
+     int32_t sender_id = GetConnection(&is_client, &client_id);
+     LOG(INFO) << "get connection from " << sender_id
+	       << " client ? " << is_client
+	      << " num_connections = " << num_connections;
     if (is_client) {
       bg_worker_ids_[num_bgs] = sender_id;
       ++num_bgs;

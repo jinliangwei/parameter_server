@@ -42,6 +42,8 @@ DEFINE_bool(output_LR, false, "Save L and R matrices to disk or not.");
 
 DEFINE_uint64(M_cache_size, 10000000, "Process cache size for the R table.");
 DEFINE_uint64(M_client_send_oplog_upper_bound, 100, "M client upper bound");
+DEFINE_int32(nnz_per_row, 1, "nnz per row");
+DEFINE_int32(nnz_per_col, 1, "nnz per col");
 
 // Data variables
 size_t X_num_rows, X_num_cols; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
@@ -73,8 +75,8 @@ void ReadBinaryMatrix(const std::string &filename, int32_t partition_id) {
   read_size = fread(&num_cols_this_partition, sizeof(uint64_t), 1, bin_input);
   CHECK_EQ(read_size, 1);
   LOG(INFO) << "num_nnz_this_partition: " << num_nnz_this_partition
-    << " num_rows_this_partition: " << num_rows_this_partition
-    << " num_cols_this_partition: " << num_cols_this_partition;
+	    << " num_rows_this_partition: " << num_rows_this_partition
+	    << " num_cols_this_partition: " << num_cols_this_partition;
 
   X_row.resize(num_nnz_this_partition);
   X_col.resize(num_nnz_this_partition);
@@ -213,10 +215,10 @@ void SgdElement(
   for (int k = 0; k < FLAGS_K; ++k) {
     float gradient = 0.0;
     // Compute update for L(i,k)
-    gradient = grad_coeff * Rj[k] + regularization_coeff * Li[k];
+    gradient = grad_coeff * Rj[k] + regularization_coeff / float(FLAGS_nnz_per_row) * Li[k];
     Li[k] += -gradient * step_size;
     // Compute update for R(k,j)
-    gradient = grad_coeff * Li[k] + regularization_coeff * Rj[k];
+    gradient = grad_coeff * Li[k] + regularization_coeff / float(FLAGS_nnz_per_col) * Rj[k];
     Rj_update[k] = -gradient * step_size;
   }
   R_table.DenseBatchInc(j, Rj_update);

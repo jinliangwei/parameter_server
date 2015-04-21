@@ -58,6 +58,7 @@ DEFINE_bool(clock_per_minibatch, false, "clock per minibatch");
 DEFINE_int32(num_files_per_client, 1, "");
 DEFINE_int32(num_test_files_per_client, 1, "");
 DEFINE_int32(test_file_st_index, 1, "test file start index");
+DEFINE_int32(file_skip, 1, "file skip");
 
 const int32_t kDenseRowFloatTypeID = 0;
 

@@ -37,6 +37,7 @@ DECLARE_bool(clock_per_minibatch);
 DECLARE_int32(num_files_per_client);
 DECLARE_int32(num_test_files_per_client);
 DECLARE_int32(test_file_st_index);
+DECLARE_int32(file_skip);
 
 const int32_t kWTableID = 0;
 const int32_t kLossTableID = 1;

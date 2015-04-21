@@ -22,7 +22,7 @@ public:
   // Bulk read. Thread-safe.
   void CopyToVector(std::vector<Entry<V> > *to) const {
     std::unique_lock<std::mutex> lock(SortedVectorMapRowCore<V>::mtx_);
-    SortedVectorMapRowCore<V>::store_.Copy(to);
+    SortedVectorMapRowCore<V>::store_.CopyToVector(to);
   }
 };
 

@@ -14,15 +14,16 @@
 #include <glog/logging.h>
 
 // Command-line flags
+DEFINE_string(outputfile, "", "output file name");
 DEFINE_string(datafile, "", "Input sparse matrix");
 DEFINE_string(data_format, "list", "list, mmt or libsvm");
 DEFINE_int32(num_partitions, 1, "number of partitions");
 
 // Data variables
 size_t N_, M_; // Number of rows and cols. (L_table has N_ rows, R_table has M_ rows.)
-std::vector<int> row_counts;
-std::vector<int> X_row; // Row index of each nonzero entry in the data matrix
-std::vector<int> X_col; // Column index of each nonzero entry in the data matrix
+std::vector<int32_t> row_counts;
+std::vector<int32_t> X_row; // Row index of each nonzero entry in the data matrix
+std::vector<int32_t> X_col; // Column index of each nonzero entry in the data matrix
 std::vector<float> X_val; // Value of each nonzero entry in the data matrix
 
 // Read the full data set in libsvm format.
@@ -93,7 +94,7 @@ void ReadSparseMatrix(std::string inputfile) {
   std::ifstream inputstream(inputfile.c_str());
   CHECK(inputstream) << "Failed to read " << inputfile;
   while(true) {
-    int row, col;
+    int32_t row, col;
     float val;
     inputstream >> row >> col >> val;
     if (!inputstream) {
@@ -193,7 +194,9 @@ void PartitionToBins(const std::string &filename, int32_t num_partitions) {
       partition_end--;
     }
     std::string bin_file = filename + ".bin" + "." + std::to_string(num_partitions)
-                           + "." + std::to_string(i);
+      + "." + std::to_string(i);
+    //std::string bin_file = filename + ".bin";
+
     FILE *output = fopen(bin_file.c_str(), "wb");
     if (output == 0) {
       LOG(FATAL) << "Failed to open " << bin_file;
@@ -240,6 +243,9 @@ int main(int argc, char *argv[]) {
 
   LOG(INFO) << "Read Data End";
 
-  PartitionToBins(FLAGS_datafile, FLAGS_num_partitions);
+  if (FLAGS_outputfile == "")
+    PartitionToBins(FLAGS_datafile, FLAGS_num_partitions);
+  else
+    PartitionToBins(FLAGS_outputfile, FLAGS_num_partitions);
   return 0;
 }

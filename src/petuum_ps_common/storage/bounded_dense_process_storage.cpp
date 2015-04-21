@@ -43,6 +43,7 @@ ClientRow *BoundedDenseProcessStorage::FindOffset(int32_t row_id) {
 }
 
 ClientRow *BoundedDenseProcessStorage::FindNoOffset(int32_t row_id) {
+  CHECK(row_id < storage_vec_.size()) << "row id = " << row_id;
   //LOG(INFO) << "row_id = " << row_id;
   return storage_vec_[row_id];
 }

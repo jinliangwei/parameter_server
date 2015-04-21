@@ -24,45 +24,48 @@
 #feature_dim=29890095
 
 data=criteo
-train_file_path=/tank/projects/biglearning/jinlianw/data/criteo_data/day_0/data.bin
-test_file_path=/tank/projects/biglearning/jinlianw/data/criteo_data/day_0/data.bin
+train_file_path=/l0/criteo.binary
+test_file_path=/l0/criteo.binary
 num_train_data=1
 num_labels=2
 data_format=sparse_feature_binary
 feature_one_based=false
 label_one_based=false
 snappy_compressed=false
-feature_dim=39346579
+#feature_dim=39346579
+feature_dim=118468612
 
-num_files_per_client=1
+num_files_per_client=8
 num_test_files_per_client=1
 test_file_st_index=20
+file_skip=0
 
 global_data=true
-perform_test=true
-lambda=1e-5
+perform_test=false
+lambda=0
 w_table_num_cols=100000
 # Execution parameters:
-num_epochs=4
+num_epochs=64
 num_batches_per_epoch=1
-init_step_size=1e-12 # 1 for single thread.
+init_step_size=2e-14 # 1 for single thread.
 num_epochs_per_eval=1
-clock_per_minibatch=true
+clock_per_minibatch=false
 
 num_train_eval=10000000   # large number to use all data.
 num_test_eval=100000
 
 # System parameters:
-host_filename="../../machinefiles/localserver"
-#host_filename="../../machinefiles/servers"
-consistency_model="SSPAggr"
+#host_filename="../../machinefiles/localserver"
+host_filename="../../machinefiles/servers.lr.20"
+consistency_model="SSPPush"
 num_worker_threads=16
-num_comm_channels_per_client=24
+num_comm_channels_per_client=16
 table_staleness=2
 row_oplog_type=0
 
 server_table_logic=-1
 version_maintain=false
+random_init="zero"
 
 # SSPAggr parameters:
 bg_idle_milli=2
@@ -111,7 +114,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 host_list=`cat $host_file | awk '{ print $2 }'`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
-output_dir="${app_dir}/output"
+output_dir="${app_dir}/output.ap_20"
 output_dir="${output_dir}/lr.${data}.S${table_staleness}.E${num_epochs}"
 output_dir="${output_dir}.M${num_unique_hosts}"
 output_dir="${output_dir}.T${num_worker_threads}"
@@ -187,7 +190,7 @@ GLOG_logtostderr=true \
     --server_push_row_upper_bound ${server_push_row_upper_bound} \
     --server_table_logic ${server_table_logic} \
     --version_maintain=${version_maintain} \
-     --train_file=$train_file_path \
+    --train_file=$train_file_path \
     --global_data=$global_data \
     --test_file=$test_file_path \
     --num_train_eval $num_train_eval \
@@ -211,10 +214,11 @@ GLOG_logtostderr=true \
     --clock_per_minibatch=${clock_per_minibatch} \
     --num_files_per_client ${num_files_per_client} \
     --num_test_files_per_client ${num_test_files_per_client} \
-    --test_file_st_index ${test_file_st_index}"
+    --test_file_st_index ${test_file_st_index} \
+    --file_skip ${file_skip}"
 
-  #ssh $ssh_options $ip $cmd &
-  eval $cmd  # Use this to run locally (on one machine).
+  ssh $ssh_options $ip $cmd &
+  #eval $cmd  # Use this to run locally (on one machine).
   #echo $cmd   # echo the cmd for just the first machine.
   #exit
 

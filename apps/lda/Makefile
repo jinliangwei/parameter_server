@@ -17,6 +17,9 @@ lda: $(LDA_BIN)/lda_main
 lda_sn: $(LDA_BIN)/lda_sn_main
 
 data_preprocessor: $(LDA_BIN)/data_preprocessor
+data_preprocessor_ylda: $(LDA_BIN)/data_preprocessor_ylda
+process_ylda: $(LDA_BIN)/process_ylda
+process_to_ylda: $(LDA_BIN)/process_to_ylda
 
 row_test: $(LDA_BIN)/row_test
 
@@ -35,6 +38,18 @@ $(LDA_BIN)/data_preprocessor: $(LDA_SRC_DIR)/data_preprocessor.cpp $(LDA_BIN)
 	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) -Wno-unused-result $(PETUUM_INCFLAGS) \
 	$(LDA_SRC_DIR)/data_preprocessor.cpp $(PETUUM_LDFLAGS) -o $@
 
+$(LDA_BIN)/process_ylda: $(LDA_SRC_DIR)/process_ylda.cpp $(LDA_BIN)
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) -Wno-unused-result $(PETUUM_INCFLAGS) \
+	$(LDA_SRC_DIR)/process_ylda.cpp $(PETUUM_LDFLAGS) -o $@
+
+$(LDA_BIN)/process_to_ylda: $(LDA_SRC_DIR)/process_to_ylda.cpp $(LDA_BIN)
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) -Wno-unused-result $(PETUUM_INCFLAGS) \
+	$(LDA_SRC_DIR)/process_to_ylda.cpp $(PETUUM_LDFLAGS) -o $@
+
+$(LDA_BIN)/data_preprocessor_ylda: $(LDA_SRC_DIR)/data_preprocessor_ylda.cpp $(LDA_BIN)
+	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) -Wno-unused-result $(PETUUM_INCFLAGS) \
+	$(LDA_SRC_DIR)/data_preprocessor_ylda.cpp $(PETUUM_LDFLAGS) -o $@
+
 $(LDA_OBJ): %.o: %.cpp $(LDA_HDR)
 	$(PETUUM_CXX) $(PETUUM_CXXFLAGS) -Wno-unused-result $(PETUUM_INCFLAGS) \
 	-c $< -o $@
@@ -52,4 +67,4 @@ clean:
 	rm -rf $(LDA_BIN)
 	rm -rf $(LDA_SN_OBJ)
 
-.PHONY: clean lda lda_sn data_preprocessor
+.PHONY: clean lda lda_sn data_preprocessor process_ylda data_preprocessor_ylda

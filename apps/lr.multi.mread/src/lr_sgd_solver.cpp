@@ -47,7 +47,7 @@ void LRSGDSolver::SingleDataSGD(
     float gradient = -diff * fval + lambda_ * w_cache_[fid];
     if (gradient == 0) continue;
 
-    float update = - (gradient * sample_lr);
+    float update = -(gradient * sample_lr);
     updates_[fid] += update;
     w_cache_[fid] += update;
   }

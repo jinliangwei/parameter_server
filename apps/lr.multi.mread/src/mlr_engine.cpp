@@ -145,7 +145,7 @@ void MLREngine::ReadData() {
   bool label_one_based = FLAGS_label_one_based;
 
   for (int i = 0; i < FLAGS_num_files_per_client; ++i) {
-    int file_index = FLAGS_num_files_per_client * FLAGS_client_id + i;
+    int file_index = (FLAGS_num_files_per_client + FLAGS_file_skip) * FLAGS_client_id + i;
 
     std::string train_file
         = FLAGS_train_file + "." + std::to_string(file_index);
@@ -270,10 +270,10 @@ void MLREngine::Start() {
   mlr_solver->ReadFreshParams();
 
   petuum::HighResolutionTimer total_timer;
-  LOG(INFO) << "clients = " << num_clients
-            << " threads = " << num_threads
-            << " num_batches_per_epochs = " << num_batches_per_epoch
-            << " num_data = " << num_train_data_;
+  //LOG(INFO) << "clients = " << num_clients
+  //        << " threads = " << num_threads
+  //        << " num_batches_per_epochs = " << num_batches_per_epoch
+  //        << " num_data = " << num_train_data_;
   petuum::ml::WorkloadManagerConfig workload_mgr_config;
   workload_mgr_config.thread_id = thread_id;
   workload_mgr_config.client_id = client_id;
@@ -327,8 +327,8 @@ void MLREngine::Start() {
     workload_mgr.Restart();
     while (!workload_mgr.IsEnd()) {
       int32_t data_idx = workload_mgr.GetDataIdxAndAdvance();
-      if (client_id == 0 && thread_id == 0)
-        LOG_EVERY_N(INFO, 10000) << "processed " << google::COUNTER;
+      //if (client_id == 0 && thread_id == 0)
+      // LOG_EVERY_N(INFO, 10000) << "processed " << google::COUNTER;
 
       mlr_solver->SingleDataSGD(
         *train_features_[data_idx],
@@ -348,16 +348,12 @@ void MLREngine::Start() {
       }
     }
     CHECK_EQ(0, batch_counter % num_batches_per_epoch);
-    LOG(INFO) << "CK1";
     mlr_solver->ApplyUpdates();
     petuum::PSTableGroup::Clock();
-    LOG(INFO) << "CK2";
 
     if (epoch % num_epochs_per_eval == 0) {
-      LOG(INFO) << "CK3";
       STATS_APP_ACCUM_COMP_END();
       mlr_solver->ReadFreshParams();
-      LOG(INFO) << "CK4";
 
       petuum::HighResolutionTimer eval_timer;
       ComputeTrainError(mlr_solver.get(), &workload_mgr_train_error,
@@ -389,8 +385,8 @@ void MLREngine::Start() {
           << eval_timer.elapsed();
       }
       ++eval_counter;
+      STATS_APP_ACCUM_COMP_BEGIN();
     }
-    STATS_APP_ACCUM_COMP_BEGIN();
   }
   petuum::PSTableGroup::TurnOffEarlyComm();
   STATS_APP_ACCUM_COMP_END();

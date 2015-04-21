@@ -24,6 +24,8 @@ DEFINE_string(output_file, " ",
     "Results are in output_file.0, output_file.1, etc.");
 DEFINE_int32(num_partitions, 0, "number of chunks to spit out");
 
+const int32_t kWordUpperCutOff = 160024;
+
 // random generator function:
 int MyRandom (int i) {
   static std::default_random_engine e;
@@ -77,12 +79,13 @@ int main(int argc, char* argv[]) {
       count = strtol(ptr, &endptr, base);
       ptr = endptr;
 
-      new_doc.AppendWord(word_id, count);
+      if (word_id < kWordUpperCutOff) {
+	new_doc.AppendWord(word_id, count);
 
-      max_word_id = std::max(word_id, max_word_id);
-      vocab_occur[word_id] = true;
-
-      num_tokens += count;
+	max_word_id = std::max(word_id, max_word_id);
+	vocab_occur[word_id] = true;
+	num_tokens += count;
+      }
 
       while(isspace(*ptr) && (*ptr != '\n')) ++ptr;
     }
