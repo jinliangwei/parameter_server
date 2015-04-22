@@ -4,6 +4,7 @@
 
 #include <petuum_ps_common/storage/vector_store.hpp>
 #include <petuum_ps_common/storage/ns_sum_imp_calc.hpp>
+#include <petuum_ps_common/util/utils.hpp>
 
 #include <mutex>
 
@@ -180,6 +181,7 @@ void NumericStoreRow<StoreType, V, ImpCalc>::ApplyDenseBatchIncUnsafe(
 
   for (int32_t i = 0; i < num_updates; ++i) {
     val_array[i] += update_array[i];
+    val_array[i] = RestoreInfNaN(val_array[i]);
   }
 }
 
@@ -282,7 +284,7 @@ template<template<typename> class StoreType, typename V,
 double NumericStoreRow<StoreType, V, ImpCalc>::GetDenseAccumImportance(
     const void *update_batch, int32_t index_st,
     int32_t num_updates) const {
-  return imp_cal_.GetDenseAccumImportance(update_batch, index_st, num_updates);
+  return imp_cal_.GetDenseAccumImportance(&store_, update_batch, index_st, num_updates);
 }
 
 template<template<typename> class StoreType, typename V,

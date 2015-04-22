@@ -1,10 +1,14 @@
-
 #include <petuum_ps_common/util/utils.hpp>
 
 #include <utility>
 #include <fstream>
 #include <iostream>
 #include <glog/logging.h>
+#include <random>
+
+#include <algorithm>
+#include <cstdint>
+#include <limits>
 
 namespace petuum {
 
@@ -117,4 +121,31 @@ ProcessStorageType GetProcessStroageType(
   }
   return BoundedSparse;
 }
+  
+float RestoreInf(float x) {
+  if (isinf(x)) { 
+    if (x > 0) {
+      return FLT_MAX;
+    } else {
+      return -FLT_MAX;
+    }
+  } else {
+    return x;
+  }
+}
+  
+float RestoreInfNaN(float x) {
+  if (isinf(x)) { 
+    if (x > 0) {
+      return FLT_MAX;
+    } else {
+      return -FLT_MAX;
+    }
+  } else if (x != x) {
+    return 0.01;
+  } else {
+    return x;
+  }
+}
+
 }   // namespace petuum

@@ -8,6 +8,7 @@
 #include <random>
 #include <set>
 #include <thread>
+#include <float.h>
 #include <boost/thread/barrier.hpp>
 
 #include <petuum_ps_common/include/petuum_ps.hpp>
@@ -49,6 +50,8 @@ std::vector<int> X_row; // Row index of each nonzero entry in the data matrix
 std::vector<int> X_col; // Column index of each nonzero entry in the data matrix
 std::vector<float> X_val; // Value of each nonzero entry in the data matrix
 std::vector<int> X_partition_starts;
+std::map<int32_t, size_t> nnz_per_row;
+std::map<int32_t, size_t> nnz_per_col;
 
 int kLossTableColIdxClock = 0;
 int kLossTableColIdxComputeTime = 1;
@@ -120,6 +123,17 @@ void PartitionWorkLoad(int32_t num_local_workers) {
   }
 }
 
+void CountNNZPerRowCol() {
+  for (auto &row : X_row) {
+    nnz_per_row[row]++;
+  }
+  LOG(INFO) << "row 1436 nnz = " << nnz_per_row[1436];
+
+  for (auto &col : X_col) {
+    nnz_per_col[col]++;
+  }
+}
+
 // Returns the number of workers threads across all clients
 int get_total_num_workers() {
   return FLAGS_num_clients * FLAGS_num_worker_threads;
@@ -187,6 +201,7 @@ void SgdElement(
   const int i = X_row[a];
   const int j = X_col[a];
   const float Xij = X_val[a];
+  //LOG(INFO) << __func__ << " i = " << i << " j = " << j;
   // Read R(:,j) from Petuum PS
   {
     petuum::RowAccessor Rj_acc;
@@ -216,22 +231,44 @@ void SgdElement(
     // Compute update for L(i,k)
     float L_gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff / float(FLAGS_nnz_per_row) * Li[k]);
     float R_gradient = 2 * (grad_coeff * Li[k] + regularization_coeff / float(FLAGS_nnz_per_col) * Rj[k]);
-
+    
     L_hist_gradients_row[k] += L_gradient * L_gradient;
+
+    L_hist_gradients_row[k] = L_hist_gradients_row[k];
+
     CHECK(L_gradient == L_gradient) << "client = " << FLAGS_client_id
-                                    << " L_gradient = " << L_gradient
-                                    << " a = " << a
-                                    << " k = " << k;
+    				    << " grad_coeff = " << grad_coeff
+				    << " L_gradient = " << L_gradient
+				    << " Lhg = " << L_hist_gradients_row[k]
+				    << " a = " << a
+				    << " k = " << k
+    				    << " R_" << j
+    				    << "_[" << k << "] = " << Rj[k]
+    				    << " L_" << i
+    				    << "_[" << k << "] = " << Li[k]
+				    << " LiRj = " << LiRj
+				    << " Xij = " << Xij;
+    
     Li[k] -= step_size / sqrt(L_hist_gradients_row[k]) * L_gradient;
 
+    Li[k] = Li[k];
+
+    CHECK(Li[k] == Li[k])  << "client = " << FLAGS_client_id
+   			   << " grad_coeff = " << grad_coeff
+    			   << " L_gradient = " << L_gradient
+    			   << " a = " << a
+   			   << " k = " << k
+    			   << " R_" << j
+    			   << "_[" << k << "] = " << Rj[k];
+    
     // Compute update for R(k,j)
     CHECK(R_gradient == R_gradient) << "client = " << FLAGS_client_id
-                                    << " gradient = " << R_gradient
-                                    << " a = " << a
-                                    << " k = " << k
-                                    << " hist_gradients = " << L_hist_gradients_row[k]
-                                    << " LiRj = " << LiRj
-                                    << " Xij = " << Xij;
+				    << " gradient = " << R_gradient
+				    << " a = " << a
+				    << " k = " << k
+				    << " hist_gradients = " << L_hist_gradients_row[k]
+				    << " LiRj = " << LiRj
+				    << " Xij = " << Xij;
 
     Rj_update[k] += R_gradient;
   }
@@ -465,7 +502,7 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
       LOG(INFO) << "Iteration " << iter+1 << "/"
                 << FLAGS_num_iterations << "... ";
     }
-
+    
     size_t element_counter = 0;
     float step_size = FLAGS_init_step_size;
 
@@ -614,6 +651,7 @@ int main(int argc, char *argv[]) {
 
   ReadBinaryMatrix(FLAGS_datafile, FLAGS_client_id);
   PartitionWorkLoad(FLAGS_num_worker_threads);
+  CountNNZPerRowCol();
 
   if (FLAGS_client_id == 0) {
     LOG(INFO) << std::endl << GetExperimentInfo();

@@ -67,7 +67,7 @@ num_iterations=32
 consistency_model="SSPAggr"
 num_worker_threads=16
 #num_comm_channels_per_client=2
-num_comm_channels_per_client=16
+num_comm_channels_per_client=4
 table_staleness=2 # effective staleness is staleness / num_clocks_per_iter.
 #N_cache_size=480190
 #N_cache_size=500000
@@ -88,13 +88,13 @@ bg_idle_milli=2
 #server_bandwidth_mbps=4700
 #client_bandwidth_mbps=1200
 #server_bandwidth_mbps=1800
-client_bandwidth_mbps=25
-server_bandwidth_mbps=25
+client_bandwidth_mbps=200
+server_bandwidth_mbps=200
 #client_bandwidth_mbps=6
 #server_bandwidth_mbps=6
 # bandwidth / oplog_push_upper_bound should be > miliseconds.
 #thread_oplog_batch_size=112000
-thread_oplog_batch_size=40
+thread_oplog_batch_size=1000
 server_idle_milli=2
 update_sort_policy=Random
 row_candidate_factor=10
@@ -138,7 +138,7 @@ num_unique_hosts=`cat $host_file | awk '{ print $2 }' | uniq | wc -l`
 num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
-output_dir="$app_dir/output_ada_ap21.test"
+output_dir="${app_dir}/output_ada_ap21.test2"
 output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
 output_dir="${output_dir}_${num_iterations}_${init_step_size}"
 output_dir="${output_dir}_C${num_comm_channels_per_client}"

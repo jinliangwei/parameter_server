@@ -239,6 +239,8 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
         //STATS_BG_ACCUM_IMPORTANCE(table_id, meta_row_oplog, true);
         STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
 
+	//LOG(INFO) << "p row = " << row_id << " " << meta_row_oplog->GetMeta().get_importance();
+
         size_t serialized_oplog_size
             = row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
         row_oplog->Reset();
@@ -468,8 +470,9 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   //        << " send milli sec = " << oplog_send_milli_sec_
   //        << " left over milli = " << left_over_send_milli_sec
   //        << " size = " << sent_size;
-
-  return oplog_send_milli_sec_;
+  
+  long ret_sec = early_comm_on_ ? oplog_send_milli_sec_ : ResetBgIdleMilli();
+  return ret_sec;
 }
 
 BgOpLog *SSPAggrBgWorker::PrepareBgIdleOpLogs() {
@@ -663,6 +666,8 @@ void SSPAggrBgWorker::HandleEarlyCommOn() {
         server_id, msg.get_mem(), msg.get_size());
     CHECK_EQ(sent_size, msg.get_size());
   }
+  //LOG(INFO) << __func__;
+  early_comm_on_ = true;
 }
 
 void SSPAggrBgWorker::HandleEarlyCommOff() {
@@ -674,6 +679,7 @@ void SSPAggrBgWorker::HandleEarlyCommOff() {
         server_id, msg.get_mem(), msg.get_size());
     CHECK_EQ(sent_size, msg.get_size());
   }
+  early_comm_on_ = false;
 }
 
 void SSPAggrBgWorker::HandleAdjustSuppressionLevel() {

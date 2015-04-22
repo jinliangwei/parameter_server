@@ -30,7 +30,8 @@ public:
       suppression_level_(0),
       suppression_level_min_(0),
       clock_tick_sec_(0),
-      suppression_on_(false) {
+    suppression_on_(false),
+    early_comm_on_(false) {
     ResetBgIdleMilli_ = &SSPAggrBgWorker::ResetBgIdleMilliNoEarlyComm;
   }
 
@@ -122,6 +123,8 @@ protected:
   ResetBgIdleMilliFunc ResetBgIdleMilli_;
 
   bool suppression_on_;
+
+  bool early_comm_on_;
 };
 
 }

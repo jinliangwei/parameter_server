@@ -1,6 +1,7 @@
 #include <petuum_ps/server/adarevision_server_table_logic.hpp>
 #include <gflags/gflags.h>
 #include <petuum_ps_common/storage/dense_row.hpp>
+#include <petuum_ps_common/util/utils.hpp>
 
 DEFINE_double(init_step_size, 0.1, "init step size");
 DEFINE_uint64(old_grad_upper_bound, 10000, "gradient upper bound");
@@ -52,10 +53,10 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
     int32_t num_updates, ServerRow *server_row,
     uint64_t row_version, bool end_of_version) {
 
-  //LOG(INFO) << "row id = " << row_id
-  //        << " row version = " << row_version
-  //        << " end of version = " << end_of_version;
-
+  //LOG(INFO) << "row = " << row_id
+  //	    << " row version = " << row_version
+  //	    << " end of version = " << end_of_version;
+  
   auto adarev_iter = adarevision_info_.find(row_id);
   CHECK(adarev_iter != adarevision_info_.end());
   auto &adarev_row = adarev_iter->second;
@@ -68,16 +69,44 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
     float old_accum_grad = 0;
 
     for (int i = 0; i < num_updates; ++i) {
+      float update = updates_float[i];
+
       float g_bck = adarev_row.accum_gradients_[i] - old_accum_grad;
+
       float eta_old = init_step_size_ / sqrt(adarev_row.z_max_[i]);
-      adarev_row.z_[i] += updates_float[i] * updates_float[i] + 2 * updates_float[i] * g_bck;
+
+      //LOG(INFO) << "i = " << i << " accu_g = " << adarev_row.accum_gradients_[i] 
+      //	<< " o_accum_g = " << old_accum_grad
+      //	<< " z = " << adarev_row.z_[i]
+      //	<< " u = " << update;
+
+      adarev_row.z_[i] += update * (update + 2 * g_bck);
+
+      adarev_row.z_[i] = adarev_row.z_[i];
+
       adarev_row.z_max_[i] = std::max(adarev_row.z_[i], adarev_row.z_max_[i]);
+      adarev_row.z_max_[i] = adarev_row.z_max_[i];
+
       float eta = init_step_size_ / sqrt(adarev_row.z_max_[i]);
-      float delta = -(eta * updates_float[i]) + (eta_old - eta) * g_bck;
-      //row_data->ApplyIncUnsafe(i, &delta);
-      adarev_row.accum_gradients_[i] += updates_float[i];
+      float delta = -(eta * update) + (eta_old - eta) * g_bck;
+
+      adarev_row.accum_gradients_[i] += update;
+
+      adarev_row.accum_gradients_[i] = adarev_row.accum_gradients_[i];
+
       deltas_[i] = delta;
-      CHECK(delta == delta);
+      //LOG(INFO) << "delta = " << delta;
+      CHECK(delta == delta) << "u = " << update << " eta = " << eta
+			    << " delta = " << delta
+			    << " z_max = "
+			    << adarev_row.z_max_[i]
+			    << " z_ = "
+			    << adarev_row.z_[i]
+			    << " r = " << row_id
+			    << " i = " << i
+			    << " g_bck = " << g_bck
+			    << " accum_gradients = "
+			    << adarev_row.accum_gradients_[i];
     }
   } else {
     auto old_accum_grad_iter
@@ -89,24 +118,52 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
         = old_accum_grad_iter->second.second;
 
     for (int i = 0; i < num_updates; ++i) {
+
+      float update = updates_float[i];
+
       float g_bck = adarev_row.accum_gradients_[i] - old_accum_grad[i];
+
       float eta_old = init_step_size_ / sqrt(adarev_row.z_max_[i]);
-      adarev_row.z_[i] += updates_float[i] * updates_float[i] + 2 * updates_float[i] * g_bck;
+
+      // LOG(INFO) << "i = " << i << " accu_g = " << adarev_row.accum_gradients_[i] 
+      //	<< " o_accum_g = " << old_accum_grad[i]
+      //	<< " z = " << adarev_row.z_[i]
+      //	<< " u = " << update;
+
+      adarev_row.z_[i] += update * (update + 2 * g_bck);
+
+      adarev_row.z_[i] = adarev_row.z_[i];
+
       adarev_row.z_max_[i] = std::max(adarev_row.z_[i], adarev_row.z_max_[i]);
+
+      adarev_row.z_max_[i] = adarev_row.z_max_[i];
+
       float eta = init_step_size_ / sqrt(adarev_row.z_max_[i]);
-      float delta = -(eta * updates_float[i]) + (eta_old - eta) * g_bck;
-      //row_data->ApplyIncUnsafe(i, &delta);
-      adarev_row.accum_gradients_[i] += updates_float[i];
+      float delta = -(eta * update) + (eta_old - eta) * g_bck;
+
+      adarev_row.accum_gradients_[i] += update;
+
+      adarev_row.accum_gradients_[i] = adarev_row.accum_gradients_[i];
+
       deltas_[i] = delta;
-      CHECK(delta == delta);
+      //LOG(INFO) << "delta = " << delta;
+      CHECK(delta == delta) << "u = " << update << " eta = " << eta
+			    << " delta = " << delta
+			    << " z_max = "
+			    << adarev_row.z_max_[i]
+			    << " z_ = "
+			    << adarev_row.z_[i]
+			    << " r = " << row_id
+			    << " i = " << i
+			    << " g_bck = " << g_bck
+			    << " accum_gradients = "
+			    << adarev_row.accum_gradients_[i];
     }
 
     if (end_of_version) {
       old_accum_grad_client_count--;
       if (old_accum_grad_client_count == 0) {
         old_accum_gradients_.erase(old_accum_grad_iter);
-	//LOG(INFO) << "D " << row_id 
-	//	  << " V " << row_version << " S " << old_accum_gradients_.size();
       }
     }
   }

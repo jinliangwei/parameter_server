@@ -12,9 +12,9 @@ void SSPPushServerThread::SendServerPushRowMsg(
 
   //if (last_msg)
   //LOG(INFO) << "server_send_push_row, is_clock = " << last_msg
-  //          << " clock = " << server_min_clock
-  //          << " to = " << bg_id
-  //          << " " << ThreadContext::get_id();
+  //        << " clock = " << server_min_clock
+  //	    << " to = " << bg_id
+  //        << " " << ThreadContext::get_id();
 
   msg->get_version() = version;
   msg->get_seq_num() = msg_tracker->IncGetSeq(bg_id);
@@ -42,7 +42,7 @@ void SSPPushServerThread::ServerPushRow() {
     pending_clock_push_row_ = true;
     return;
   }
-  //LOG(INFO) << __func__;
+  LOG(INFO) << __func__;
   STATS_SERVER_ACCUM_PUSH_ROW_BEGIN();
   server_obj_.CreateSendServerPushRowMsgs(SendServerPushRowMsg);
   STATS_SERVER_ACCUM_PUSH_ROW_END();

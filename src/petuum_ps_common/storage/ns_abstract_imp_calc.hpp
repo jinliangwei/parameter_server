@@ -34,6 +34,7 @@ public:
     const void *update_batch, int32_t num_updates) const = 0;
 
   virtual double GetDenseAccumImportance(
+      const AbstractStore<V> *store,
       const void *update_batch, int32_t index_st,
       int32_t num_updates) const = 0;
 };

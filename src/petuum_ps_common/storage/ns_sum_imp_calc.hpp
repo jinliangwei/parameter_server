@@ -33,6 +33,7 @@ public:
       const void *update_batch, int32_t num_updates) const;
 
   virtual double GetDenseAccumImportance(
+      const AbstractStore<V> *store,
       const void *update_batch, int32_t index_st,
       int32_t num_updates) const;
 };
@@ -64,8 +65,8 @@ double NSSumImpCalc<V>::ApplyBatchIncGetImportance(
     //V val = store->Get(column_ids[i]);
 
     double importance = double(update_array[i]);
-    //  = (double(val) == 0) ? double(update_array[i])
-    //  : double(update_array[i]) / double(val);
+    //= (double(val) == 0) ? double(update_array[i])
+    // : double(update_array[i]) / double(val);
 
     store->Inc(column_ids[i], update_array[i]);
 
@@ -131,13 +132,21 @@ double NSSumImpCalc<V>::GetAccumImportance(
 
 template<typename V>
 double NSSumImpCalc<V>::GetDenseAccumImportance(
+      const AbstractStore<V> *store,
       const void *update_batch, int32_t index_st,
       int32_t num_updates) const {
   const V *update_array = reinterpret_cast<const V*>(update_batch);
   double accum_importance = 0;
+  const V *val_array = store->GetConstPtr(index_st);
   for (int i = 0; i < num_updates; ++i) {
-    double importance = double(update_array[i]);
+    const V &val = val_array[i];
+    double importance
+      = (double(val) == 0) ? double(update_array[i])
+      : double(update_array[i]) / double(val);
     accum_importance += std::abs(importance);
+
+    //double importance = double(update_array[i]);
+    //accum_importance += std::abs(importance);
   }
   return accum_importance;
 }

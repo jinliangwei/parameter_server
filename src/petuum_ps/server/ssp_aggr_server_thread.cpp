@@ -67,6 +67,7 @@ long SSPAggrServerThread::ResetServerIdleMilliEarlyComm() {
 }
 
 void SSPAggrServerThread::ServerPushRow() {
+  //LOG(INFO) << __func__;
   if (!msg_tracker_.CheckSendAll()) {
     //LOG(INFO) << "server has to wait";
     STATS_SERVER_ACCUM_WAITS_ON_ACK_CLOCK();

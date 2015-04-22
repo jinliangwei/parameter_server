@@ -7,6 +7,9 @@
 #include <petuum_ps_common/include/host_info.hpp>
 #include <petuum_ps_common/include/configs.hpp>
 
+#include <float.h>
+#include <math.h>
+
 namespace petuum {
 // Read in a file containing list of servers. 'server_file' need to have the
 // following line structure:
@@ -31,5 +34,9 @@ AppendOnlyOpLogType GetAppendOnlyOpLogType(
 
 ProcessStorageType GetProcessStroageType(
     const std::string &process_storage_type);
+
+float RestoreInf(float x);
+
+float RestoreInfNaN(float x);
 
 }   // namespace petuum

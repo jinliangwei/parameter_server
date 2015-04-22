@@ -23,6 +23,7 @@ void SSPPushBgWorker::HandleServerPushRow(int32_t sender_id, ServerPushRowMsg &s
       server_push_row_msg.get_size());
   STATS_BG_ACCUM_PUSH_ROW_MSG_RECEIVED_INC_ONE();
 
+  //LOG(INFO) << __func__;
   //if (!is_clock)
   //LOG(INFO) << "handle_server_push_row, is_clock = " << is_clock
   //        << " from " << sender_id
@@ -107,6 +108,7 @@ void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,
         row_id, &row_accessor);
 
     if (client_row != 0) {
+      //LOG(INFO) << "update " << row_id;
       UpdateExistingRow(table_id, row_id, client_row, client_table, data,
                         row_size, version, curr_table_version_maintain,
                         row_version);

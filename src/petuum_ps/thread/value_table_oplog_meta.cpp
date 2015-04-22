@@ -22,6 +22,8 @@ bool ValueTableOpLogMeta::CompRowOpLogMeta(
     return oplog1.row_id < oplog2.row_id;
   } else {
     return (oplog1.importance > oplog2.importance);
+    // min first
+    //return (oplog1.importance <= oplog2.importance);
   }
 }
 
@@ -141,6 +143,7 @@ size_t ValueTableOpLogMeta::GetCleanNumNewOpLogMeta() {
 
 int32_t ValueTableOpLogMeta::GetAndClearNextInOrder() {
   auto max = HeapExtractMax();
+  //LOG(INFO) << "OpMeta " << "r " << max.row_id << " x " << max.importance;
   return max.row_id;
 }
 

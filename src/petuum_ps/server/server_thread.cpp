@@ -371,7 +371,9 @@ void *ServerThread::operator() () {
   long timeout_milli = -1;
   PrepareBeforeInfiniteLoop();
   while(1) {
+    //LOG(INFO) << "timeout_milli = " << timeout_milli;
     bool received = WaitMsg_(&sender_id, &zmq_msg, timeout_milli);
+    //LOG(INFO) << "received " << received;
     if (!received) {
       timeout_milli = ServerIdleWork();
       continue;
