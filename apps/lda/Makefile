@@ -5,7 +5,7 @@ PETUUM_ROOT = $(LDA_DIR)/../../
 
 include $(PETUUM_ROOT)/defns.mk
 
-LDA_SRC = $(filter-out $(LDA_SRC_DIR)/data_preprocessor.cpp $(LDA_SRC_DIR)/row_test.cpp, $(wildcard $(LDA_SRC_DIR)/*.cpp))
+LDA_SRC = $(filter-out $(LDA_SRC_DIR)/data_preprocessor.cpp $(LDA_SRC_DIR)/row_test.cpp $(LDA_SRC_DIR)/data_preprocessor_ylda.cpp $(LDA_SRC_DIR)/process_ylda.cpp $(LDA_SRC_DIR)/process_to_ylda.cpp $(LDA_SRC_DIR)/vocab_analyer.cpp, $(wildcard $(LDA_SRC_DIR)/*.cpp))
 LDA_HDR = $(wildcard $(LDA_SRC_DIR)/*.hpp)
 LDA_BIN = $(LDA_DIR)/bin
 LDA_OBJ = $(LDA_SRC:.cpp=.o)
