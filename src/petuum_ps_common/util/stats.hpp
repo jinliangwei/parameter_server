@@ -307,6 +307,9 @@
 
 #define STATS_SERVER_ACCUM_WAITS_ON_ACK_CLOCK() \
   Stats::ServerAccumWaitsOnAckClock();
+ 
+#define STATS_SERVER_ACCUM_CHECK(table_id, permitted, logic_info_size)	\
+  Stats::ServerAccumCheck(table_id, permitted, logic_info_size)
 
 #define STATS_PRINT() \
   Stats::PrintStats()
@@ -437,6 +440,8 @@
 
 #define STATS_SERVER_ACCUM_WAITS_ON_ACK_IDLE() ((void) 0)
 #define STATS_SERVER_ACCUM_WAITS_ON_ACK_CLOCK() ((void) 0)
+
+#define STATS_SERVER_ACCUM_CHECK(table_id, permitted, logic_info_size) ((void) 0)
 
 #define STATS_PRINT() ((void) 0)
 #endif
@@ -691,6 +696,16 @@ struct BgThreadStats {
     accum_num_waits_on_ack_clock(1, 0) { }
 };
 
+struct ServerLogicStats {
+  size_t num_idle_send_check;
+  size_t num_idle_send_check_rejected;
+  size_t accum_logic_info_size;
+  ServerLogicStats():
+    num_idle_send_check(0),
+    num_idle_send_check_rejected(0),
+    accum_logic_info_size(0) { }
+};
+
 struct ServerThreadStats {
   HighResolutionTimer apply_oplog_timer;
   HighResolutionTimer push_row_timer;
@@ -727,6 +742,9 @@ struct ServerThreadStats {
 
   std::vector<size_t> accum_num_waits_on_ack_idle;
   std::vector<size_t> accum_num_waits_on_ack_clock;
+
+  std::map<int32_t, ServerLogicStats>
+  table_logic_stats;
 
   ServerThreadStats():
     accum_apply_oplog_sec(0.0),
@@ -898,6 +916,8 @@ public:
   static void ServerAccumWaitsOnAckIdle();
   static void ServerAccumWaitsOnAckClock();
 
+  static void ServerAccumCheck(int32_t table_id, bool permitted, size_t logic_info_size);
+
   static void PrintStats();
 private:
 
@@ -1052,6 +1072,7 @@ private:
 
   static std::vector<size_t> server_accum_num_waits_on_ack_idle_;
   static std::vector<size_t> server_accum_num_waits_on_ack_clock_;
+  static std::map<int32_t, ServerLogicStats> server_table_logic_stats_;
 };
 
 }   // namespace petuum

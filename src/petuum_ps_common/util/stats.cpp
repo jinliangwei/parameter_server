@@ -121,6 +121,8 @@ std::unordered_map<int32_t, std::vector<size_t> > Stats::server_table_accum_num_
 std::vector<size_t> Stats::server_accum_num_waits_on_ack_idle_(0);
 std::vector<size_t> Stats::server_accum_num_waits_on_ack_clock_(0);
 
+std::map<int32_t, ServerLogicStats> Stats::server_table_logic_stats_;
+
 void Stats::Init(const TableGroupConfig &table_group_config) {
   table_group_config_ = table_group_config;
 
@@ -589,6 +591,18 @@ void Stats::DeregisterServerThread() {
       server_accum_num_waits_on_ack_clock_[i]
           = stats.accum_num_waits_on_ack_clock[i];
     }
+  }
+
+  for (auto &table_logic_stats : stats.table_logic_stats) {
+    int32_t table_id = table_logic_stats.first;
+    server_table_logic_stats_[table_id].num_idle_send_check
+      += table_logic_stats.second.num_idle_send_check;
+
+    server_table_logic_stats_[table_id].num_idle_send_check_rejected
+      += table_logic_stats.second.num_idle_send_check_rejected;
+
+    server_table_logic_stats_[table_id].accum_logic_info_size
+      += table_logic_stats.second.accum_logic_info_size;
   }
 }
 
@@ -1271,6 +1285,17 @@ void Stats::ServerAccumWaitsOnAckClock() {
   (server_thread_stats_->accum_num_waits_on_ack_clock.back())++;
 }
 
+void Stats::ServerAccumCheck(int32_t table_id, bool permitted, size_t logic_info_size) {
+  auto &stats = *server_thread_stats_;
+  auto &table_logic_stats = stats.table_logic_stats[table_id];
+  
+  table_logic_stats.num_idle_send_check++;
+  if (!permitted) {
+    table_logic_stats.num_idle_send_check_rejected++;
+  }
+  table_logic_stats.accum_logic_info_size += logic_info_size;
+}
+
 template<typename T>
 void Stats::YamlPrintSequence(YAML::Emitter *yaml_out,
     const std::vector<T> &sequence) {
@@ -1740,6 +1765,24 @@ void Stats::PrintStats() {
   yaml_out << YAML::Key << "server_accum_num_waits_on_ack_clock"
            << YAML::Value;
   YamlPrintSequence(&yaml_out, server_accum_num_waits_on_ack_clock_);
+
+  yaml_out << YAML::Key << "server_table_logic"
+	   << YAML::Value
+	   << YAML::BeginMap;
+  
+  for (auto & table_logic_stats : server_table_logic_stats_) {
+    yaml_out << YAML::Key << table_logic_stats.first;
+    yaml_out << YAML::Value << YAML::BeginMap;
+    yaml_out << YAML::Key << "num_idle_send_check"
+	     << YAML::Value << table_logic_stats.second.num_idle_send_check;
+    yaml_out << YAML::Key << "num_idle_send_check_rejected"
+	     << YAML::Value << table_logic_stats.second.num_idle_send_check_rejected;
+    yaml_out << YAML::Key << "accum_logic_info_size"
+	     << YAML::Value << table_logic_stats.second.accum_logic_info_size;
+    yaml_out << YAML::EndMap;
+  }
+
+  yaml_out << YAML::EndMap;
 
   yaml_out << YAML::EndMap;
 

@@ -2,6 +2,8 @@
 #include <gflags/gflags.h>
 #include <petuum_ps_common/storage/dense_row.hpp>
 #include <petuum_ps_common/util/utils.hpp>
+#include <petuum_ps_common/util/stats.hpp>
+
 
 DEFINE_double(init_step_size, 0.1, "init step size");
 DEFINE_uint64(old_grad_upper_bound, 10000, "gradient upper bound");
@@ -188,7 +190,10 @@ void AdaRevisionServerTableLogic::ServerRowSent(
 }
 
 bool AdaRevisionServerTableLogic::AllowSend() {
-  return old_accum_gradients_.size() < FLAGS_old_grad_upper_bound;
+  size_t info_size = old_accum_gradients_.size();
+  STATS_SERVER_ACCUM_CHECK(0, (info_size < FLAGS_old_grad_upper_bound), info_size);
+
+  return info_size < FLAGS_old_grad_upper_bound;
 }
 
 }

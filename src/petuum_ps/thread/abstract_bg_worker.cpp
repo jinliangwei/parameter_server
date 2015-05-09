@@ -816,6 +816,7 @@ void AbstractBgWorker::UpdateExistingRow(
           = dynamic_cast<VersionDenseRowOpLog*>(row_oplog);
       version_dense_row_oplog->SetEndOfVersion(true);
       row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
+      STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
       row_oplog->Reset();
       version_dense_row_oplog->SetVersion(row_version);
       version_dense_row_oplog->SetEndOfVersion(false);

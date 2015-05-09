@@ -1,11 +1,17 @@
 #!/bin/bash -u
 
-client_id=29
+client_id=42
 
-while [ $client_id -le 63 ]; do
+while [ $client_id -le 42 ]; do
+#    suffix=$client_id
+#    while [ ${#suffix} -lt 3 ]; do
+#	suffix=0$suffix;
+#    done
 
-    data_file=/proj/BigLearning/jinlianw/data/lda_data/ylda_partition/ylda.${client_id}
-    output_file=/proj/BigLearning/jinlianw/data/lda_data/ylda_partition.processed/clueweb.${client_id}
+    data_file=/proj/BigLearning/jinlianw/data/lda_data/clueweb_ylda_trim_10B.partition.2/ylda.${client_id}
+    #data_file=/proj/BigLearning/jinlianw/data/lda_data/nytimes/ylda.16//nytimes.ylda${suffix}
+    output_file=/proj/BigLearning/jinlianw/data/lda_data/clueweb_ylda_trim_10B.partition.2.processed/clueweb.${client_id}
+    #output_file=/proj/BigLearning/jinlianw/data/lda_data/nytimes/ylda.dat.16/mnytimes.${client_id}
     num_partitions=1
 
     cmd="GLOG_logtostderr=true \

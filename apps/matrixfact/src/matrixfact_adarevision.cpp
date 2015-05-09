@@ -127,7 +127,7 @@ void CountNNZPerRowCol() {
   for (auto &row : X_row) {
     nnz_per_row[row]++;
   }
-  LOG(INFO) << "row 1436 nnz = " << nnz_per_row[1436];
+  //LOG(INFO) << "row 1436 nnz = " << nnz_per_row[1436];
 
   for (auto &col : X_col) {
     nnz_per_col[col]++;

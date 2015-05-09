@@ -3,9 +3,9 @@
 table_staleness=2
 consistency_model=SSPPush
 
-num_work_units=220
+num_work_units=240
 
-dataset=clueweb
+dataset=nytimes
 #dataset=20news
 #dataset=culp_e
 num_comm_channels_per_client=4
@@ -43,7 +43,7 @@ naive_table_oplog_meta=false
 suppression_on=false
 use_approx_sort=false
 
-app_output_dir=${app_root}/cluewebssp/output_${consistency_model}_${num_work_units}
+app_output_dir=${app_root}/nytimes/output_${consistency_model}_${num_work_units}
 app_output_dir=${app_output_dir}_${client_bandwidth_mbps}
 app_output_dir=${app_output_dir}_${update_sort_policy}_${server_push_row_upper_bound}
 app_output_dir=${app_output_dir}_${client_send_oplog_upper_bound}_${num_comm_channels_per_client}_${num_clocks_per_work_unit}_16_${thread_oplog_batch_size}
@@ -51,7 +51,7 @@ app_output_dir=${app_output_dir}_${client_send_oplog_upper_bound}_${num_comm_cha
 
 rm -rf ${app_output_dir}
 mkdir ${app_output_dir}
-cp ${app_root}/scripts/config.sh ${app_output_dir}
+cp ${app_root}/scripts/nytimes.config.sh ${app_output_dir}
 
 #doc_filename="datasets/processed/20news"
 #doc_filename="/home/jinliang/data/lda_data/processed/20news.1"
@@ -59,17 +59,17 @@ doc_filename="/l0/clueweb"
 #doc_filename="/l0/data/pubmed_8"
 #doc_filename="../../../data/lda_data/processed/EO_1_1.1"
 
-output_file_prefix=${app_output_dir}/clueweb
+output_file_prefix=${app_output_dir}/nytimes
 
 #num_vocabs=141043 # pubmed
 #max_vocab_id=141042 # pubmed
-#num_vocabs=101636 # nytimes
-#max_vocab_id=102659  # nytimes
+num_vocabs=101636 # nytimes
+max_vocab_id=102659  # nytimes
 #num_vocabs=53974 # 20news
 #max_vocab_id=53974 # 20news
 
-num_vocabs=160024
-max_vocab_id=160024
+#num_vocabs=160024
+#max_vocab_id=160024
 
 #num_vocabs=400 #culp_eo
 #max_vocab_id=400 #culp_eo
