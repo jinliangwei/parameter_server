@@ -27,11 +27,11 @@ long SSPAggrServerThread::ServerIdleWork() {
 
   STATS_SERVER_IDLE_INVOKE_INC_ONE();
 
-  STATS_SERVER_ACCUM_IDLE_SEND_BEGIN();
+  //STATS_SERVER_ACCUM_IDLE_SEND_BEGIN();
   size_t sent_bytes
       = server_obj_.CreateSendServerPushRowMsgsPartial(SendServerPushRowMsg);
 
-  STATS_SERVER_ACCUM_IDLE_SEND_END();
+  //STATS_SERVER_ACCUM_IDLE_SEND_END();
 
   if (sent_bytes > 0) {
       STATS_SERVER_IDLE_SEND_INC_ONE();

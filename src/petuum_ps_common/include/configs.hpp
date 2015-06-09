@@ -171,19 +171,6 @@ struct TableGroupConfig {
 
 // TableInfo is shared between client and server.
 struct TableInfo {
-  TableInfo():
-      table_staleness(0),
-      row_type(-1),
-      row_capacity(0),
-      oplog_dense_serialized(false),
-      row_oplog_type(1),
-      dense_row_oplog_capacity(0),
-      server_push_row_upper_bound(100),
-      server_table_logic(-1),
-      version_maintain(false) {
-    CHECK(std::is_pod<TableInfo>::value);
-  }
-
   // table_staleness is used for SSP and ClockVAP.
   int32_t table_staleness;
 
@@ -212,21 +199,6 @@ struct TableInfo {
 // ClientTableConfig is used by client only.
 // must be POD
 struct ClientTableConfig {
-  ClientTableConfig():
-      process_cache_capacity(0),
-      thread_cache_capacity(1),
-      oplog_capacity(0),
-      oplog_type(Dense),
-      append_only_oplog_type(Inc),
-      append_only_buff_capacity(10*k1_Mi),
-      per_thread_append_only_buff_pool_size(3),
-      bg_apply_append_oplog_freq(1),
-      process_storage_type(BoundedDense),
-      no_oplog_replay(false),
-      client_send_oplog_upper_bound(100) {
-    CHECK(std::is_pod<ClientTableConfig>::value);
-  }
-
   TableInfo table_info;
 
   // In # of rows.

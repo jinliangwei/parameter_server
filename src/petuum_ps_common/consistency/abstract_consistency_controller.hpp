@@ -35,7 +35,8 @@ public:
   // Read a row in the table and is blocked until a valid row is obtained
   // (e.g., from server). A row is valid if, for example, it is sufficiently
   // fresh in SSP. The result is returned in row_accessor.
-  virtual ClientRow *Get(int32_t row_id, RowAccessor* row_accessor) = 0;
+  virtual ClientRow *Get(int32_t row_id, RowAccessor* row_accessor,
+                         int32_t clock) = 0;
 
   // Increment (update) an entry. Does not take ownership of input argument
   // delta, which should be of template type UPDATE in Table. This may trigger

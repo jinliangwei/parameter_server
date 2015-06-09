@@ -201,11 +201,12 @@ void SgdElement(
   const int i = X_row[a];
   const int j = X_col[a];
   const float Xij = X_val[a];
-  //LOG(INFO) << __func__ << " i = " << i << " j = " << j;
+
   // Read R(:,j) from Petuum PS
   {
     petuum::RowAccessor Rj_acc;
-    const auto& Rj_row = R_table.Get<petuum::DenseRow<float> >(j, &Rj_acc);
+    const auto& Rj_row = R_table.Get<petuum::DenseRow<float> >(
+        j, &Rj_acc, iter - FLAGS_table_staleness);
     Rj_row.CopyToVector(Rj_cache);
     // Release the accessor.
   }
@@ -217,7 +218,6 @@ void SgdElement(
   for (int k = 0; k < FLAGS_K; ++k) {
     LiRj += Li[k] * Rj[k];
   }
-
   // Now update L(i,:) and R(:,j) based on the loss function at X(i,j).
   // The loss function at X(i,j) is ( X(i,j) - L(i,:)*R(:,j) )^2.
   //
@@ -231,7 +231,7 @@ void SgdElement(
     // Compute update for L(i,k)
     float L_gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff / float(FLAGS_nnz_per_row) * Li[k]);
     float R_gradient = 2 * (grad_coeff * Li[k] + regularization_coeff / float(FLAGS_nnz_per_col) * Rj[k]);
-    
+
     L_hist_gradients_row[k] += L_gradient * L_gradient;
 
     L_hist_gradients_row[k] = L_hist_gradients_row[k];
@@ -248,7 +248,7 @@ void SgdElement(
     				    << "_[" << k << "] = " << Li[k]
 				    << " LiRj = " << LiRj
 				    << " Xij = " << Xij;
-    
+
     Li[k] -= step_size / sqrt(L_hist_gradients_row[k]) * L_gradient;
 
     Li[k] = Li[k];
@@ -260,7 +260,7 @@ void SgdElement(
    			   << " k = " << k
     			   << " R_" << j
     			   << "_[" << k << "] = " << Rj[k];
-    
+
     // Compute update for R(k,j)
     CHECK(R_gradient == R_gradient) << "client = " << FLAGS_client_id
 				    << " gradient = " << R_gradient
@@ -331,7 +331,7 @@ void OutputToDisk(petuum::Table<float> &R_table,
   for (int obj_eval_counter = 0; obj_eval_counter < num_obj_evals;
       ++obj_eval_counter) {
     petuum::RowAccessor loss_acc;
-    loss_table.Get(obj_eval_counter, &loss_acc);
+    loss_table.Get(obj_eval_counter, &loss_acc, 0);
     const auto& loss_row = loss_acc.Get<petuum::DenseRow<float> >();
     loss_stream << loss_row[kLossTableColIdxIter] << " "
       << loss_row[kLossTableColIdxClock] << " "
@@ -364,7 +364,9 @@ void RecordLoss(
     // Read L(i,:) and R(:,j) from Petuum PS
     {
       petuum::RowAccessor Rj_acc;
-      const auto& Rj_row = R_table.Get<petuum::DenseRow<float> >(j, &Rj_acc);
+      const auto& Rj_row = R_table.Get<petuum::DenseRow<float> >(
+          j, &Rj_acc,
+          iter - FLAGS_table_staleness);
       Rj_row.CopyToVector(Rj_cache);
     }
     auto& Li = L_table[i - L_row_id_offset];
@@ -402,7 +404,8 @@ void RecordLoss(
     {
       petuum::RowAccessor Rj_acc;
       const auto& Rj_row
-          = R_table.Get<petuum::DenseRow<float> >(ii, &Rj_acc);
+          = R_table.Get<petuum::DenseRow<float> >(ii, &Rj_acc,
+                                                  iter - FLAGS_table_staleness);
       Rj_row.CopyToVector(Rj_cache);
     }
     auto &Rj = *Rj_cache;
@@ -417,20 +420,25 @@ void RecordLoss(
                  L2_reg_loss + squared_loss);
 }
 
+std::map<int32_t, std::vector<std::vector<float> > > L_tables;
+std::map<int32_t, std::vector<std::vector<float> > > L_hist_gradientss;
+
 // Main Matrix Factorization routine, called by pthread_create
-void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
+void SolveMF(int32_t thread_id, boost::barrier* process_barrier, int curr_iter) {
+  LOG(INFO) << __func__ << " "  << curr_iter;
   // Register this thread with Petuum PS
-  petuum::PSTableGroup::RegisterThread();
+  //petuum::PSTableGroup::RegisterThread();
   // Get tables
   petuum::Table<float> R_table = petuum::PSTableGroup::GetTableOrDie<float>(1);
   petuum::Table<float> loss_table =
       petuum::PSTableGroup::GetTableOrDie<float>(2);
 
-  std::vector<std::vector<float> > L_table;
-  std::vector<std::vector<float> > L_hist_gradients;
+  std::vector<std::vector<float> > &L_table = L_tables[thread_id];
+  std::vector<std::vector<float> > &L_hist_gradients = L_hist_gradientss[thread_id];
   size_t row_id_offset = 0;
-  InitLTable(FLAGS_K, thread_id, &L_table,
-             &L_hist_gradients, &row_id_offset);
+  if (curr_iter == 0)
+    InitLTable(FLAGS_K, thread_id, &L_table,
+               &L_hist_gradients, &row_id_offset);
 
   const int total_num_workers = get_total_num_workers();
   // global_worker_id lies in the range [0,total_num_workers)
@@ -444,13 +452,16 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
   // Cache for DenseRow bulk-read
   std::vector<float> Rj_cache(FLAGS_K);
 
-  STATS_APP_INIT_BEGIN();
+  //STATS_APP_INIT_BEGIN();
   // Initialize MF solver
-  InitMF(L_table, R_table, col_begin, col_end);
+  if (curr_iter == 0) {
+    InitMF(L_table, R_table, col_begin, col_end);
+    return;
+  }
 
   // Run additional iterations to let stale values finish propagating
-  petuum::PSTableGroup::GlobalBarrier();
-  STATS_APP_INIT_END();
+  //petuum::PSTableGroup::GlobalBarrier();
+  //STATS_APP_INIT_END();
 
   // Run MF solver
   int clock = 0;
@@ -460,7 +471,7 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
 
   int64_t element_begin = X_partition_starts[thread_id];
   int64_t element_end = (thread_id == FLAGS_num_worker_threads - 1) ?
-                    X_row.size() : X_partition_starts[thread_id + 1];
+                        X_row.size() : X_partition_starts[thread_id + 1];
 
   // round down in order to have same # of clocks per iteration.
   int64_t work_per_clock = (element_end - element_begin) / FLAGS_num_clocks_per_iter;
@@ -469,47 +480,18 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
                             << " X_row.size() = " << X_row.size()
                             << " total_num_workers = " << total_num_workers;
 
-  // Bootstrap.
-  if (thread_id == 0) {
-    LOG(INFO) << "Bootstrap starting";
-    petuum::HighResolutionTimer bootstrap_timer;
-    STATS_APP_BOOTSTRAP_BEGIN();
-    std::set<int32_t> R_rows;
-    // Last element on this machine.
-    int64_t process_element_end = X_row.size();
+  //process_barrier->wait();
+  //petuum::PSTableGroup::GlobalBarrier();
 
-    for (int64_t a = 0; a < process_element_end; ++a) {
-      R_rows.insert(X_col[a]);
-    }
-
-    for (const auto& e : R_rows) {
-      R_table.GetAsyncForced(e);
-    }
-
-    R_table.WaitPendingAsyncGet();
-    STATS_APP_BOOTSTRAP_END();
-    LOG(INFO) << "Bootstrap finished in " << bootstrap_timer.elapsed()
-              << " seconds.";
-  }
-  process_barrier->wait();
-
-  petuum::PSTableGroup::GlobalBarrier();
-
-  petuum::PSTableGroup::TurnOnEarlyComm();
-
-  for (int iter = 0; iter < FLAGS_num_iterations; ++iter) {
-    if (global_worker_id == 0) {
-      LOG(INFO) << "Iteration " << iter+1 << "/"
-                << FLAGS_num_iterations << "... ";
-    }
-    
+  for (int iter = 0; iter < 1; ++iter) {
+    LOG(INFO) << "starts compute!";
     size_t element_counter = 0;
     float step_size = FLAGS_init_step_size;
 
     // Overall computation (no eval / communication time)
-    STATS_APP_ACCUM_COMP_BEGIN();
+    //STATS_APP_ACCUM_COMP_BEGIN();
     for (int64_t a = element_begin; a < element_end; ++a) {
-      SgdElement(a, iter, step_size, global_worker_id, L_table,
+      SgdElement(a, curr_iter, step_size, global_worker_id, L_table,
                  L_hist_gradients,
                  row_id_offset, R_table, loss_table, &Rj_cache);
       ++element_counter;
@@ -517,28 +499,27 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
       if ((element_counter % work_per_clock == 0
            && clock < (iter + 1)*FLAGS_num_clocks_per_iter - 1)
           || (element_counter == element_end - element_begin)) {
-        petuum::PSTableGroup::Clock();
         ++clock;
-        STATS_APP_ACCUM_COMP_END();
+        //STATS_APP_ACCUM_COMP_END();
 
         // Do a fake get to avoid initial block time.
         const int i = X_col[a];
         petuum::RowAccessor Ri_acc;
-        R_table.Get(i, &Ri_acc);
+        R_table.Get(i, &Ri_acc, curr_iter - FLAGS_table_staleness);
 
         // Evaluate (if needed) before clocking.
         if (clock % FLAGS_num_clocks_per_eval == 0) {
-          STATS_APP_ACCUM_OBJ_COMP_BEGIN();
+          //STATS_APP_ACCUM_OBJ_COMP_BEGIN();
           petuum::HighResolutionTimer eval_timer;
           // Record objective at each clock
-          RecordLoss(obj_eval_counter, iter+1, clock, L_table,
+          RecordLoss(obj_eval_counter, curr_iter, clock, L_table,
                      row_id_offset, R_table,
                      loss_table, col_begin, col_end,
                      global_worker_id, total_num_workers,
                      element_begin, element_end, &Rj_cache);
           float eval_cost = eval_timer.elapsed();
           total_eval_time += eval_cost;
-          STATS_APP_ACCUM_OBJ_COMP_END();
+          //STATS_APP_ACCUM_OBJ_COMP_END();
 
           if (global_worker_id == 0 && obj_eval_counter > 0) {
             // Read the obj value from last recording (which is fresh as loss
@@ -546,7 +527,9 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
             {
               petuum::RowAccessor loss_acc;
               const petuum::DenseRow<float>& loss_row =
-                  loss_table.Get<petuum::DenseRow<float> >(obj_eval_counter - 1, &loss_acc);
+                  loss_table.Get<petuum::DenseRow<float> >(
+                      obj_eval_counter - 1, &loss_acc,
+                      curr_iter - FLAGS_table_staleness);
               LOG(INFO) << "End of clock " << clock
                 << " L2_loss = " << loss_row[kLossTableColIdxL2Loss]
                 << " L2_reg_loss = " << loss_row[kLossTableColIdxL2RegLoss];
@@ -554,8 +537,8 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
             }
 
             // Output to disk in case of failure.
-            OutputToDisk(R_table, loss_table, obj_eval_counter,
-                false);
+            //OutputToDisk(R_table, loss_table, obj_eval_counter,
+            //    false);
             float total_time = total_timer.elapsed();
             float compute_time = total_time - total_eval_time;
             LOG(INFO) << " Evaluation cost = " << eval_cost
@@ -572,48 +555,17 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
         }
 
         // Overall computation (no eval / communication time)
-        STATS_APP_ACCUM_COMP_BEGIN();
+        //STATS_APP_ACCUM_COMP_BEGIN();
       }
     }
-    CHECK_EQ((iter+1)*FLAGS_num_clocks_per_iter, clock);
+    //CHECK_EQ((iter+1)*FLAGS_num_clocks_per_iter, clock);
     CHECK_EQ(clock / FLAGS_num_clocks_per_eval, obj_eval_counter);
-    LOG_IF(INFO, global_worker_id == 0) << "Iter " << iter+1
-      << " finished. Time: " << total_timer.elapsed();
+    //LOG_IF(INFO, global_worker_id == 0) << "Iter " << iter+1
+    //  << " finished. Time: " << total_timer.elapsed();
   }
 
-  petuum::PSTableGroup::TurnOffEarlyComm();
-
-  // Finish propagation
-  petuum::PSTableGroup::GlobalBarrier();
-  //TakeSnapShot("L.test.out", L_table);
-
-  // Output loss function
-  if (global_worker_id == 0) {
-    std::stringstream ss;
-    ss << "Iter Clock Compute-Time Compute-Eval-Time L2_loss L2_reg_loss"
-      << std::endl;
-    for (int c = 0; c < obj_eval_counter; ++c) {
-      petuum::RowAccessor loss_acc;
-      const auto& loss_row = loss_table.Get<petuum::DenseRow<float> >(c, &loss_acc);
-      ss << loss_row[kLossTableColIdxIter] << " "
-        << loss_row[kLossTableColIdxClock] << " "
-        << loss_row[kLossTableColIdxComputeTime] << " "
-        << loss_row[kLossTableColIdxComputeEvalTime] << " "
-        << loss_row[kLossTableColIdxL2Loss] << " "
-        << loss_row[kLossTableColIdxL2RegLoss] << std::endl;
-    }
-    LOG(INFO) << "Summary Stats = \n" << ss.str();
-  }
-
-  // Output results to disk
-  if (global_worker_id == 0) {
-    LOG(INFO) << "Outputting results to prefix " << FLAGS_output_prefix
-      << " ... ";
-    OutputToDisk(R_table, loss_table, obj_eval_counter, true);
-    LOG(INFO) << "done";
-  }
   // Deregister this thread with Petuum PS
-  petuum::PSTableGroup::DeregisterThread();
+  //petuum::PSTableGroup::DeregisterThread();
 }
 
 // Main function
@@ -638,7 +590,7 @@ int main(int argc, char *argv[]) {
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<int64_t> >(1);
 
   // Initializing thread does not need table access
-  petuum::PSTableGroup::Init(table_group_config, false);
+  petuum::PSTableGroup::Init(table_group_config, true);
 
   LOG(INFO) << "TableGroupInit is done";
 
@@ -693,17 +645,49 @@ int main(int argc, char *argv[]) {
 
   // Finished creating tables
   petuum::PSTableGroup::CreateTableDone();
-
   LOG(INFO) << "Created all tables";
+
+  {
+    LOG(INFO) << "Bootstrap starting";
+    std::set<int32_t> R_rows;
+    // Last element on this machine.
+    int64_t process_element_end = X_row.size();
+    for (int64_t a = 0; a < process_element_end; ++a) {
+      R_rows.insert(X_col[a]);
+    }
+
+    auto R_table = petuum::PSTableGroup::GetTableOrDie<float>(1);
+    for (const auto& e : R_rows) {
+      R_table.GetAsyncForced(e);
+    }
+
+    R_table.WaitPendingAsyncGet();
+    LOG(INFO) << "Bootstrap done";
+  }
 
   // Run Petuum PS-based MF solver
   std::vector<std::thread> threads(FLAGS_num_worker_threads);
   boost::barrier process_barrier(FLAGS_num_worker_threads);
-  for (int t = 0; t < FLAGS_num_worker_threads; ++t) {
-    threads[t] = std::thread(SolveMF, t, &process_barrier);
+
+  for (int iter = 0; iter < FLAGS_num_iterations + 1; ++iter) {
+    if (iter == 1)
+      petuum::PSTableGroup::TurnOnEarlyComm();
+
+    for (int t = 0; t < FLAGS_num_worker_threads; ++t) {
+      threads[t] = std::thread(SolveMF, t, &process_barrier, iter);
+    }
+
+    for (auto& thr : threads) {
+      thr.join();
+    }
+    petuum::PSTableGroup::Clock();
   }
-  for (auto& thr : threads) {
-    thr.join();
+
+  {
+    petuum::PSTableGroup::TurnOffEarlyComm();
+
+    // Finish propagation
+    petuum::PSTableGroup::GlobalBarrier();
   }
 
   // Cleanup and output runtime

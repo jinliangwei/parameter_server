@@ -78,7 +78,7 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
   }
 
   size_t num_new_oplog_metas = table_oplog_meta->GetCleanNumNewOpLogMeta();
-  STATS_BG_ACCUM_NUM_OPLOG_METAS_READ(table_id, num_oplog_metas_read, num_new_oplog_metas);
+  //STATS_BG_ACCUM_NUM_OPLOG_METAS_READ(table_id, num_oplog_metas_read, num_new_oplog_metas);
 
   delete new_table_oplog_index_ptr;
 }
@@ -470,7 +470,7 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   //        << " send milli sec = " << oplog_send_milli_sec_
   //        << " left over milli = " << left_over_send_milli_sec
   //        << " size = " << sent_size;
-  
+
   long ret_sec = early_comm_on_ ? oplog_send_milli_sec_ : ResetBgIdleMilli();
   return ret_sec;
 }

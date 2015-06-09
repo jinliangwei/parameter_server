@@ -24,6 +24,7 @@ public:
   size_t GetNumRowOpLogs();
 private:
   void Init(int32_t partition_num);
+  int32_t partition_num_;
   size_t capacity_;
   SharedMutex smtx_;
   StripedLock<int32_t> locks_;

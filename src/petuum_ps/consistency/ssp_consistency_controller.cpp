@@ -35,10 +35,11 @@ SSPConsistencyController::SSPConsistencyController(
 }
 
 ClientRow *SSPConsistencyController::Get(int32_t row_id,
-                                         RowAccessor* row_accessor) {
+                                         RowAccessor* row_accessor,
+                                         int32_t clock) {
   STATS_APP_SAMPLE_SSP_GET_BEGIN(table_id_);
   // Look for row_id in process_storage_.
-  int32_t stalest_clock = std::max(0, ThreadContext::get_clock() - staleness_);
+  int32_t stalest_clock = clock > 0 ? clock : 0;
 
   ClientRow *client_row = process_storage_.Find(row_id, row_accessor);
 
@@ -78,7 +79,7 @@ ClientRow *SSPConsistencyController::Get(int32_t row_id,
 void SSPConsistencyController::Inc(int32_t row_id, int32_t column_id,
     const void* delta) {
   //LOG(INFO) << "row_id = " << row_id;
-  thread_cache_->IndexUpdate(row_id);
+  //thread_cache_->IndexUpdate(row_id);
 
   OpLogAccessor oplog_accessor;
   oplog_.FindInsertOpLog(row_id, &oplog_accessor);
@@ -99,7 +100,7 @@ void SSPConsistencyController::BatchInc(int32_t row_id,
   const int32_t* column_ids, const void* updates, int32_t num_updates) {
 
   STATS_APP_SAMPLE_BATCH_INC_OPLOG_BEGIN();
-  thread_cache_->IndexUpdate(row_id);
+  //thread_cache_->IndexUpdate(row_id);
 
   OpLogAccessor oplog_accessor;
   oplog_.FindInsertOpLog(row_id, &oplog_accessor);
@@ -130,7 +131,7 @@ void SSPConsistencyController::DenseBatchInc(
     int32_t row_id, const void *updates,
     int32_t index_st, int32_t num_updates) {
   STATS_APP_SAMPLE_BATCH_INC_OPLOG_BEGIN();
-  thread_cache_->IndexUpdate(row_id);
+  //thread_cache_->IndexUpdate(row_id);
 
   OpLogAccessor oplog_accessor;
   bool new_create = oplog_.FindInsertOpLog(row_id, &oplog_accessor);
@@ -273,8 +274,8 @@ void SSPConsistencyController::FlushThreadCache() {
 
 void SSPConsistencyController::Clock() {
   // order is important
-  thread_cache_->FlushCache(process_storage_, oplog_, sample_row_);
-  thread_cache_->FlushOpLogIndex(oplog_index_);
+  //thread_cache_->FlushCache(process_storage_, oplog_, sample_row_);
+  //thread_cache_->FlushOpLogIndex(oplog_index_);
 }
 
 }   // namespace petuum

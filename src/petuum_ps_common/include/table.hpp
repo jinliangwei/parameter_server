@@ -158,14 +158,14 @@ public:
 
   // row_accessor helps maintain the reference count to prevent premature
   // cache eviction.
-  void Get(int32_t row_id, RowAccessor *row_accessor) {
-    system_table_->Get(row_id, row_accessor);
+  void Get(int32_t row_id, RowAccessor *row_accessor, int32_t clock) {
+    system_table_->Get(row_id, row_accessor, clock);
   }
 
   template<typename ROW>
-  const ROW &Get(int32_t row_id, RowAccessor *row_accessor = 0) {
+  const ROW &Get(int32_t row_id, RowAccessor *row_accessor = 0, int32_t clock = 0) {
     return *(static_cast<ROW*>(
-        system_table_->Get(row_id, row_accessor)->GetRowDataPtr()));
+        system_table_->Get(row_id, row_accessor, clock)->GetRowDataPtr()));
   }
 
   void Inc(int32_t row_id, int32_t column_id, UPDATE update){

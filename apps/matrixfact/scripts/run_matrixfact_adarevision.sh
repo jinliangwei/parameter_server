@@ -5,12 +5,12 @@
 #data_filename="/l0/netflix.dat.list.gl.perm.duplicate.x10.bin.6"
 #data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
 #data_filename="/l0/netflix.64.bin"
-data_filename="/l0/netflix.8.bin"
+#data_filename="/l0/netflix.8.bin"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 #data_filename="/l0/netflix.dat.list.gl.perm.bin.24"
 #data_filename="/l0/movielens_10m.dat"
 #data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
-#data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
+data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x4"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x2"
@@ -19,11 +19,11 @@ data_filename="/l0/netflix.8.bin"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 #host_filename="../../machinefiles/servers.6.eth1"
-host_filename="../../machinefiles/servers.mf.8"
-#host_filename="../../machinefiles/localserver"
+#host_filename="../../machinefiles/servers.mf.8"
+host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=400
+K=40
 # works for SSPPush
 #init_step_size=6e-5
 #step_dec=0.995
@@ -64,8 +64,8 @@ nnz_per_col=5882
 
 # Execution parameters:
 num_iterations=16
-consistency_model="SSPAggr"
-num_worker_threads=16
+consistency_model="SSPPush"
+num_worker_threads=1
 #num_comm_channels_per_client=2
 num_comm_channels_per_client=4
 table_staleness=2 # effective staleness is staleness / num_clocks_per_iter.

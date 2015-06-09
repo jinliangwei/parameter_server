@@ -1,4 +1,3 @@
-
 #include <petuum_ps/oplog/oplog_index.hpp>
 #include <petuum_ps/thread/context.hpp>
 #include <petuum_ps_common/include/constants.hpp>
@@ -7,6 +6,7 @@
 namespace petuum {
 
 PartitionOpLogIndex::PartitionOpLogIndex(size_t capacity, int32_t partition_num):
+    partition_num_(partition_num),
     capacity_(capacity),
     locks_(GlobalContext::GetLockPoolSize()),
     shared_oplog_index_(new cuckoohash_map<int32_t, bool>
@@ -49,7 +49,7 @@ cuckoohash_map<int32_t, bool> *PartitionOpLogIndex::Reset() {
   cuckoohash_map<int32_t, bool> *old_index = shared_oplog_index_;
   shared_oplog_index_ = new cuckoohash_map<int32_t, bool>
                         (capacity_*kCuckooExpansionFactor);
-  Init();
+  Init(partition_num_);
   smtx_.unlock();
   return old_index;
 }

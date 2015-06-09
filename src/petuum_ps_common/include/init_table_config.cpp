@@ -11,6 +11,7 @@ namespace petuum {
 // 5) oplog_capacity
 
 void InitTableConfig(ClientTableConfig *config) {
+  CHECK(std::is_pod<ClientTableConfig>::value);
   config->table_info.table_staleness = FLAGS_table_staleness;
   config->table_info.row_type = FLAGS_row_type;
 

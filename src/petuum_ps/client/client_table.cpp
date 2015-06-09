@@ -210,8 +210,9 @@ void ClientTable::FlushThreadCache() {
   consistency_controller_->FlushThreadCache();
 }
 
-ClientRow *ClientTable::Get(int32_t row_id, RowAccessor *row_accessor) {
-  return consistency_controller_->Get(row_id, row_accessor);
+ClientRow *ClientTable::Get(int32_t row_id, RowAccessor *row_accessor,
+                            int32_t clock) {
+  return consistency_controller_->Get(row_id, row_accessor, clock);
 }
 
 void ClientTable::Inc(int32_t row_id, int32_t column_id, const void *update) {

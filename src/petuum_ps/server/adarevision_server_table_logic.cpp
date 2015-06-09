@@ -58,7 +58,7 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
   //LOG(INFO) << "row = " << row_id
   //	    << " row version = " << row_version
   //	    << " end of version = " << end_of_version;
-  
+
   auto adarev_iter = adarevision_info_.find(row_id);
   CHECK(adarev_iter != adarevision_info_.end());
   auto &adarev_row = adarev_iter->second;
@@ -77,7 +77,7 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
 
       float eta_old = init_step_size_ / sqrt(adarev_row.z_max_[i]);
 
-      //LOG(INFO) << "i = " << i << " accu_g = " << adarev_row.accum_gradients_[i] 
+      //LOG(INFO) << "i = " << i << " accu_g = " << adarev_row.accum_gradients_[i]
       //	<< " o_accum_g = " << old_accum_grad
       //	<< " z = " << adarev_row.z_[i]
       //	<< " u = " << update;
@@ -113,6 +113,9 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
   } else {
     auto old_accum_grad_iter
         = old_accum_gradients_.find(std::make_pair(row_id, row_version));
+    if(old_accum_grad_iter != old_accum_gradients_.end())
+      return;
+
     CHECK(old_accum_grad_iter != old_accum_gradients_.end());
 
     auto &old_accum_grad = old_accum_grad_iter->second.first;
@@ -127,7 +130,7 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
 
       float eta_old = init_step_size_ / sqrt(adarev_row.z_max_[i]);
 
-      // LOG(INFO) << "i = " << i << " accu_g = " << adarev_row.accum_gradients_[i] 
+      // LOG(INFO) << "i = " << i << " accu_g = " << adarev_row.accum_gradients_[i]
       //	<< " o_accum_g = " << old_accum_grad[i]
       //	<< " z = " << adarev_row.z_[i]
       //	<< " u = " << update;

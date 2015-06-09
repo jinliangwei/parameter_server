@@ -28,7 +28,8 @@ public:
 
   // Check freshness; make request and block if too stale or row_id not found
   // in storage.
-  ClientRow *Get(int32_t row_id, RowAccessor* row_accessor);
+  ClientRow *Get(int32_t row_id, RowAccessor* row_accessor,
+                 int32_t clock);
 
   void ThreadGet(int32_t row_id, ThreadRowAccessor* row_accessor);
 
