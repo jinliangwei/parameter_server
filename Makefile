@@ -42,7 +42,7 @@ $(NEED_MKDIR):
 	mkdir -p $@
 
 clean:
-	rm -rf $(BIN) $(LIB) $(PS_OBJ) $(ML_OBJ) $(PS_SN_OBJ) $(PS_COMMON_OBJ)
+	rm -rf $(BIN) $(LIB) $(PS_OBJ) $(ML_OBJ) $(PS_COMMON_OBJ)
 
 distclean: clean
 	rm -rf $(filter-out $(THIRD_PARTY)/third_party.mk, \

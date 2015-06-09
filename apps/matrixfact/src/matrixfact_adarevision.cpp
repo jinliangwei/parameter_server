@@ -11,14 +11,16 @@
 #include <float.h>
 #include <boost/thread/barrier.hpp>
 
-#include <petuum_ps_common/include/petuum_ps.hpp>
-#include <petuum_ps_common/include/system_gflags_declare.hpp>
-#include <petuum_ps_common/include/table_gflags_declare.hpp>
-#include <petuum_ps_common/include/init_table_config.hpp>
-#include <petuum_ps_common/include/init_table_group_config.hpp>
-#include <petuum_ps_common/util/class_register.hpp>
-#include <petuum_ps_common/include/abstract_server_table_logic.hpp>
-#include <petuum_ps/server/adarevision_server_table_logic.hpp>
+#include <petuum/include/petuum_ps.hpp>
+#include <petuum/include/system_gflags_declare.hpp>
+#include <petuum/include/table_gflags_declare.hpp>
+#include <petuum/include/init_table_config.hpp>
+#include <petuum/include/init_table_group_config.hpp>
+#include <petuum/ps_common/util/class_register.hpp>
+#include <petuum/ps_common/oplog/dense_row_oplog.hpp>
+#include <petuum/ps_common/index/row_id_set.hpp>
+#include <petuum/include/abstract_server_table_logic.hpp>
+#include <petuum/ps/server/adarevision_server_table_logic.hpp>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
@@ -204,9 +206,9 @@ void SgdElement(
   //LOG(INFO) << __func__ << " i = " << i << " j = " << j;
   // Read R(:,j) from Petuum PS
   {
-    petuum::RowAccessor Rj_acc;
-    const auto& Rj_row = R_table.Get<petuum::DenseRow<float> >(j, &Rj_acc);
-    Rj_row.CopyToVector(Rj_cache);
+    //petuum::RowAccessor Rj_acc;
+    //const auto& Rj_row = R_table.Get<petuum::DenseRow<float> >(j, &Rj_acc);
+    //Rj_row.CopyToVector(Rj_cache);
     // Release the accessor.
   }
   auto& Rj = *Rj_cache;
@@ -231,7 +233,7 @@ void SgdElement(
     // Compute update for L(i,k)
     float L_gradient = 2 * (grad_coeff * Rj[k] + regularization_coeff / float(FLAGS_nnz_per_row) * Li[k]);
     float R_gradient = 2 * (grad_coeff * Li[k] + regularization_coeff / float(FLAGS_nnz_per_col) * Rj[k]);
-    
+
     L_hist_gradients_row[k] += L_gradient * L_gradient;
 
     L_hist_gradients_row[k] = L_hist_gradients_row[k];
@@ -248,7 +250,7 @@ void SgdElement(
     				    << "_[" << k << "] = " << Li[k]
 				    << " LiRj = " << LiRj
 				    << " Xij = " << Xij;
-    
+
     Li[k] -= step_size / sqrt(L_hist_gradients_row[k]) * L_gradient;
 
     Li[k] = Li[k];
@@ -260,7 +262,7 @@ void SgdElement(
    			   << " k = " << k
     			   << " R_" << j
     			   << "_[" << k << "] = " << Rj[k];
-    
+
     // Compute update for R(k,j)
     CHECK(R_gradient == R_gradient) << "client = " << FLAGS_client_id
 				    << " gradient = " << R_gradient
@@ -304,7 +306,7 @@ std::string GetExperimentInfo() {
     << "num_clocks_per_iter = " << FLAGS_num_clocks_per_iter << std::endl
     << "num_clocks_per_eval = " << FLAGS_num_clocks_per_eval << std::endl
     << "M_cache_size = " << FLAGS_M_cache_size << std::endl
-    << "staleness = " << FLAGS_table_staleness << std::endl
+    << "staleness = " << FLAGS_staleness << std::endl
     << "ssp_mode = " << FLAGS_consistency_model << std::endl
     << "init_step_size = " << FLAGS_init_step_size << std::endl
     << "lambda = " << FLAGS_lambda << std::endl
@@ -330,15 +332,15 @@ void OutputToDisk(petuum::Table<float> &R_table,
     << "L2_regularized_loss" << std::endl;
   for (int obj_eval_counter = 0; obj_eval_counter < num_obj_evals;
       ++obj_eval_counter) {
-    petuum::RowAccessor loss_acc;
-    loss_table.Get(obj_eval_counter, &loss_acc);
-    const auto& loss_row = loss_acc.Get<petuum::DenseRow<float> >();
-    loss_stream << loss_row[kLossTableColIdxIter] << " "
-      << loss_row[kLossTableColIdxClock] << " "
-      << loss_row[kLossTableColIdxComputeTime] << " "
-      << loss_row[kLossTableColIdxComputeEvalTime] << " "
-      << loss_row[kLossTableColIdxL2Loss] << " "
-      << loss_row[kLossTableColIdxL2RegLoss] << std::endl;
+    //petuum::RowAccessor loss_acc;
+    //loss_table.Get(obj_eval_counter, &loss_acc);
+    //const auto& loss_row = loss_acc.Get<petuum::DenseRow<float> >();
+    //loss_stream << loss_row[kLossTableColIdxIter] << " "
+    //  << loss_row[kLossTableColIdxClock] << " "
+    //  << loss_row[kLossTableColIdxComputeTime] << " "
+    //  << loss_row[kLossTableColIdxComputeEvalTime] << " "
+    //  << loss_row[kLossTableColIdxL2Loss] << " "
+    //  << loss_row[kLossTableColIdxL2RegLoss] << std::endl;
   }
   loss_stream.close();
   ++record_counter;
@@ -359,13 +361,13 @@ void RecordLoss(
   for (int a = element_begin; a < element_end; ++a) {
     // Let i = X_row[a], j = X_col[a], and X(i,j) = X_val[a]
     const int i = X_row[a];
-    const int j = X_col[a];
+    //const int j = X_col[a];
     const float Xij = X_val[a];
     // Read L(i,:) and R(:,j) from Petuum PS
     {
-      petuum::RowAccessor Rj_acc;
-      const auto& Rj_row = R_table.Get<petuum::DenseRow<float> >(j, &Rj_acc);
-      Rj_row.CopyToVector(Rj_cache);
+      //petuum::RowAccessor Rj_acc;
+      //const auto& Rj_row = R_table.Get<petuum::DenseRow<float> >(j, &Rj_acc);
+      //Rj_row.CopyToVector(Rj_cache);
     }
     auto& Li = L_table[i - L_row_id_offset];
     auto& Rj = *Rj_cache;
@@ -400,10 +402,10 @@ void RecordLoss(
 
   for (int ii = col_begin; ii < col_end; ++ii) {
     {
-      petuum::RowAccessor Rj_acc;
-      const auto& Rj_row
-          = R_table.Get<petuum::DenseRow<float> >(ii, &Rj_acc);
-      Rj_row.CopyToVector(Rj_cache);
+      //petuum::RowAccessor Rj_acc;
+      //const auto& Rj_row
+      //    = R_table.Get<petuum::DenseRow<float> >(ii, &Rj_acc);
+      //Rj_row.CopyToVector(Rj_cache);
     }
     auto &Rj = *Rj_cache;
 
@@ -482,11 +484,11 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
       R_rows.insert(X_col[a]);
     }
 
-    for (const auto& e : R_rows) {
-      R_table.GetAsyncForced(e);
-    }
+    //for (const auto& e : R_rows) {
+      //R_table.GetAsyncForced(e);
+    //}
 
-    R_table.WaitPendingAsyncGet();
+    //R_table.WaitPendingAsyncGet();
     STATS_APP_BOOTSTRAP_END();
     LOG(INFO) << "Bootstrap finished in " << bootstrap_timer.elapsed()
               << " seconds.";
@@ -502,7 +504,7 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
       LOG(INFO) << "Iteration " << iter+1 << "/"
                 << FLAGS_num_iterations << "... ";
     }
-    
+
     size_t element_counter = 0;
     float step_size = FLAGS_init_step_size;
 
@@ -522,9 +524,9 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
         STATS_APP_ACCUM_COMP_END();
 
         // Do a fake get to avoid initial block time.
-        const int i = X_col[a];
-        petuum::RowAccessor Ri_acc;
-        R_table.Get(i, &Ri_acc);
+        //const int i = X_col[a];
+        //petuum::RowAccessor Ri_acc;
+        //R_table.Get(i, &Ri_acc);
 
         // Evaluate (if needed) before clocking.
         if (clock % FLAGS_num_clocks_per_eval == 0) {
@@ -544,12 +546,12 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
             // Read the obj value from last recording (which is fresh as loss
             // table has 0 staleness).
             {
-              petuum::RowAccessor loss_acc;
-              const petuum::DenseRow<float>& loss_row =
-                  loss_table.Get<petuum::DenseRow<float> >(obj_eval_counter - 1, &loss_acc);
-              LOG(INFO) << "End of clock " << clock
-                << " L2_loss = " << loss_row[kLossTableColIdxL2Loss]
-                << " L2_reg_loss = " << loss_row[kLossTableColIdxL2RegLoss];
+              //petuum::RowAccessor loss_acc;
+              //const petuum::DenseRow<float>& loss_row =
+              //  loss_table.Get<petuum::DenseRow<float> >(obj_eval_counter - 1, &loss_acc);
+              //LOG(INFO) << "End of clock " << clock
+              //<< " L2_loss = " << loss_row[kLossTableColIdxL2Loss]
+              //<< " L2_reg_loss = " << loss_row[kLossTableColIdxL2RegLoss];
               // Release loss_acc.
             }
 
@@ -593,14 +595,14 @@ void SolveMF(int32_t thread_id, boost::barrier* process_barrier) {
     ss << "Iter Clock Compute-Time Compute-Eval-Time L2_loss L2_reg_loss"
       << std::endl;
     for (int c = 0; c < obj_eval_counter; ++c) {
-      petuum::RowAccessor loss_acc;
-      const auto& loss_row = loss_table.Get<petuum::DenseRow<float> >(c, &loss_acc);
-      ss << loss_row[kLossTableColIdxIter] << " "
-        << loss_row[kLossTableColIdxClock] << " "
-        << loss_row[kLossTableColIdxComputeTime] << " "
-        << loss_row[kLossTableColIdxComputeEvalTime] << " "
-        << loss_row[kLossTableColIdxL2Loss] << " "
-        << loss_row[kLossTableColIdxL2RegLoss] << std::endl;
+      //petuum::RowAccessor loss_acc;
+      //const auto& loss_row = loss_table.Get<petuum::DenseRow<float> >(c, &loss_acc);
+      //ss << loss_row[kLossTableColIdxIter] << " "
+      //  << loss_row[kLossTableColIdxClock] << " "
+      //  << loss_row[kLossTableColIdxComputeTime] << " "
+      //  << loss_row[kLossTableColIdxComputeEvalTime] << " "
+      //  << loss_row[kLossTableColIdxL2Loss] << " "
+      //  << loss_row[kLossTableColIdxL2RegLoss] << std::endl;
     }
     LOG(INFO) << "Summary Stats = \n" << ss.str();
   }
@@ -622,8 +624,6 @@ int main(int argc, char *argv[]) {
   google::InitGoogleLogging(argv[0]);
   petuum::HighResolutionTimer total_timer;
 
-  LOG(INFO) << "staleness = " << FLAGS_table_staleness;
-
   // Configure Petuum PS
   petuum::TableGroupConfig table_group_config;
   petuum::InitTableGroupConfig(&table_group_config, 2);
@@ -636,6 +636,8 @@ int main(int argc, char *argv[]) {
 
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<float> >(0);
   petuum::PSTableGroup::RegisterRow<petuum::DenseRow<int64_t> >(1);
+
+  petuum::PSTableGroup::RegisterRowOpLog<petuum::DenseRowOpLog<float> >(0);
 
   // Initializing thread does not need table access
   petuum::PSTableGroup::Init(table_group_config, false);
@@ -666,35 +668,32 @@ int main(int argc, char *argv[]) {
 
   // R_table (M by K)
   table_config.table_info.row_capacity = FLAGS_K;
-  table_config.table_info.dense_row_oplog_capacity = FLAGS_K;
-  table_config.process_cache_capacity = FLAGS_M_cache_size;
-  table_config.thread_cache_capacity = 1;
-  table_config.oplog_capacity = FLAGS_M_cache_size;
+  table_config.cache_capacity = FLAGS_M_cache_size;
+  petuum::RowIDSetHeader *row_id_set = petuum::RowIDSetFactory::CreateRowIDSet(
+      petuum::Dense, FLAGS_M_cache_size);
+  table_config.row_id_set = row_id_set;
   table_config.client_send_oplog_upper_bound
       = FLAGS_M_client_send_oplog_upper_bound;
   petuum::PSTableGroup::CreateTable(1, table_config);
+  petuum::RowIDSetFactory::FreeRowIDSet(row_id_set);
 
   table_config.table_info.oplog_dense_serialized = true;
-  table_config.no_oplog_replay = false;
-  table_config.oplog_type = petuum::Sparse;
-  table_config.process_storage_type = petuum::BoundedSparse;
-  table_config.table_info.table_staleness = FLAGS_table_staleness;
-
+  table_config.index_type = petuum::Dense;
+  table_config.table_info.staleness = FLAGS_staleness;
+  petuum::RowIDSetHeader *row_id_set2 = petuum::RowIDSetFactory::CreateRowIDSet(
+      petuum::Dense, 10);
   table_config.table_info.row_capacity = 6;
-  table_config.table_info.dense_row_oplog_capacity = 6;
   table_config.table_info.row_oplog_type = 0;
   table_config.table_info.server_table_logic = -1;
   table_config.table_info.version_maintain = false;
-  table_config.process_cache_capacity = 100;
-  table_config.thread_cache_capacity = 1;
-  table_config.oplog_capacity = 100;
+  table_config.cache_capacity = 100;
   table_config.client_send_oplog_upper_bound = 1;
   petuum::PSTableGroup::CreateTable(2, table_config);
-
-  // Finished creating tables
-  petuum::PSTableGroup::CreateTableDone();
+  petuum::RowIDSetFactory::FreeRowIDSet(row_id_set2);
 
   LOG(INFO) << "Created all tables";
+  // Finished creating tables
+  petuum::PSTableGroup::CreateTableDone();
 
   // Run Petuum PS-based MF solver
   std::vector<std::thread> threads(FLAGS_num_worker_threads);

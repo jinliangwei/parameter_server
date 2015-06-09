@@ -9,7 +9,6 @@ third_party_core: path \
                   boost \
                   gperftools \
                   cuckoo \
-                  leveldb \
                   libconfig \
                   yaml-cpp \
                   leveldb \

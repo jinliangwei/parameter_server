@@ -5,12 +5,12 @@
 #data_filename="/l0/netflix.dat.list.gl.perm.duplicate.x10.bin.6"
 #data_filename="/l0/netflix.dat.list.gl.perm.bin.8"
 #data_filename="/l0/netflix.64.bin"
-data_filename="/l0/netflix.8.bin"
+#data_filename="/l0/netflix.8.bin"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 #data_filename="/l0/netflix.dat.list.gl.perm.bin.24"
 #data_filename="/l0/movielens_10m.dat"
 #data_filename="/home/jinliang/data/matrixfact_data/netflix.dat.list.gl.perm"
-#data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
+data_filename="/home/jinliang/data/matrixfact_data/data_4K_2K_X.dat.bin.1"
 #data_filename="/home/jinliang/data/matrixfact_data/data_2K_2K_X.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x4"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/netflix.dat.list.gl.perm.duplicate.x2"
@@ -19,11 +19,11 @@ data_filename="/l0/netflix.8.bin"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/movielens_10m.dat"
 #data_filename="/tank/projects/biglearning/jinlianw/data/matrixfact_data/data_8K_8K_X.dat"
 #host_filename="../../machinefiles/servers.6.eth1"
-host_filename="../../machinefiles/servers.mf.8"
-#host_filename="../../machinefiles/localserver"
+#host_filename="../../machinefiles/servers.mf.8"
+host_filename="../../machinefiles/localserver"
 
 # MF parameters:
-K=400
+K=40
 # works for SSPPush
 #init_step_size=6e-5
 #step_dec=0.995
@@ -63,12 +63,12 @@ nnz_per_col=5882
 #nnz_per_col=94112
 
 # Execution parameters:
-num_iterations=16
-consistency_model="SSPAggr"
-num_worker_threads=16
+num_iterations=1
+consistency_model="SSPPush"
+num_worker_threads=1
 #num_comm_channels_per_client=2
-num_comm_channels_per_client=4
-table_staleness=2 # effective staleness is staleness / num_clocks_per_iter.
+num_comm_channels_per_client=1
+staleness=2 # effective staleness is staleness / num_clocks_per_iter.
 #N_cache_size=480190
 #N_cache_size=500000
 M_cache_size=17771
@@ -99,16 +99,11 @@ server_idle_milli=2
 update_sort_policy=RelativeMagnitude
 row_candidate_factor=10
 
-append_only_buffer_capacity=$((1024*1024*4))
-append_only_buffer_pool_size=3
-bg_apply_append_oplog_freq=64
-
 #N_client_send_oplog_upper_bound=500
 M_client_send_oplog_upper_bound=100
 server_push_row_upper_bound=100
 
-oplog_type=Dense
-process_storage_type=BoundedDense
+index_type=Dense
 
 server_table_logic=1
 version_maintain=true
@@ -116,9 +111,7 @@ version_maintain=true
 no_oplog_replay=true
 numa_opt=false
 numa_policy=Even
-naive_table_oplog_meta=false
 suppression_on=false
-use_approx_sort=false
 
 # Find other Petuum paths by using the script's path
 app_dir=`readlink -f $0 | xargs dirname | xargs dirname`
@@ -139,7 +132,7 @@ num_hosts=`cat $host_file | awk '{ print $2 }' | wc -l`
 
 # output paths
 output_dir="${app_dir}/output_ada_server_logic_table_stats"
-output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${table_staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
+output_dir="${output_dir}/${progname}_${consistency_model}_${update_sort_policy}_${K}_${staleness}_${client_bandwidth_mbps}_${server_bandwidth_mbps}"
 output_dir="${output_dir}_${num_iterations}_${init_step_size}"
 output_dir="${output_dir}_C${num_comm_channels_per_client}"
 output_dir="${output_dir}_${server_push_row_upper_bound}_P${num_hosts}_T${num_worker_threads}"
@@ -215,26 +208,18 @@ for ip in $host_list; do
     --client_bandwidth_mbps $client_bandwidth_mbps \
     --server_bandwidth_mbps $server_bandwidth_mbps \
     --bg_idle_milli $bg_idle_milli \
-    --thread_oplog_batch_size $thread_oplog_batch_size \
     --row_candidate_factor ${row_candidate_factor}
     --server_idle_milli $server_idle_milli \
     --update_sort_policy $update_sort_policy \
     --numa_opt=${numa_opt} \
     --numa_index ${numa_index} \
     --numa_policy ${numa_policy} \
-    --naive_table_oplog_meta=${naive_table_oplog_meta} \
     --suppression_on=${suppression_on} \
-    --use_approx_sort=${use_approx_sort} \
-    --table_staleness $table_staleness \
+    --staleness $staleness \
     --row_type 0 \
     --row_oplog_type ${row_oplog_type} \
     --oplog_dense_serialized \
-    --oplog_type ${oplog_type} \
-    --append_only_oplog_type DenseBatchInc \
-    --append_only_buffer_capacity ${append_only_buffer_capacity} \
-    --append_only_buffer_pool_size ${append_only_buffer_pool_size} \
-    --bg_apply_append_oplog_freq ${bg_apply_append_oplog_freq} \
-    --process_storage_type ${process_storage_type} \
+    --index_type ${index_type} \
     --no_oplog_replay=${no_oplog_replay} \
     --M_cache_size $M_cache_size \
     --M_client_send_oplog_upper_bound ${M_client_send_oplog_upper_bound} \
