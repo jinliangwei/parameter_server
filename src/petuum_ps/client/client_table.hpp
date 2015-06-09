@@ -30,7 +30,7 @@ public:
   void GetAsyncForced(int32_t row_id);
   void GetAsync(int32_t row_id);
   void WaitPendingAsyncGet();
-  void ThreadGet(int32_t row_id, ThreadRowAccessor *row_accessor);
+
   void ThreadInc(int32_t row_id, int32_t column_id, const void *update);
   void ThreadBatchInc(int32_t row_id, const int32_t* column_ids,
                       const void* updates, int32_t num_updates);

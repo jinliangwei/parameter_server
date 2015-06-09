@@ -13,7 +13,8 @@
 namespace petuum {
 class PartitionOpLogIndex : boost::noncopyable {
 public:
-  explicit PartitionOpLogIndex(size_t capacity);
+  explicit PartitionOpLogIndex(size_t capacity,
+                               int32_t partition_num);
   PartitionOpLogIndex(PartitionOpLogIndex && other);
   PartitionOpLogIndex & operator = (PartitionOpLogIndex && other) = delete;
 
@@ -22,6 +23,7 @@ public:
   cuckoohash_map<int32_t, bool> *Reset();
   size_t GetNumRowOpLogs();
 private:
+  void Init(int32_t partition_num);
   size_t capacity_;
   SharedMutex smtx_;
   StripedLock<int32_t> locks_;

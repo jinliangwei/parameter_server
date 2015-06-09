@@ -6,16 +6,24 @@
 
 namespace petuum {
 
-PartitionOpLogIndex::PartitionOpLogIndex(size_t capacity):
+PartitionOpLogIndex::PartitionOpLogIndex(size_t capacity, int32_t partition_num):
     capacity_(capacity),
     locks_(GlobalContext::GetLockPoolSize()),
     shared_oplog_index_(new cuckoohash_map<int32_t, bool>
                         (capacity*kCuckooExpansionFactor)){
+  Init(partition_num);
 }
 
 PartitionOpLogIndex::~PartitionOpLogIndex() {
   if (shared_oplog_index_ != 0)
     delete shared_oplog_index_;
+}
+
+void PartitionOpLogIndex::Init(int32_t partition_num) {
+  for (int32_t i = partition_num; i < capacity_;
+       i += GlobalContext::get_num_comm_channels_per_client()) {
+    shared_oplog_index_->insert(i, true);
+  }
 }
 
 
@@ -40,7 +48,8 @@ cuckoohash_map<int32_t, bool> *PartitionOpLogIndex::Reset() {
   smtx_.lock();
   cuckoohash_map<int32_t, bool> *old_index = shared_oplog_index_;
   shared_oplog_index_ = new cuckoohash_map<int32_t, bool>
-                    (capacity_*kCuckooExpansionFactor);
+                        (capacity_*kCuckooExpansionFactor);
+  Init();
   smtx_.unlock();
   return old_index;
 }
@@ -55,7 +64,7 @@ size_t PartitionOpLogIndex::GetNumRowOpLogs() {
 TableOpLogIndex::TableOpLogIndex(size_t capacity) {
   for (int32_t i = 0; i < GlobalContext::get_num_comm_channels_per_client();
        ++i) {
-    partition_oplog_index_.emplace_back(capacity);
+    partition_oplog_index_.emplace_back(capacity, i);
   }
 }
 

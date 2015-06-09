@@ -34,9 +34,9 @@ SSPConsistencyController::SSPConsistencyController(
   }
 }
 
-ClientRow *SSPConsistencyController::Get(int32_t row_id, RowAccessor* row_accessor) {
+ClientRow *SSPConsistencyController::Get(int32_t row_id,
+                                         RowAccessor* row_accessor) {
   STATS_APP_SAMPLE_SSP_GET_BEGIN(table_id_);
-
   // Look for row_id in process_storage_.
   int32_t stalest_clock = std::max(0, ThreadContext::get_clock() - staleness_);
 
