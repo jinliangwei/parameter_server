@@ -113,9 +113,6 @@ void AdaRevisionServerTableLogic::ApplyRowOpLog(
   } else {
     auto old_accum_grad_iter
         = old_accum_gradients_.find(std::make_pair(row_id, row_version));
-    if(old_accum_grad_iter != old_accum_gradients_.end())
-      return;
-
     CHECK(old_accum_grad_iter != old_accum_gradients_.end());
 
     auto &old_accum_grad = old_accum_grad_iter->second.first;

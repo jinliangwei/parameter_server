@@ -28,8 +28,7 @@ ClientTable::ClientTable(int32_t table_id, const ClientTableConfig &config):
     table_id_(table_id), row_type_(config.table_info.row_type),
     sample_row_(ClassRegistry<AbstractRow>::GetRegistry().CreateObject(
         row_type_)),
-    oplog_index_(std::ceil(static_cast<float>(config.oplog_capacity)
-                           / GlobalContext::get_num_comm_channels_per_client())),
+    oplog_index_(config.oplog_capacity),
     staleness_(config.table_info.table_staleness),
     oplog_dense_serialized_(config.table_info.oplog_dense_serialized),
     client_table_config_(config),

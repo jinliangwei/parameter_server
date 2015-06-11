@@ -10,7 +10,8 @@ PartitionOpLogIndex::PartitionOpLogIndex(size_t capacity, int32_t partition_num)
     capacity_(capacity),
     locks_(GlobalContext::GetLockPoolSize()),
     shared_oplog_index_(new cuckoohash_map<int32_t, bool>
-                        (capacity*kCuckooExpansionFactor)){
+                        ((capacity / GlobalContext::get_num_comm_channels_per_client())
+                         * kCuckooExpansionFactor)){
   Init(partition_num);
 }
 
