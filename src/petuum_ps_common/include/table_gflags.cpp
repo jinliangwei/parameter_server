@@ -1,4 +1,3 @@
-#include <glog/logging.h>
 #include <gflags/gflags.h>
 
 #include <petuum_ps_common/include/configs.hpp>

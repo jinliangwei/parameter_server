@@ -57,7 +57,7 @@ void ZMQUtil::ZMQConnectSend(zmq::socket_t *sock,
   const std::string &connect_addr, int32_t zmq_id, void *msg, size_t size){
   try{
     sock->connect(connect_addr.c_str());
-  }catch(zmq::error_t &e){
+  } catch(zmq::error_t &e) {
     switch(e.num()){
     case EINVAL:
     case EPROTONOSUPPORT:
