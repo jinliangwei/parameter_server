@@ -11,8 +11,25 @@
 #include <string>
 #include <petuum_ps_common/comm_bus/comm_bus.hpp>
 
+std::atomic_int id(0);
+
 class Worker : public petuum::Thread {
+public:
   void *operator() () {
+    id_ = id++;
+    // demostrate basic table operations
+    if (id_ == 0) {
+      petuum::PSTableGroup::RegisterThread();
+      auto table = petuum::PSTableGroup::GetTableOrDie<float>(1);
+
+      for (int i = 0; i < 10; ++i) {
+        table.GetAsyncForced(i);
+      }
+
+      table.WaitPendingAsyncGet();
+      LOG(INFO) << "Bootstrap done";
+    }
+
     auto table = petuum::PSTableGroup::GetTableOrDie<float>(1);
 
     // print original value
@@ -64,7 +81,7 @@ class Worker : public petuum::Thread {
       table.BatchInc(0, update);
     }
 
-        {
+    {
       std::vector<float> row_cache(10);
       petuum::RowAccessor row_acc;
       const auto& row = table.Get<petuum::DenseRow<float> >(0, &row_acc, 0);
@@ -79,8 +96,11 @@ class Worker : public petuum::Thread {
       LOG(INFO) << str;
     }
 
+    if (id_ == 0) petuum::PSTableGroup::DeregisterThread();
     return 0;
   }
+
+  int32_t id_;
 };
 
 int main(int argc, char *argv[]) {
@@ -96,7 +116,7 @@ int main(int argc, char *argv[]) {
   petuum::InitTableGroupConfig(&table_group_config, 1);
 
   // Initializing thread does not need table access
-  petuum::PSTableGroup::Init(table_group_config, true);
+  petuum::PSTableGroup::Init(table_group_config, false);
 
   LOG(INFO) << "TableGroupInit is done";
 
@@ -111,18 +131,6 @@ int main(int argc, char *argv[]) {
   petuum::PSTableGroup::CreateTable(1, table_config);
   petuum::PSTableGroup::CreateTableDone();
   petuum::PSTableGroup::WaitThreadRegister();
-
-  // demostrate basic table operations
-  {
-    auto table = petuum::PSTableGroup::GetTableOrDie<float>(1);
-
-    for (int i = 0; i < 10; ++i) {
-      table.GetAsyncForced(i);
-    }
-
-    table.WaitPendingAsyncGet();
-    LOG(INFO) << "Bootstrap done";
-  }
 
   std::vector<Worker> worker_vec(2);
   for (auto &worker: worker_vec) {
