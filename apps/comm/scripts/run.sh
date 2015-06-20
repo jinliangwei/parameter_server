@@ -58,14 +58,15 @@ for ip in $host_list; do
     $prog_path \
     --num_clients $num_hosts \
     --num_comm_channels_per_client $num_comm_channels_per_client \
-    --init_thread_access_table=true \
+    --init_thread_access_table=false \
     --num_table_threads 1 \
     --client_id $client_id \
-    --hostfile ${host_file}"
+    --hostfile ${host_file} \
+    --process_storage_type BoundedDense"
 
-  #echo $cmd
-  ssh $ssh_options $ip $cmd&
-  #eval $cmd
+  echo $cmd
+  #ssh $ssh_options $ip $cmd&
+  eval $cmd
 
   # Wait a few seconds for the name node (client 0) to set up
   if [ $client_id -eq 0 ]; then

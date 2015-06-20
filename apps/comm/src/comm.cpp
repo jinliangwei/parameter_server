@@ -17,9 +17,12 @@ class Worker : public petuum::Thread {
 public:
   void *operator() () {
     id_ = id++;
+    LOG(INFO) << "started! id = " << id_;
+    //while(1);
     // demostrate basic table operations
     if (id_ == 0) {
       petuum::PSTableGroup::RegisterThread();
+      LOG(INFO) << "thread has registered";
       auto table = petuum::PSTableGroup::GetTableOrDie<float>(1);
 
       for (int i = 0; i < 10; ++i) {
@@ -96,7 +99,10 @@ public:
       LOG(INFO) << str;
     }
 
-    if (id_ == 0) petuum::PSTableGroup::DeregisterThread();
+    if (id_ == 0) {
+      petuum::PSTableGroup::DeregisterThread();
+    }
+
     return 0;
   }
 
@@ -130,16 +136,22 @@ int main(int argc, char *argv[]) {
   table_config.oplog_capacity = 10;
   petuum::PSTableGroup::CreateTable(1, table_config);
   petuum::PSTableGroup::CreateTableDone();
-  petuum::PSTableGroup::WaitThreadRegister();
+  //petuum::PSTableGroup::WaitThreadRegister();
+
+  LOG(INFO) << "CreateTableDone()!";
 
   std::vector<Worker> worker_vec(2);
   for (auto &worker: worker_vec) {
     worker.Start();
   }
 
+  LOG(INFO) << "workers started";
+
   for (auto &worker: worker_vec) {
     worker.Join();
   }
+
+  LOG(INFO) << "all joined!!";
 
   // communication from application thread
   auto &host_map = table_group_config.host_map;
