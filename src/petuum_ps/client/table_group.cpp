@@ -7,7 +7,7 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
-//#include <petuum_ps/thread/numa_mgr.hpp>
+#include <petuum_ps/thread/numa_mgr.hpp>
 
 namespace petuum {
 TableGroup::TableGroup(const TableGroupConfig &table_group_config,
@@ -58,13 +58,13 @@ TableGroup::TableGroup(const TableGroupConfig &table_group_config,
       table_group_config.thread_oplog_batch_size,
       table_group_config.server_idle_milli,
       table_group_config.row_candidate_factor,
-      //table_group_config.numa_index,
-      //table_group_config.numa_policy,
+      table_group_config.numa_index,
+      table_group_config.numa_policy,
       table_group_config.naive_table_oplog_meta,
       table_group_config.use_approx_sort,
       table_group_config.suppression_on);
 
-  //NumaMgr::Init(table_group_config.numa_opt);
+  NumaMgr::Init(table_group_config.numa_opt);
 
   size_t num_zmq_threads = table_group_config.num_zmq_threads;
 
@@ -93,7 +93,7 @@ TableGroup::TableGroup(const TableGroupConfig &table_group_config,
 
   if (table_access) {
     vector_clock_.AddClock(*init_thread_id, 0);
-    //NumaMgr::ConfigureTableThread();
+    NumaMgr::ConfigureTableThread();
   }
 
   if (table_group_config.aggressive_clock)
@@ -162,7 +162,7 @@ int32_t TableGroup::RegisterThread() {
 
   ThreadContext::RegisterThread(thread_id);
 
-  //NumaMgr::ConfigureTableThread();
+  NumaMgr::ConfigureTableThread();
 
   GlobalContext::comm_bus->ThreadRegister(comm_config);
 

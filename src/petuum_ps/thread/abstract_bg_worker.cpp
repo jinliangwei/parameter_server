@@ -1,6 +1,7 @@
 #include <petuum_ps/thread/abstract_bg_worker.hpp>
 
 #include <petuum_ps/thread/ps_msgs.hpp>
+#include <petuum_ps/thread/numa_mgr.hpp>
 #include <petuum_ps_common/util/class_register.hpp>
 #include <petuum_ps_common/include/constants.hpp>
 #include <petuum_ps/client/oplog_serializer.hpp>
@@ -1055,6 +1056,8 @@ void *AbstractBgWorker::operator() () {
   STATS_REGISTER_THREAD(kBgThread);
 
   ThreadContext::RegisterThread(my_id_);
+
+  //NumaMgr::ConfigureBgWorker();
 
   InitCommBus();
 

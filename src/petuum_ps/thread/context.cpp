@@ -57,9 +57,9 @@ long GlobalContext::server_idle_milli_;
 
 int32_t GlobalContext::row_candidate_factor_;
 
-//int32_t GlobalContext::numa_index_;
+int32_t GlobalContext::numa_index_;
 
-//NumaPolicy GlobalContext::numa_policy_;
+NumaPolicy GlobalContext::numa_policy_;
 
 bool GlobalContext::naive_table_oplog_meta_;
 

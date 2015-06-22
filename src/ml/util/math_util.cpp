@@ -30,16 +30,16 @@ float Sigmoid(float x) {
 
 float LogSum(float log_a, float log_b) {
   return (log_a < log_b) ? log_b + fastlog(1 + fastexp(log_a - log_b)) :
-    log_a + fastlog(1 + fastexp(log_b-log_a));
+      log_a + fastlog(1 + fastexp(log_b-log_a));
 }
 
 float LogSumVec(const std::vector<float>& logvec) {
-	float sum = 0.;
-	sum = logvec[0];
-	for (int i = 1; i < logvec.size(); ++i) {
-		sum = LogSum(sum, logvec[i]);
-	}
-	return sum;
+  float sum = 0.;
+  sum = logvec[0];
+  for (int i = 1; i < logvec.size(); ++i) {
+    sum = LogSum(sum, logvec[i]);
+  }
+  return sum;
 }
 
 void Softmax(std::vector<float>* vec) {

@@ -30,13 +30,10 @@ public:
   AbstractFeature() : feature_dim_(0) { }
   virtual ~AbstractFeature() { }
 
-  AbstractFeature(int32_t feature_dim, float weight = 1.) :
-    feature_dim_(feature_dim), weight_(weight) { }
+  AbstractFeature(int32_t feature_dim) : feature_dim_(feature_dim) { }
 
   // Feature dimension.
   int32_t GetFeatureDim() const { return feature_dim_; }
-
-  float GetFeatureWeight() const { return weight_; }
 
   // Get feature value from feature id.
   virtual V operator[](int32_t feature_id) const = 0;
@@ -63,7 +60,6 @@ public:
 
 protected:
   int32_t feature_dim_;   // feature dimension.
-  float weight_{1.}; // feature weight
 };
 
 }  // namespace ml

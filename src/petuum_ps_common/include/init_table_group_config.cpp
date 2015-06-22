@@ -26,8 +26,8 @@ void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables) {
   config->snapshot_dir = FLAGS_snapshot_dir;
   config->resume_dir = FLAGS_resume_dir;
 
-  // SSPAggr params:
   config->update_sort_policy = GetUpdateSortPolicy(FLAGS_update_sort_policy);
+
   config->bg_idle_milli = FLAGS_bg_idle_milli;
   config->client_bandwidth_mbps = FLAGS_client_bandwidth_mbps;
   config->server_bandwidth_mbps = FLAGS_server_bandwidth_mbps;
@@ -35,7 +35,6 @@ void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables) {
   config->row_candidate_factor = FLAGS_row_candidate_factor;
   config->server_idle_milli = FLAGS_server_idle_milli;
 
-  /*
   config->numa_opt = FLAGS_numa_opt;
   config->numa_index = FLAGS_numa_index;
 
@@ -48,7 +47,6 @@ void InitTableGroupConfig(TableGroupConfig *config, int32_t num_tables) {
       LOG(FATAL) << "Unknown NUMA policy = " << FLAGS_numa_policy;
     }
   }
-  */
 
   config->naive_table_oplog_meta = FLAGS_naive_table_oplog_meta;
   config->suppression_on = FLAGS_suppression_on;
