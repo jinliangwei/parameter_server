@@ -24,7 +24,7 @@ public:
   // (feature_ids[1],val[1]) ... pairs.  feature_ids needs to be sorted, and
   // max(feature_ids[i]) < feature_dim. These are checked.
   SparseFeature(const std::vector<int32_t>& feature_ids,
-      const std::vector<V>& val, int32_t feature_dim);
+      const std::vector<V>& val, int32_t feature_dim, float weight = 1.);
 
   SparseFeature(int32_t feature_dim);
 
@@ -117,20 +117,20 @@ void SparseFeature<V>::Init(int32_t feature_dim) {
 
 template<typename V>
 SparseFeature<V>::SparseFeature(const std::vector<int32_t>& feature_ids,
-    const std::vector<V>& val, int32_t feature_dim) :
-    AbstractFeature<V>(feature_dim),
-    entries_(new Entry<V>[feature_ids.size()]),
-    num_entries_(feature_ids.size()), capacity_(num_entries_) {
-  CHECK_EQ(feature_ids.size(), val.size());
-  int32_t prev_idx = -1;
-  for (int i = 0; i < num_entries_; ++i) {
-    CHECK_LT(prev_idx, feature_ids[i]);
-    prev_idx = feature_ids[i];
-    entries_[i].first = feature_ids[i];
-    entries_[i].second = val[i];
+    const std::vector<V>& val, int32_t feature_dim, float weight) :
+  AbstractFeature<V>(feature_dim, weight),
+  entries_(new Entry<V>[feature_ids.size()]),
+  num_entries_(feature_ids.size()), capacity_(num_entries_) {
+    CHECK_EQ(feature_ids.size(), val.size());
+    int32_t prev_idx = -1;
+    for (int i = 0; i < num_entries_; ++i) {
+      CHECK_LT(prev_idx, feature_ids[i]);
+      prev_idx = feature_ids[i];
+      entries_[i].first = feature_ids[i];
+      entries_[i].second = val[i];
+    }
+    CHECK_LT(prev_idx, this->feature_dim_);
   }
-  CHECK_LT(prev_idx, this->feature_dim_);
-}
 
 template<typename V>
 void SparseFeature<V>::Init(const std::vector<int32_t>& feature_ids,
@@ -210,7 +210,8 @@ std::string SparseFeature<V>::ToString() const {
   for (int i = 0; i < num_entries_; ++i) {
     ss << entries_[i].first << ":" << entries_[i].second << " ";
   }
-  ss << "(feature dim: " << this->feature_dim_ << ")";
+  ss << "(feature dim: " << this->feature_dim_ << ", weight: "
+    <<  this->weight_ << ")";
   return ss.str();
 }
 

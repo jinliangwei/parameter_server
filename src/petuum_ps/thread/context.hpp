@@ -152,8 +152,8 @@ public:
       size_t thread_oplog_batch_size,
       long server_idle_milli,
       int32_t row_candidate_factor,
-      int32_t numa_index,
-      NumaPolicy numa_policy,
+      //int32_t numa_index,
+      //NumaPolicy numa_policy,
       bool naive_table_oplog_meta,
       bool use_approx_sort,
       bool suppression_on) {
@@ -191,9 +191,9 @@ public:
 
     row_candidate_factor_ = row_candidate_factor;
 
-    numa_index_ = numa_index;
+    //numa_index_ = numa_index;
 
-    numa_policy_ = numa_policy;
+    //numa_policy_ = numa_policy;
 
     naive_table_oplog_meta_ = naive_table_oplog_meta;
 
@@ -379,6 +379,7 @@ public:
     return server_idle_milli_;
   }
 
+  /*
   static int32_t get_numa_index() {
     return numa_index_;
   }
@@ -386,6 +387,7 @@ public:
   static NumaPolicy get_numa_policy() {
     return numa_policy_;
   }
+  */
 
   static bool get_naive_table_oplog_meta() {
     return naive_table_oplog_meta_;
@@ -451,9 +453,9 @@ private:
 
   static int32_t row_candidate_factor_;
 
-  static int32_t numa_index_;
+  //static int32_t numa_index_;
 
-  static NumaPolicy numa_policy_;
+  //static NumaPolicy numa_policy_;
 
   static bool naive_table_oplog_meta_;
 

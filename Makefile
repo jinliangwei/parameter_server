@@ -32,7 +32,6 @@ INCFLAGS = $(PETUUM_INCFLAGS)
 LDFLAGS = $(PETUUM_LDFLAGS)
 
 all: path \
-     third_party_core \
      ps_lib \
 		 ml_lib
 

@@ -79,9 +79,9 @@ struct TableGroupConfig {
       server_bandwidth_mbps(40),
       thread_oplog_batch_size(100*1000*1000),
       row_candidate_factor(5),
-      numa_opt(false),
-      numa_index(0),
-      numa_policy(Even),
+      //numa_opt(false),
+      //numa_index(0),
+      //numa_policy(Even),
       naive_table_oplog_meta(true),
       suppression_on(false),
       use_approx_sort(false),
@@ -154,11 +154,11 @@ struct TableGroupConfig {
 
   long row_candidate_factor;
 
-  bool numa_opt;
+  //bool numa_opt;
 
-  int32_t numa_index;
+  //int32_t numa_index;
 
-  NumaPolicy numa_policy;
+  //NumaPolicy numa_policy;
 
   bool naive_table_oplog_meta;
 

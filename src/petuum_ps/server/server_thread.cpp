@@ -4,7 +4,7 @@
 #include <petuum_ps/thread/ps_msgs.hpp>
 #include <petuum_ps_common/util/stats.hpp>
 #include <petuum_ps_common/thread/mem_transfer.hpp>
-#include <petuum_ps/thread/numa_mgr.hpp>
+//#include <petuum_ps/thread/numa_mgr.hpp>
 #include <unistd.h>
 namespace petuum {
 

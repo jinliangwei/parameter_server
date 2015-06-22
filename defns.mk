@@ -22,13 +22,13 @@ PETUUM_CXXFLAGS = -O3 \
 
 # comment out if not planning to use petuum stats
 PETUUM_CXXFLAGS += -DPETUUM_STATS
-PETUUM_CXXFLAGS += -DPETUUM_NUMA
+#PETUUM_CXXFLAGS += -DPETUUM_NUMA
 # PETUUM_CXXFLAGS += -DPETUUM_COMP_IMPORTANCE
 
 PETUUM_INCFLAGS = -I$(PETUUM_SRC) -I$(PETUUM_THIRD_PARTY_INCLUDE)
 PETUUM_LDFLAGS = -Wl,-rpath,$(PETUUM_THIRD_PARTY_LIB) \
           -L$(PETUUM_THIRD_PARTY_LIB) \
-          -pthread -lrt -lnsl -luuid \
+          -pthread -lrt -lnsl \
           -lzmq \
           -lboost_thread \
           -lboost_system \
@@ -39,7 +39,7 @@ PETUUM_LDFLAGS = -Wl,-rpath,$(PETUUM_THIRD_PARTY_LIB) \
 	  -lyaml-cpp \
 	  -lleveldb
 
-PETUUM_LDFLAGS += -lnuma
+#PETUUM_LDFLAGS += -lnuma
 PETUUM_LDFLAGS += -lsnappy
 
 # debug

@@ -87,7 +87,8 @@ public:  // AbstractFeature override.
     for (int i = 0; i < data_.size(); ++i) {
       ss << i << ":" << data_[i] << " ";
     }
-    ss << "(feature dim: " << this->feature_dim_ << ")";
+    ss << "(feature dim: " << this->feature_dim_ << ", weight: "
+      << this->weight_ << ")";
     return ss.str();
   }
 
