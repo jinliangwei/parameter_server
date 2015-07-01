@@ -13,12 +13,14 @@
 
 std::atomic_int id(0);
 
+DEFINE_int32(num_iters, -1, "number iters");
+
 class Worker : public petuum::Thread {
 public:
   void *operator() () {
     id_ = id++;
     LOG(INFO) << "started! id = " << id_;
-    //while(1);
+
     // demostrate basic table operations
     if (id_ == 0) {
       petuum::PSTableGroup::RegisterThread();
@@ -35,70 +37,92 @@ public:
 
     auto table = petuum::PSTableGroup::GetTableOrDie<float>(1);
 
-    // print original value
-    {
-      std::vector<float> row_cache(10);
-      petuum::RowAccessor row_acc;
-      const auto& row = table.Get<petuum::DenseRow<float> >(0, &row_acc, 0);
-      row.CopyToVector(&row_cache);
+    if (FLAGS_num_iters > 0) {
+      for (int i = 0; i < FLAGS_num_iters; ++i) {
+        std::vector<float> row_cache(10);
+        petuum::RowAccessor row_acc;
+        const auto& row = table.Get<petuum::DenseRow<float> >(0, &row_acc, i);
+        row.CopyToVector(&row_cache);
+        std::string str;
+        for (auto &f : row_cache) {
+          str += std::to_string(f) + " ";
+        }
 
-      std::string str;
+        LOG(INFO) << FLAGS_client_id << " t"
+                  << id_ << " c" << i << " " << str;
 
-      for (auto &f : row_cache) {
-        str += std::to_string(f) + " ";
+        petuum::DenseUpdateBatch<float> update(0, 10);
+        for (int i = 0; i < 10; ++i) {
+          update[i] = 1;
+        }
+        table.DenseBatchInc(0, update);
+
+        if (id_ == 0)
+          petuum::PSTableGroup::Clock();
+      }
+    } else {
+      // print original value
+      {
+        std::vector<float> row_cache(10);
+        petuum::RowAccessor row_acc;
+        const auto& row = table.Get<petuum::DenseRow<float> >(0, &row_acc, 0);
+        row.CopyToVector(&row_cache);
+        std::string str;
+        for (auto &f : row_cache) {
+          str += std::to_string(f) + " ";
+        }
+
+        LOG(INFO) << str;
       }
 
-      LOG(INFO) << str;
-    }
-
-    {
-      petuum::DenseUpdateBatch<float> update(0, 10);
-      for (int i = 0; i < 10; ++i) {
-        update[i] = 1;
-      }
-      table.DenseBatchInc(0, update);
-    }
-
-    {
-      std::vector<float> row_cache(10);
-      petuum::RowAccessor row_acc;
-      const auto& row = table.Get<petuum::DenseRow<float> >(0, &row_acc, 0);
-      row.CopyToVector(&row_cache);
-
-      std::string str;
-
-      for (auto &f : row_cache) {
-        str += std::to_string(f) + " ";
+      {
+        petuum::DenseUpdateBatch<float> update(0, 10);
+        for (int i = 0; i < 10; ++i) {
+          update[i] = 1;
+        }
+        table.DenseBatchInc(0, update);
       }
 
-      LOG(INFO) << str;
-    }
+      {
+        std::vector<float> row_cache(10);
+        petuum::RowAccessor row_acc;
+        const auto& row = table.Get<petuum::DenseRow<float> >(0, &row_acc, 0);
+        row.CopyToVector(&row_cache);
 
-    {
-      // batch size 5
-      petuum::UpdateBatch<float> update(5);
-      for (int i = 0; i < 5; ++i) {
-        // i-th update is used to update column 5;
-        update.UpdateSet(i, i + 2, 1);
+        std::string str;
+
+        for (auto &f : row_cache) {
+          str += std::to_string(f) + " ";
+        }
+
+        LOG(INFO) << str;
       }
+
+      {
+        // batch size 5
+        petuum::UpdateBatch<float> update(5);
+        for (int i = 0; i < 5; ++i) {
+          // i-th update is used to update column 5;
+          update.UpdateSet(i, i + 2, 1);
+        }
       table.BatchInc(0, update);
-    }
-
-    {
-      std::vector<float> row_cache(10);
-      petuum::RowAccessor row_acc;
-      const auto& row = table.Get<petuum::DenseRow<float> >(0, &row_acc, 0);
-      row.CopyToVector(&row_cache);
-
-      std::string str;
-
-      for (auto &f : row_cache) {
-        str += std::to_string(f) + " ";
       }
 
-      LOG(INFO) << str;
-    }
+      {
+        std::vector<float> row_cache(10);
+        petuum::RowAccessor row_acc;
+        const auto& row = table.Get<petuum::DenseRow<float> >(0, &row_acc, 0);
+        row.CopyToVector(&row_cache);
 
+        std::string str;
+
+        for (auto &f : row_cache) {
+          str += std::to_string(f) + " ";
+        }
+
+        LOG(INFO) << str;
+      }
+    }
     if (id_ == 0) {
       petuum::PSTableGroup::DeregisterThread();
     }
