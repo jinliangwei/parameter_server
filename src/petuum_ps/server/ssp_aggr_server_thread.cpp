@@ -37,8 +37,26 @@ long SSPAggrServerThread::ServerIdleWork() {
       STATS_SERVER_IDLE_SEND_INC_ONE();
       STATS_SERVER_ACCUM_IDLE_ROW_SENT_BYTES(sent_bytes);
 
+      bytes_actually_sent_ += (1.0*sent_size/k1_Mi);
+      double total_time = backlog_timer_.elapsed();
+      double should_have_sent = (GlobalContext::get_server_bandwidth_mbps() / kNumBitsPerByte) * total_time;
+      double pcLag = (should_have_sent - bytes_actually_sent_) * 1.0 / should_have_sent; //how much we are lagging in terms of sending
+
       row_send_milli_sec_ = TransTimeEstimate::EstimateTransMillisec(
           sent_bytes, GlobalContext::get_server_bandwidth_mbps());
+
+      LOG(INFO) << "Total bytes sent in BgIdle " << bytes_actually_sent_
+        		  << " Should have sent " << should_have_sent
+        		  << " Total time passed in seconds " << total_time
+          	  	  << " % lag is " << pcLag
+          	  	  << " Current slack is " << slack_
+          	  	  << " Current sleep time is " << row_send_milli_sec_;
+
+      if(pcLag >= 0.1) // give some time for the system to settle down?
+      {
+    	  LOG(INFO) << "% lag is too much - " << pcLag;
+    	  slack_ = pcLag * row_send_milli_sec_;
+      }
 
       //LOG(INFO) << "ServerIdle send bytes = " << sent_bytes
       //        << " bw = " << GlobalContext::get_bandwidth_mbps()
@@ -47,9 +65,9 @@ long SSPAggrServerThread::ServerIdleWork() {
 
       msg_send_timer_.restart();
 
-      return row_send_milli_sec_;
+      return row_send_milli_sec_ - slack_;
   }
-  //LOG(INFO) << "Server nothing to send";
+  LOG(INFO) << "Server nothing to send";
 
   return GlobalContext::get_server_idle_milli();
 }
@@ -102,8 +120,12 @@ void SSPAggrServerThread::HandleEarlyCommOn() {
     ResetServerIdleMilli_ = &SSPAggrServerThread::ResetServerIdleMilliEarlyComm;
     early_comm_on_ = true;
     num_early_comm_off_msgs_ = 0;
+    backlog_timer_.restart();
+    bytes_actually_sent_ = 0.0;
+    slack_ = 0.0;
+    LOG(INFO) << "Turn on early comm";
   }
-  //LOG(INFO) << "Turn on early comm";
+
 }
 
 void SSPAggrServerThread::HandleEarlyCommOff() {
