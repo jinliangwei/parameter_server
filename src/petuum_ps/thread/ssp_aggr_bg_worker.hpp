@@ -122,10 +122,6 @@ protected:
   double clock_tick_sec_;
   ResetBgIdleMilliFunc ResetBgIdleMilli_;
 
-  HighResolutionTimer backlog_timer_;
-  double bytes_actually_sent_;
-  double slack_;
-
   bool suppression_on_;
 
   bool early_comm_on_;

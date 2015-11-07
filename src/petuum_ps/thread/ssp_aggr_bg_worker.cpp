@@ -262,7 +262,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
   return accum_table_oplog_bytes;
 }
 
-BgOpLogPartition* SSPAggrBgWorker:: PrepareOpLogsNormal(
+BgOpLogPartition* SSPAggrBgWorker::PrepareOpLogsNormal(
     int32_t table_id, ClientTable *table, int32_t clock_to_push) {
 
   GetSerializedRowOpLogSizeFunc GetSerializedRowOpLogSize;
@@ -370,7 +370,6 @@ BgOpLog *SSPAggrBgWorker::PrepareOpLogsToSend(int32_t clock_to_push) {
 
     FinalizeOpLogMsgStats(table_id, &table_num_bytes_by_server_,
                           &server_table_oplog_size_map_);
-
   }
   return bg_oplog;
 }
@@ -425,15 +424,7 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   size_t sent_size = SendOpLogMsgs(true);
   TrackBgOpLog(bg_oplog);
 
-  bytes_actually_sent_ += (1.0*sent_size/k1_Mi);
-  double total_time = backlog_timer_.elapsed();
-  double total_bytes = (GlobalContext::get_client_bandwidth_mbps() / kNumBitsPerByte) * total_time;
-  LOG(INFO) << "Total bytes sent in HandleClockMsg " << bytes_actually_sent_
-		  << "Should have sent " << total_bytes
-		  << " Total time passed in seconds " << total_time;
-
-
-//  LOG(INFO) << "sent size = " << sent_size
+  //LOG(INFO) << "sent size = " << sent_size
   //        << " " << ThreadContext::get_id();
 
   oplog_send_milli_sec_
@@ -514,7 +505,6 @@ BgOpLog *SSPAggrBgWorker::PrepareBgIdleOpLogs() {
 
     FinalizeOpLogMsgStats(table_id, &table_num_bytes_by_server_,
                           &server_table_oplog_size_map_);
-
   }
   return bg_oplog;
 }
@@ -586,6 +576,8 @@ void SSPAggrBgWorker::PrepareBgIdleOpLogsAppendOnlyNoReplay(int32_t table_id,
 long SSPAggrBgWorker::BgIdleWork() {
   bool found_oplog = false;
 
+  //LOG(INFO) << __func__;
+
   // check if last msg has been sent out
   if (oplog_send_milli_sec_ > 1) {
     double send_elapsed_milli = msg_send_timer_.elapsed() * kOneThousand;
@@ -647,30 +639,11 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 
-  bytes_actually_sent_ += (1.0*sent_size/k1_Mi);
-  double total_time = backlog_timer_.elapsed();
-  double should_have_sent = (GlobalContext::get_client_bandwidth_mbps() / kNumBitsPerByte) * total_time;
-  double pcLag = (should_have_sent - bytes_actually_sent_) * 1.0 / should_have_sent; //how much we are lagging in terms of sending
-
-  LOG(INFO) << "Total bytes sent in BgIdle " << bytes_actually_sent_
-		  << " Should have sent " << should_have_sent
-		  << " Total time passed in seconds " << total_time
-  	  	  << " % lag is " << pcLag
-  	  	  << " Current slack is " << slack_
-  	  	  << " Current sleep time is " << oplog_send_milli_sec_;
-
-
-  if(pcLag >= 0.1) // give some time for the system to settle down?
-  {
-	  LOG(INFO) << "% lag is too much - " << pcLag;
-	  slack_ = pcLag * oplog_send_milli_sec_;
-  }
-
   //LOG(INFO) << "BgIdle send bytes = " << sent_size
-    //      << " send milli sec = " << oplog_send_milli_sec_
-      //    << " size = " << sent_size
-        //  << " bw = " << GlobalContext::get_client_bandwidth_mbps()s;
-  return oplog_send_milli_sec_ - slack_;
+  //        << " send milli sec = " << oplog_send_milli_sec_
+  //        << " size = " << sent_size
+  //        << " bw = " << GlobalContext::get_client_bandwidth_mbps();
+  return oplog_send_milli_sec_;
 }
 
 void SSPAggrBgWorker::HandleEarlyCommOn() {
@@ -695,10 +668,6 @@ void SSPAggrBgWorker::HandleEarlyCommOn() {
   }
   //LOG(INFO) << __func__;
   early_comm_on_ = true;
-  backlog_timer_.restart();
-  bytes_actually_sent_ = 0.0;
-  slack_ = 0.0;
-  LOG(INFO) << "Started the backlog timer";
 }
 
 void SSPAggrBgWorker::HandleEarlyCommOff() {
