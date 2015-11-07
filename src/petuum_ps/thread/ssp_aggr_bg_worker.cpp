@@ -639,11 +639,30 @@ long SSPAggrBgWorker::BgIdleWork() {
 
   STATS_BG_ACCUM_IDLE_OPLOG_SENT_BYTES(sent_size);
 
+  bytes_actually_sent_ += (1.0*sent_size/k1_Mi);
+  double total_time = backlog_timer_.elapsed();
+  double should_have_sent = (GlobalContext::get_client_bandwidth_mbps() / kNumBitsPerByte) * total_time;
+  double pcLag = (should_have_sent - bytes_actually_sent_) * 1.0 / should_have_sent; //how much we are lagging in terms of sending
+
+  LOG(INFO) << "Total bytes sent in BgIdle " << bytes_actually_sent_
+                  << " Should have sent " << should_have_sent
+                  << " Total time passed in seconds " << total_time
+                  << " % lag is " << pcLag
+                  << " Current slack is " << slack_
+                  << " Current sleep time is " << oplog_send_milli_sec_;
+
+
+  if(pcLag >= 0.1) // give some time for the system to settle down?
+  {
+          LOG(INFO) << "% lag is too much - " << pcLag;
+          slack_ = pcLag * oplog_send_milli_sec_;
+  }
+
   //LOG(INFO) << "BgIdle send bytes = " << sent_size
-  //        << " send milli sec = " << oplog_send_milli_sec_
-  //        << " size = " << sent_size
-  //        << " bw = " << GlobalContext::get_client_bandwidth_mbps();
-  return oplog_send_milli_sec_;
+    //      << " send milli sec = " << oplog_send_milli_sec_
+      //    << " size = " << sent_size
+        //  << " bw = " << GlobalContext::get_client_bandwidth_mbps()s;
+  return oplog_send_milli_sec_ - slack_;
 }
 
 void SSPAggrBgWorker::HandleEarlyCommOn() {
@@ -667,6 +686,10 @@ void SSPAggrBgWorker::HandleEarlyCommOn() {
     CHECK_EQ(sent_size, msg.get_size());
   }
   //LOG(INFO) << __func__;
+  backlog_timer_.restart();
+  bytes_actually_sent_ = 0.0;
+  slack_ = 0.0;
+  LOG(INFO) << "Started the backlog timer";
   early_comm_on_ = true;
 }
 

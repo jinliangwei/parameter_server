@@ -40,6 +40,10 @@ protected:
   ResetServerIdleMilliFunc ResetServerIdleMilli_;
   bool early_comm_on_;
   size_t num_early_comm_off_msgs_;
+
+  HighResolutionTimer backlog_timer_;
+  double bytes_actually_sent_;
+  double slack_;
 };
 
 }
