@@ -181,7 +181,6 @@ void NumericStoreRow<StoreType, V, ImpCalc>::ApplyDenseBatchIncUnsafe(
 
   for (int32_t i = 0; i < num_updates; ++i) {
     val_array[i] += update_array[i];
-    val_array[i] = RestoreInfNaN(val_array[i]);
   }
 }
 
