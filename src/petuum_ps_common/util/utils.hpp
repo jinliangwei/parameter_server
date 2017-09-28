@@ -7,8 +7,9 @@
 #include <petuum_ps_common/include/host_info.hpp>
 #include <petuum_ps_common/include/configs.hpp>
 
-#include <float.h>
-#include <math.h>
+#include <cfloat>
+#include <cmath>
+using namespace std;
 
 namespace petuum {
 // Read in a file containing list of servers. 'server_file' need to have the
