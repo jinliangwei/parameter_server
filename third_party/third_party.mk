@@ -14,6 +14,7 @@ third_party_core: path \
                   yaml-cpp \
                   leveldb \
                   snappy \
+                  eigen \
 		  float16_compressor
 
 third_party_all: third_party_core \
