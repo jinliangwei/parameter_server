@@ -2,7 +2,11 @@
 
 PETUUM_SRC = $(PETUUM_ROOT)/src
 PETUUM_LIB = $(PETUUM_ROOT)/lib
-PETUUM_THIRD_PARTY = $(PETUUM_ROOT)/third_party
+
+### XXXCDC: set this to output of bosen-umbrella
+###PETUUM_THIRD_PARTY = $(PETUUM_ROOT)/third_party
+PETUUM_THIRD_PARTY = /proj/testbed/data/chuck/bos
+
 PETUUM_THIRD_PARTY_SRC = $(PETUUM_THIRD_PARTY)/src
 PETUUM_THIRD_PARTY_INCLUDE = $(PETUUM_THIRD_PARTY)/include
 PETUUM_THIRD_PARTY_LIB = $(PETUUM_THIRD_PARTY)/lib

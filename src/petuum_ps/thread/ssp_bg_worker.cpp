@@ -110,18 +110,21 @@ BgOpLogPartition *SSPBgWorker::PrepareOpLogsNormal(
     table_num_bytes_by_server_[server_id] = 0;
   }
 
-  for (auto oplog_index_iter = new_table_oplog_index_ptr->cbegin();
-       !oplog_index_iter.is_end(); oplog_index_iter++) {
-    int32_t row_id = oplog_index_iter->first;
-    AbstractRowOpLog *row_oplog = 0;
-    bool found = GetRowOpLog(table_oplog, row_id, &row_oplog);
-    if (!found) continue;
+  {
+    auto lt = new_table_oplog_index_ptr->lock_table();
+    for (const auto& it : lt) {
+      int32_t row_id = it.first;
+      AbstractRowOpLog *row_oplog = 0;
+      bool found = GetRowOpLog(table_oplog, row_id, &row_oplog);
+      if (!found) continue;
 
-    if (found && (row_oplog == 0)) continue;
+      if (found && (row_oplog == 0)) continue;
 
-    CountRowOpLogToSend(row_id, row_oplog, &table_num_bytes_by_server_,
-                        bg_table_oplog, GetSerializedRowOpLogSize);
-    STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
+      CountRowOpLogToSend(row_id, row_oplog, &table_num_bytes_by_server_,
+                          bg_table_oplog, GetSerializedRowOpLogSize);
+
+      STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
+    }
   }
   delete new_table_oplog_index_ptr;
   return bg_table_oplog;
@@ -186,22 +189,23 @@ void SSPBgWorker::PrepareOpLogsNormalNoReplay(
   cuckoohash_map<int32_t, bool> *new_table_oplog_index_ptr
       = table->GetAndResetOpLogIndex(my_comm_channel_idx_);
 
-  for (auto oplog_index_iter = new_table_oplog_index_ptr->cbegin();
-       !oplog_index_iter.is_end(); oplog_index_iter++) {
-    int32_t row_id = oplog_index_iter->first;
+  {
+    auto lt = new_table_oplog_index_ptr->lock_table();
+    for (const auto& it : lt) {
+      int32_t row_id = it.first;
+      OpLogAccessor oplog_accessor;
+      bool found = table_oplog.FindAndLock(row_id, &oplog_accessor);
 
-    OpLogAccessor oplog_accessor;
-    bool found = table_oplog.FindAndLock(row_id, &oplog_accessor);
+      if (!found) continue;
 
-    if (!found) continue;
+      AbstractRowOpLog *row_oplog = oplog_accessor.get_row_oplog();
 
-    AbstractRowOpLog *row_oplog = oplog_accessor.get_row_oplog();
+      if (found && (row_oplog == 0)) continue;
 
-    if (found && (row_oplog == 0)) continue;
-
-    row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
-    row_oplog->Reset();
-    STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
+      row_oplog_serializer->AppendRowOpLog(row_id, row_oplog);
+      row_oplog->Reset();
+      STATS_BG_ACCUM_TABLE_OPLOG_SENT(table_id, row_id, 1);
+    }
   }
 
   for (const auto &server_id : server_ids_) {

@@ -63,18 +63,20 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
 
   size_t num_oplog_metas_read = 0;
 
-  for (auto oplog_index_iter = new_table_oplog_index_ptr->cbegin();
-       !oplog_index_iter.is_end(); oplog_index_iter++) {
-    int32_t row_id = oplog_index_iter->first;
-    RowOpLogMeta row_oplog_meta;
-    bool found = table_oplog.GetInvalidateOpLogMeta(row_id, &row_oplog_meta);
-    if (!found || (row_oplog_meta.get_clock() == -1)) {
-      continue;
+  {
+    auto lt = new_table_oplog_index_ptr->lock_table();
+    for (const auto& it : lt) {
+        int32_t row_id = it.first;
+        RowOpLogMeta row_oplog_meta;
+        bool found = 
+            table_oplog.GetInvalidateOpLogMeta(row_id, &row_oplog_meta);
+        if (!found || (row_oplog_meta.get_clock() == -1)) {
+          continue;
+        }
+        table_oplog_meta->InsertMergeRowOpLogMeta(row_id, row_oplog_meta);
+
+        ++num_oplog_metas_read;
     }
-
-    table_oplog_meta->InsertMergeRowOpLogMeta(row_id, row_oplog_meta);
-
-    ++num_oplog_metas_read;
   }
 
   size_t num_new_oplog_metas = table_oplog_meta->GetCleanNumNewOpLogMeta();

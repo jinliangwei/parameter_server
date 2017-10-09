@@ -32,9 +32,8 @@ INCFLAGS = $(PETUUM_INCFLAGS)
 LDFLAGS = $(PETUUM_LDFLAGS)
 
 all: path \
-     third_party_core \
      ps_lib \
-		 ml_lib
+     ml_lib
 
 path: $(NEED_MKDIR)
 
@@ -53,5 +52,3 @@ distclean: clean
 include $(SRC)/petuum.mk
 
 include $(TESTS)/tests.mk
-
-include $(THIRD_PARTY)/third_party.mk

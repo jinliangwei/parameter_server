@@ -6,7 +6,7 @@
 #include <glog/logging.h>
 #include <cmath>
 #include <sstream>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 namespace petuum {
 namespace ml {
