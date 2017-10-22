@@ -19,9 +19,9 @@ mark_as_advanced (PETUUM_LEVELDB_INCLUDE PETUUM_LEVELDB_LIB)
 #
 # generate target if not already defined!
 #
-if (NOT TARGET petuum_numa)
-    add_library (petuum_numa INTERFACE IMPORTED)
-    set_target_properties (petuum_numa PROPERTIES
+if (NOT TARGET petuum_leveldb)
+    add_library (petuum_leveldb INTERFACE IMPORTED)
+    set_target_properties (petuum_leveldb PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${PETUUM_LEVELDB_INCLUDE}"
         INTERFACE_LINK_LIBRARIES "${PETUUM_LEVELDB_LIB}")
 endif ()
