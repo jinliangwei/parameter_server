@@ -17,7 +17,7 @@ find_library (PETUUM_BOOST_PROGRAM_OPTIONS_LIB boost_program_options)
 find_library (PETUUM_BOOST_SYSTEM_LIB boost_system)
 find_library (PETUUM_BOOST_THREAD_LIB boost_thread)
 
-find_package_handle_standard_args (petuum_boost DEFAULT_MSG
+find_package_handle_standard_args (petuum_boost REQUIRED_VARS
     PETUUM_BOOST_INCLUDE PETUUM_BOOST_DATE_TIME_LIB
     PETUUM_BOOST_PROGRAM_OPTIONS_LIB PETUUM_BOOST_SYSTEM_LIB
     PETUUM_BOOST_THREAD_LIB)

@@ -33,6 +33,7 @@ set (petuum_ps_src client/client_table.cpp client/table_group.cpp
 # configure/load in standard modules we plan to use and probe the enviroment
 #
 include (CMakePackageConfigHelpers)
+include (petuum_leveldb.cmake)
 
 # where to install files for "find_package"
 set (petuum_ps_pkgloc "share/cmake/petuum_ps")
@@ -55,7 +56,7 @@ add_library (petuum_ps ${petuum_ps_src})
 
 # libs we use that are exposed to our users (so they need -I, etc.)
 # this will pull in all of petuum_ps_common's public libs
-target_link_libraries (petuum_ps PUBLIC petuum_ps_common)
+target_link_libraries (petuum_ps PUBLIC petuum_ps_common petuum_leveldb)
 
 # includes for installed lib, and for when building
 target_include_directories (petuum_ps PUBLIC

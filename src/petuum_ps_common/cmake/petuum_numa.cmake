@@ -11,7 +11,7 @@ include (FindPackageHandleStandardArgs)
 find_path (PETUUM_NUMA_INCLUDE numa.h)
 find_library (PETUUM_NUMA_LIB numa)
 
-find_package_handle_standard_args (petuum_boost DEFAULT_MSG
+find_package_handle_standard_args (petuum_numa REQUIRED_VARS
     PETUUM_NUMA_INCLUDE PETUUM_NUMA_LIB)
 
 mark_as_advanced (PETUUM_NUMA_INCLUDE PETUUM_NUMA_LIB)
