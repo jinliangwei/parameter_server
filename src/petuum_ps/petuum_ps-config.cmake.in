@@ -5,4 +5,9 @@
 include (CMakeFindDependencyMacro)
 find_dependency (petuum_ps_common)
 
+#
+# targets that we generate ourselves
+#
+include (${CMAKE_CURRENT_LIST_DIR}/petuum_leveldb.cmake)
+
 include ("${CMAKE_CURRENT_LIST_DIR}/petuum_ps-targets.cmake")

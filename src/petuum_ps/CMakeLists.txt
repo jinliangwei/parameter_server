@@ -96,6 +96,7 @@ install (EXPORT petuum_ps-targets
          FILE "petuum_ps-targets.cmake")
 install (FILES "${CMAKE_CURRENT_BINARY_DIR}/petuum_ps-config.cmake"
          "${CMAKE_CURRENT_BINARY_DIR}/petuum_ps-config-version.cmake"
+         petuum_leveldb.cmake
          DESTINATION ${petuum_ps_pkgloc} )
 install (DIRECTORY ../petuum_ps
          DESTINATION include
