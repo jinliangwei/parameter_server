@@ -23,4 +23,7 @@ xpkg_import_module (yaml-cpp REQUIRED yaml-cpp)
 # targets that we generate ourselves
 #
 include (${CMAKE_CURRENT_LIST_DIR}/petuum_boost.cmake)
+if (PETUUM_NUMA)
+    include (${CMAKE_CURRENT_LIST_DIR}/petuum_numa.cmake)
+endif ()
 include (${CMAKE_CURRENT_LIST_DIR}/libcuckoo.cmake)

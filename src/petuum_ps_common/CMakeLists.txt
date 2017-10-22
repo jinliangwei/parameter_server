@@ -50,6 +50,10 @@ target_compile_features (petuum_ps_common INTERFACE cxx_constexpr)
 # libs we use that are exposed to our users (so they need -I, etc.)
 target_link_libraries (petuum_ps_common PUBLIC float16_compressor gflags
                        glog::glog libcuckoo petuum_boost yaml-cpp)
+if (PETUUM_NUMA)
+    target_compile_definitions (petuum_ps_common PUBLIC PETUUM_NUMA)
+    target_link_libraries (petuum_ps_common PUBLIC petuum_numa)
+endif ()
 
 # libs we use but are not exposed externally
 target_link_libraries (petuum_ps_common PRIVATE Snappy::snappy zmqhpp
@@ -94,6 +98,7 @@ install (FILES "${CMAKE_CURRENT_BINARY_DIR}/petuum_ps_common-config.cmake"
          "${CMAKE_CURRENT_BINARY_DIR}/petuum_ps_common-config-version.cmake"
          cmake/libcuckoo.cmake
          cmake/petuum_boost.cmake
+         cmake/petuum_numa.cmake
          cmake/xpkg-import.cmake
          DESTINATION ${petuum_psc_pkgloc} )
 install (DIRECTORY ../petuum_ps_common
