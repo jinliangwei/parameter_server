@@ -11,11 +11,6 @@ set (CMAKE_CXX_STANDARD 11)
 set (CXX_STANDARD_REQUIRED ON)
 
 #
-# setup include directories
-#
-include_directories (${CMAKE_CURRENT_SOURCE_DIR} ${PETUUM_UMBRELLA}/include)
-
-#
 # translate some of the cache variables to compile definitions
 # for this directory and below ...
 #

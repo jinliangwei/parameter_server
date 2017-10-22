@@ -1,0 +1,25 @@
+#
+# petuum_ps_common-config.cmake.in
+#
+
+include (CMakeFindDependencyMacro)
+find_dependency (Eigen3)
+find_dependency (float16_compressor)
+find_dependency (gflags)
+find_dependency (glog)
+find_dependency (Snappy)
+find_dependency (zmqhpp)
+
+#
+# find pkgconfig packages
+#
+include (${CMAKE_CURRENT_LIST_DIR}/xpkg-import.cmake)
+xpkg_import_module (yaml-cpp REQUIRED yaml-cpp)
+
+#
+# targets that we generate ourselves
+#
+include (${CMAKE_CURRENT_LIST_DIR}/petuum_boost.cmake)
+include (${CMAKE_CURRENT_LIST_DIR}/libcuckoo.cmake)
+
+include ("${CMAKE_CURRENT_LIST_DIR}/petuum_ps_common-targets.cmake")

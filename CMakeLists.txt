@@ -2,14 +2,17 @@
 # CMakeLists.txt  top-level cmake file for parameter_server
 # 08-Oct-2017  chuck@ece.cmu.edu
 #
-
-
 cmake_minimum_required (VERSION 3.0)
 project (parameter_server C CXX)
 enable_testing ()
 
-# link shared lib with full rpath
+# link shared libs with full rpath
 set (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# required setup for threads
+set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set (THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package (Threads REQUIRED)
 
 # setup cache variables for ccmake
 if (NOT CMAKE_BUILD_TYPE)
@@ -26,9 +29,8 @@ set (CMAKE_PREFIX_PATH "" CACHE STRING "External dependencies path")
 set (BUILD_SHARED_LIBS "OFF" CACHE BOOL "Build a shared library")
 
 #
-# project config
+# project config (currently just compile time -D flags to cc/c++)
 #
-set (PETUUM_UMBRELLA "/usr/local" CACHE PATH "petuum umbrella prefix")
 set (PETUUM_MAX_NUM_CLIENTS 64 CACHE STRING "petuum_ps server's max clients")
 set (PETUUM_CHECK_DENSE_STORAGE_RANGE OFF
         CACHE BOOLEAN "check dense storage range")
@@ -51,8 +53,5 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
         set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${ts_flags}")
     endif ()
 endif ()
-
-# Find required packages
-find_package (Threads REQUIRED)
 
 add_subdirectory (src)

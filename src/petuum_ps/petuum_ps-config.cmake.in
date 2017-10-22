@@ -1,0 +1,8 @@
+#
+# petuum_ps-config.cmake.in
+#
+
+include (CMakeFindDependencyMacro)
+find_dependency (petuum_ps_common)
+
+include ("${CMAKE_CURRENT_LIST_DIR}/petuum_ps-targets.cmake")
