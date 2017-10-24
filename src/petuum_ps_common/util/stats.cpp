@@ -2,7 +2,6 @@
 
 #include <petuum_ps_common/util/stats.hpp>
 #include <petuum_ps_common/include/constants.hpp>
-#include <petuum_ps/thread/context.hpp>
 #include <glog/logging.h>
 #include <sstream>
 #include <fstream>
@@ -552,8 +551,7 @@ void Stats::DeregisterServerThread() {
       //        << " thread id = " << ThreadContext::get_id();
     }
     CHECK_EQ(table_pair.second.size(), table_iter->second.size())
-        << "table id = " << table_id
-        << " thread id = " << ThreadContext::get_id();
+        << "table id = " << table_id;
 
     for (int i = 0; i < table_pair.second.size(); ++i) {
       (table_iter->second)[i] += (table_pair.second)[i];
