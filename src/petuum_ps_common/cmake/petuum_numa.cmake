@@ -21,6 +21,12 @@ mark_as_advanced (PETUUM_NUMA_INCLUDE PETUUM_NUMA_LIB)
 #
 if (NOT TARGET petuum_numa)
     add_library (petuum_numa INTERFACE IMPORTED)
+
+    # address bug that bites on cray, see cmake issue #17413
+    if ("${PETUUM_NUMA_INCLUDE}" STREQUAL "/usr/include")
+        set (PETUUM_NUMA_INCLUDE "")
+    endif ()
+
     set_target_properties (petuum_numa PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${PETUUM_NUMA_INCLUDE}"
         INTERFACE_LINK_LIBRARIES "${PETUUM_NUMA_LIB}")
