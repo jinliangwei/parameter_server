@@ -5,9 +5,8 @@ script_path=`readlink -f $0`
 script_dir=`dirname $script_path`
 app_root=`dirname $script_dir`
 
-source ${script_dir}/nytimes.config.sh
+source ${script_dir}/common_crawl.config
 
-doc_file=$(readlink -f $doc_filename)
 host_file=$(readlink -f $host_filename)
 
 echo $host_filename
@@ -50,7 +49,7 @@ for ip in $host_list; do
 
   cmd="ls /l0;
 rm -rf ${log_path}; mkdir -p ${log_path};
-GLOG_logtostderr=true \
+GLOG_alsologtostderr=true \
       GLOG_log_dir=${log_path} \
       GLOG_v=-1 \
       GLOG_minloglevel=0 \
@@ -93,15 +92,13 @@ GLOG_logtostderr=true \
     --alpha $alpha \
     --beta $beta \
     --num_topics $num_topics \
-    --num_vocabs $num_vocabs \
-    --max_vocab_id $max_vocab_id \
     --num_clocks_per_work_unit $num_clocks_per_work_unit \
     --num_iters_per_work_unit $num_iters_per_work_unit \
     --word_topic_table_process_cache_capacity \
       $word_topic_table_process_cache_capacity \
     --num_work_units $num_work_units \
     --compute_ll_interval=$compute_ll_interval \
-    --doc_file=${doc_file}.$client_id \
+    --data_path=${data_path} \
     --output_file_prefix ${output_file_prefix}"
 
 #  echo $cmd

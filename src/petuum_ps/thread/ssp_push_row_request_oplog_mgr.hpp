@@ -38,11 +38,11 @@ public:
 
   // return true unless there's a previous request with lower or same clock
   // number
-  bool AddRowRequest(RowRequestInfo &request, int32_t table_id, int32_t row_id);
+  bool AddRowRequest(RowRequestInfo &request, int32_t table_id, RowId row_id);
 
   // Get a list of app thread ids that can be satisfied with this reply.
   // Corresponding row requests are removed upon returning.
-  int32_t InformReply(int32_t table_id, int32_t row_id, int32_t clock,
+  int32_t InformReply(int32_t table_id, RowId row_id, int32_t clock,
     uint32_t curr_version, std::vector<int32_t> *app_thread_ids);
 
   // Get OpLog of a particular version.
@@ -62,7 +62,7 @@ private:
 
   // map <table_id, row_id> to a list of requests
   // The list is in increasing order of clock.
-  std::map<std::pair<int32_t, int32_t>,
+  std::map<std::pair<int32_t, RowId>,
     std::list<RowRequestInfo> > pending_row_requests_;
 
   // The version number of a request means that all oplogs up to and including

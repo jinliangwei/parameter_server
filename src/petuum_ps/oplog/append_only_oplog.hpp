@@ -55,14 +55,14 @@ public:
     }
   }
 
-  int32_t Inc(int32_t row_id, int32_t column_id, const void *delta) {
+  int32_t Inc(RowId row_id, int32_t column_id, const void *delta) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     int32_t buff_pushed
         = oplog_partitions_[partition_num]->Inc(row_id, column_id, delta);
     return (buff_pushed == 1) ? partition_num : -1;
   }
 
-  int32_t BatchInc(int32_t row_id, const int32_t *column_ids, const void *deltas,
+  int32_t BatchInc(RowId row_id, const int32_t *column_ids, const void *deltas,
     int32_t num_updates) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     int32_t buff_pushed = oplog_partitions_[partition_num]->BatchInc(
@@ -70,7 +70,7 @@ public:
     return (buff_pushed == 1) ? partition_num : -1;
   }
 
-  int32_t DenseBatchInc(int32_t row_id, const void *updates,
+  int32_t DenseBatchInc(RowId row_id, const void *updates,
                      int32_t index_st, int32_t num_updates) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     int32_t buff_pushed = oplog_partitions_[partition_num]->DenseBatchInc(
@@ -78,40 +78,40 @@ public:
     return (buff_pushed == 1) ? partition_num : -1;
   }
 
-  bool FindOpLog(int32_t row_id, OpLogAccessor *oplog_accessor) {
+  bool FindOpLog(RowId row_id, OpLogAccessor *oplog_accessor) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     return oplog_partitions_[partition_num]->FindOpLog(row_id, oplog_accessor);
   }
 
-  bool FindInsertOpLog(int32_t row_id, OpLogAccessor *oplog_accessor) {
+  bool FindInsertOpLog(RowId row_id, OpLogAccessor *oplog_accessor) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     return oplog_partitions_[partition_num]->FindInsertOpLog(
         row_id, oplog_accessor);
   }
 
-  AbstractRowOpLog *FindOpLog(int32_t row_id) {
+  AbstractRowOpLog *FindOpLog(RowId row_id) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     return oplog_partitions_[partition_num]->FindOpLog(row_id);
   }
 
-  AbstractRowOpLog *FindInsertOpLog(int32_t row_id) {
+  AbstractRowOpLog *FindInsertOpLog(RowId row_id) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     return oplog_partitions_[partition_num]->FindInsertOpLog(row_id);
   }
 
-  bool FindAndLock(int32_t row_id, OpLogAccessor *oplog_accessor) {
+  bool FindAndLock(RowId row_id, OpLogAccessor *oplog_accessor) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     return oplog_partitions_[partition_num]->FindAndLock(row_id,
                                                          oplog_accessor);
   }
 
-  bool GetEraseOpLog(int32_t row_id, AbstractRowOpLog **row_oplog_ptr) {
+  bool GetEraseOpLog(RowId row_id, AbstractRowOpLog **row_oplog_ptr) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     return oplog_partitions_[partition_num]->GetEraseOpLog(row_id,
                                                            row_oplog_ptr);
   }
 
-  bool GetEraseOpLogIf(int32_t row_id,
+  bool GetEraseOpLogIf(RowId row_id,
                        GetOpLogTestFunc test,
                        void *test_args, AbstractRowOpLog **row_oplog_ptr) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
@@ -120,7 +120,7 @@ public:
                                                             row_oplog_ptr);
   }
 
-  bool GetInvalidateOpLogMeta(int32_t row_id,
+  bool GetInvalidateOpLogMeta(RowId row_id,
                               RowOpLogMeta *row_oplog_meta) {
     int32_t partition_num = GlobalContext::GetPartitionCommChannelIndex(row_id);
     return oplog_partitions_[partition_num]->GetInvalidateOpLogMeta(

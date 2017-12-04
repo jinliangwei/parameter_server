@@ -1,7 +1,7 @@
 // author: jinliang
 
 #include <petuum_ps/server/abstract_server_row.hpp>
-
+#include <petuum_ps_common/include/row_id.hpp>
 #pragma once
 
 namespace petuum {
@@ -54,7 +54,7 @@ public:
   }
 
   virtual void ApplyDenseBatchIncAccumImportance(const void *update_batch,
-                                         int32_t num_updates) {
+                                                 int32_t num_updates) {
     double importance
         = row_data_->ApplyDenseBatchIncUnsafeGetImportance(
             update_batch, 0, num_updates);
@@ -68,6 +68,10 @@ public:
 
   virtual size_t Serialize(void *bytes) const {
     return row_data_->Serialize(bytes);
+  }
+
+  bool IsSubscribed(int32_t client_id) {
+    return callback_subs_.IsSubscribed(client_id);
   }
 
   void Subscribe(int32_t client_id) {
@@ -87,7 +91,7 @@ public:
   bool AppendRowToBuffs(
       int32_t client_id_st,
       boost::unordered_map<int32_t, RecordBuff> *buffs,
-      const void *row_data, size_t row_size, int32_t row_id,
+      const void *row_data, size_t row_size, RowId row_id,
       int32_t *failed_client_id, size_t *num_clients) {
     return callback_subs_.AppendRowToBuffs(
         client_id_st, buffs, row_data,
@@ -110,7 +114,7 @@ public:
 
   void AppendRowToBuffs(
       boost::unordered_map<int32_t, RecordBuff> *buffs,
-      const void *row_data, size_t row_size, int32_t row_id,
+      const void *row_data, size_t row_size, RowId row_id,
       size_t *num_clients) {
     callback_subs_.AppendRowToBuffs(
         buffs, row_data,

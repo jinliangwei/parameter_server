@@ -18,10 +18,10 @@ protected:
                                     MsgTracker *msg_tracker);
 
   virtual void RowSubscribe(ServerRow *server_row, int32_t client_id);
-
   void HandleBgServerPushRowAck(
       int32_t bg_id, uint64_t ack_seq);
-
+  void HandleRegisterRowSet(int32_t sender_bg_id,
+                            RegisterRowSetMsg &register_row_set_msg);
 };
 
 }

@@ -13,13 +13,14 @@
 #include <petuum_ps_common/thread/msg_tracker.hpp>
 #include <petuum_ps/server/server_table.hpp>
 #include <petuum_ps/thread/ps_msgs.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 
 namespace petuum {
 struct ServerRowRequest {
 public:
   int32_t bg_id; // requesting bg thread id
   int32_t table_id;
-  int32_t row_id;
+  RowId row_id;
   int32_t clock;
 };
 
@@ -38,16 +39,21 @@ public:
             MsgTracker *msg_tracker);
 
   void CreateTable(int32_t table_id, TableInfo &table_info);
-  ServerRow *FindCreateRow(int32_t table_id, int32_t row_id);
+  ServerRow *FindCreateRow(int32_t table_id, RowId row_id);
+  bool RegisterRowSet(int32_t table_id, const RowId *row_id_vec,
+                      size_t num_row_ids, int32_t client_id,
+                      std::vector<std::vector<RowId>> *bulk_init_rows);
   bool ClockUntil(int32_t bg_id, int32_t clock);
-  void AddRowRequest(int32_t bg_id, int32_t table_id, int32_t row_id,
-    int32_t clock);
+  void AddRowRequest(int32_t bg_id, int32_t table_id, RowId row_id,
+                     int32_t clock);
   void GetFulfilledRowRequests(std::vector<ServerRowRequest> *requests);
   void ApplyOpLogUpdateVersion(
       const void *oplog, size_t oplog_size, int32_t bg_thread_id,
       uint32_t version);
   int32_t GetMinClock();
   int32_t GetBgVersion(int32_t bg_thread_id);
+
+  size_t GetTableSize(int32_t table_id) { return tables_.at(table_id).GetNumRows(); }
 
   typedef void (*PushMsgSendFunc)(int32_t bg_id, ServerPushRowMsg *msg,
                                   bool is_last, int32_t version,
@@ -61,7 +67,7 @@ public:
 
   bool AccumedOpLogSinceLastPush();
 
-  void RowSent(int32_t table_id, int32_t row_id, ServerRow *row, size_t num_clients);
+  void RowSent(int32_t table_id, RowId row_id, ServerRow *row, size_t num_clients);
 
 private:
   VectorClock bg_clock_;

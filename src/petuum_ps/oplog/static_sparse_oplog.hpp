@@ -3,29 +3,27 @@
 #pragma once
 
 #include <petuum_ps/oplog/abstract_oplog.hpp>
-#include <petuum_ps_common/util/mpmc_queue.hpp>
-#include <boost/thread/tss.hpp>
-#include <petuum_ps_common/oplog/abstract_append_only_buffer.hpp>
-#include <petuum_ps_common/include/configs.hpp>
-#include <petuum_ps_common/oplog/buffer_manager.hpp>
-
+#include <petuum_ps_common/util/striped_lock.hpp>
+#include <mutex>
+#include <unordered_map>
 namespace petuum {
-class AppendOnlyOpLogPartition : public AbstractOpLog {
+class StaticSparseOpLog : public AbstractOpLog {
 public:
-  AppendOnlyOpLogPartition(size_t buffer_capacity, const AbstractRow *sample_row,
-                           AppendOnlyOpLogType append_only_oplog_type,
-                           size_t dense_row_capacity,
-                           size_t per_thread_buff_pool_size);
-  ~AppendOnlyOpLogPartition();
+  StaticSparseOpLog(const AbstractRow *sample_row,
+                    size_t dense_row_oplog_capacity,
+                    int32_t row_oplog_type,
+                    bool version_maintain);
+  ~StaticSparseOpLog();
 
-  void RegisterThread();
-  void DeregisterThread();
-  void FlushOpLog();
+  void RegisterThread() { }
+  void DeregisterThread() { }
+  void FlushOpLog() { }
 
   // exclusive access
   int32_t Inc(RowId row_id, int32_t column_id, const void *delta);
   int32_t BatchInc(RowId row_id, const int32_t *column_ids,
-                const void *deltas, int32_t num_updates);
+    const void *deltas, int32_t num_updates);
+
   int32_t DenseBatchInc(RowId row_id, const void *updates,
                      int32_t index_st, int32_t num_updates);
 
@@ -37,7 +35,7 @@ public:
   // row oplog exists.
   bool FindAndLock(RowId row_id, OpLogAccessor *oplog_accessor);
 
-  // Not mutual exclusive but is less expensive than FindOpLog above as it does
+  // Not mutual exclusive but is less expensive than FIndOpLog above as it does
   // not use any lock.
   AbstractRowOpLog *FindOpLog(RowId row_id);
   AbstractRowOpLog *FindInsertOpLog(RowId row_id);
@@ -46,25 +44,26 @@ public:
   bool GetEraseOpLog(RowId row_id, AbstractRowOpLog **row_oplog_ptr);
   bool GetEraseOpLogIf(RowId row_id, GetOpLogTestFunc test,
                        void *test_args, AbstractRowOpLog **row_oplog_ptr);
+
   bool GetInvalidateOpLogMeta(RowId row_id, RowOpLogMeta *row_oplog_meta);
 
   AbstractAppendOnlyBuffer *GetAppendOnlyBuffer(int32_t comm_channel_idx);
-
   void PutBackBuffer(int32_t comm_channel_idx, AbstractAppendOnlyBuffer* buff);
+
+  void BulkInit(const RowId* row_id_set,
+                size_t num_rows);
+
 private:
-  AbstractAppendOnlyBuffer *CreateAppendOnlyBuffer();
 
-  const size_t buffer_capacity_;
+  AbstractRowOpLog *FindRowOpLog(RowId row_id);
+  AbstractRowOpLog *CreateAndInsertRowOpLog(RowId row_id);
+  std::mutex bulk_init_mtx_;
   const size_t update_size_;
+  StripedLock<RowId> locks_;
+  std::unordered_map<RowId, AbstractRowOpLog*> oplog_map_;
   const AbstractRow *sample_row_;
-  const AppendOnlyOpLogType append_only_oplog_type_;
-  const size_t dense_row_capacity_;
-  const size_t per_thread_pool_size_;
-
-  boost::thread_specific_ptr<AbstractAppendOnlyBuffer> append_only_buff_;
-  MPMCQueue<AbstractAppendOnlyBuffer*> shared_queue_;
-
-  OpLogBufferManager oplog_buffer_mgr_;
+  const size_t dense_row_oplog_capacity_;
+  CreateRowOpLog::CreateRowOpLogFunc CreateRowOpLog_;
 };
 
 }   // namespace petuum

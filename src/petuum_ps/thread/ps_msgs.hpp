@@ -5,7 +5,7 @@
 
 #include <petuum_ps_common/thread/msg_base.hpp>
 #include <petuum_ps_common/include/configs.hpp>
-
+#include <petuum_ps_common/include/row_id.hpp>
 namespace petuum {
 
 struct ClientConnectMsg : public NumberedMsg {
@@ -453,29 +453,30 @@ public:
     NumberedMsg(msg) {}
 
   size_t get_size() {
-    return NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)
+    return NumberedMsg::get_size() + sizeof(int32_t) + sizeof(RowId)
         + sizeof(int32_t) + sizeof(bool);
   }
 
   int32_t &get_table_id() {
     return *(reinterpret_cast<int32_t*>(mem_.get_mem()
-      + NumberedMsg::get_size()));
+                                        + NumberedMsg::get_size()));
   }
 
-  int32_t &get_row_id() {
-    return *(reinterpret_cast<int32_t*>(mem_.get_mem()
-      + NumberedMsg::get_size() + sizeof(int32_t)));
+  RowId &get_row_id() {
+    return *(reinterpret_cast<RowId*>(mem_.get_mem()
+                                        + NumberedMsg::get_size() + sizeof(int32_t)));
   }
 
   int32_t &get_clock() {
     return *(reinterpret_cast<int32_t*>(mem_.get_mem()
-      + NumberedMsg::get_size() + sizeof(int32_t) + sizeof(int32_t)));
+                                        + NumberedMsg::get_size() + sizeof(int32_t)
+                                        + sizeof(RowId)));
   }
 
   bool &get_forced_request() {
     return *(reinterpret_cast<bool*>(
         mem_.get_mem() + NumberedMsg::get_size() + sizeof(int32_t)
-        + sizeof(int32_t) + sizeof(int32_t)));
+        + sizeof(RowId) + sizeof(int32_t)));
   }
 
 protected:
@@ -954,7 +955,7 @@ public:
 
   size_t get_header_size() {
     return ArbitrarySizedMsg::get_header_size() + sizeof(int32_t)
-      + sizeof(int32_t) + sizeof(int32_t) + sizeof(uint32_t) + sizeof(size_t);
+      + sizeof(int32_t) + sizeof(RowId) + sizeof(uint32_t) + sizeof(size_t);
   }
 
   int32_t &get_table_id() {
@@ -962,27 +963,28 @@ public:
       + ArbitrarySizedMsg::get_header_size()));
   }
 
-  int32_t &get_row_id() {
-    return *(reinterpret_cast<int32_t*>(mem_.get_mem()
-      + ArbitrarySizedMsg::get_header_size() + sizeof(int32_t) ));
+  RowId &get_row_id() {
+    return *(reinterpret_cast<RowId*>(mem_.get_mem()
+                                        + ArbitrarySizedMsg::get_header_size()
+                                        + sizeof(int32_t) ));
   }
 
   int32_t &get_clock() {
     return *(reinterpret_cast<int32_t*>(mem_.get_mem()
       + ArbitrarySizedMsg::get_header_size()
-      + sizeof(int32_t) + sizeof(int32_t) ));
+      + sizeof(int32_t) + sizeof(RowId) ));
   }
 
   uint32_t &get_version() {
     return *(reinterpret_cast<uint32_t*>(mem_.get_mem()
       + ArbitrarySizedMsg::get_header_size()
-      + sizeof(int32_t) + sizeof(int32_t) +sizeof(int32_t)));
+      + sizeof(int32_t) + sizeof(RowId) +sizeof(int32_t)));
   }
 
   size_t &get_row_size() {
     return *(reinterpret_cast<size_t*>(mem_.get_mem()
       + ArbitrarySizedMsg::get_header_size()
-      + sizeof(int32_t) + sizeof(int32_t) +sizeof(int32_t) + sizeof(uint32_t)));
+      + sizeof(int32_t) + sizeof(RowId) +sizeof(int32_t) + sizeof(uint32_t)));
   }
 
   void *get_row_data() {
@@ -1099,6 +1101,129 @@ protected:
   virtual void InitMsg(size_t avai_size) {
     ArbitrarySizedMsg::InitMsg(avai_size);
     get_msg_type() = kServerPushRow;
+  }
+};
+
+struct RegisterRowSetMsg : public ArbitrarySizedMsg {
+ public:
+  explicit RegisterRowSetMsg(size_t avai_size) {
+    own_mem_ = true;
+    mem_.Alloc(get_header_size() + avai_size);
+    InitMsg(avai_size);
+  }
+
+  explicit RegisterRowSetMsg(void *msg):
+    ArbitrarySizedMsg(msg) {}
+
+  size_t get_header_size() {
+    return ArbitrarySizedMsg::get_header_size() + sizeof(int32_t);
+  }
+
+  int32_t &get_table_id() {
+    return *(reinterpret_cast<int32_t*>(mem_.get_mem()
+      + ArbitrarySizedMsg::get_header_size()));
+  }
+
+  // data is to be accessed via SerializedRowReader
+  void *get_data() {
+    return mem_.get_mem() + get_header_size();
+  }
+
+  size_t get_size() {
+    return get_header_size() + get_avai_size();
+  }
+
+protected:
+  virtual void InitMsg(size_t avai_size) {
+    ArbitrarySizedMsg::InitMsg(avai_size);
+    get_msg_type() = kRegisterRowSet;
+  }
+};
+
+struct BulkInitRowMsg : public ArbitrarySizedMsg {
+ public:
+  explicit BulkInitRowMsg(size_t avai_size) {
+    LOG(INFO) << "avai_size = " << avai_size;
+    own_mem_ = true;
+    mem_.Alloc(get_header_size() + avai_size);
+    InitMsg(avai_size);
+  }
+
+  explicit BulkInitRowMsg(void *msg):
+    ArbitrarySizedMsg(msg) {}
+
+  size_t get_header_size() {
+    LOG(INFO) << __func__ << " " << ArbitrarySizedMsg::get_header_size();
+    return ArbitrarySizedMsg::get_header_size() + sizeof(int32_t) + sizeof(size_t);
+  }
+
+  int32_t &get_table_id() {
+    return *(reinterpret_cast<int32_t*>(mem_.get_mem()
+                                        + ArbitrarySizedMsg::get_header_size()));
+  }
+
+  size_t &get_num_table_rows() {
+    return *(reinterpret_cast<size_t*>(mem_.get_mem()
+                                       + ArbitrarySizedMsg::get_header_size()
+                                       + sizeof(int32_t)));
+
+  }
+
+  // data is to be accessed via SerializedRowReader
+  void *get_data() {
+    return mem_.get_mem() + get_header_size();
+  }
+
+  size_t get_size() {
+    LOG(INFO) << __func__ << " avai_size = " << get_avai_size();
+    return get_header_size() + get_avai_size();
+  }
+
+protected:
+  virtual void InitMsg(size_t avai_size) {
+    ArbitrarySizedMsg::InitMsg(avai_size);
+    get_msg_type() = kBulkInitRow;
+  }
+};
+
+struct BulkInitDoneMsg : public NumberedMsg {
+public:
+  BulkInitDoneMsg() {
+    if (get_size() > PETUUM_MSG_STACK_BUFF_SIZE) {
+      own_mem_ = true;
+      use_stack_buff_ = false;
+      mem_.Alloc(get_size());
+    } else {
+      own_mem_ = false;
+      use_stack_buff_ = true;
+      mem_.Reset(stack_buff_);
+    }
+    InitMsg();
+  }
+
+  explicit BulkInitDoneMsg(void *msg):
+    NumberedMsg(msg) {}
+
+  int32_t &get_table_id() {
+    return *(reinterpret_cast<int32_t*>(mem_.get_mem()
+                                        + NumberedMsg::get_size()));
+  }
+
+  size_t &get_num_table_rows() {
+    return *(reinterpret_cast<size_t*>(mem_.get_mem()
+                                       + NumberedMsg::get_size()
+                                       + sizeof(int32_t)));
+
+  }
+
+  size_t get_size() {
+    return NumberedMsg::get_size() + sizeof(int32_t) + sizeof(size_t);
+  }
+
+protected:
+  void InitMsg() {
+    NumberedMsg::InitMsg();
+    get_msg_type() = kBulkInitDone;
   }
 };
 

@@ -1,6 +1,3 @@
-// Author: Dai Wei (wdai@cs.cmu.edu)
-// Date: 2014.03.29
-
 #include "lda_engine.hpp"
 #include "utils.hpp"
 #include "context.hpp"
@@ -14,7 +11,7 @@
 #include <glog/logging.h>
 #include <mutex>
 #include <set>
-#include <leveldb/db.h>
+#include <dirent.h>
 
 namespace lda {
 
@@ -31,10 +28,6 @@ void LDAEngine::Start() {
 
   // Initialize local thread data structures.
   int thread_id = thread_counter_++;
-  if (thread_id == 0) {
-    lda_stats_.reset(new LDAStats);
-  }
-  FastDocSampler sampler;
 
   Context& context = Context::get_instance();
   int client_id = context.get_int32("client_id");
@@ -48,34 +41,27 @@ void LDAEngine::Start() {
 
   if (thread_id == 0)
     corpus_.RestartWorkUnit(1);
-
+  LOG(INFO) << "Restarted work unit " << client_id;
   process_barrier_->wait();
 
   // Tally the word-topic counts for this thread. Use batch to reduce row
   // contentions.
   STATS_APP_INIT_BEGIN();
   petuum::UpdateBatch<int> summary_updates;
-  std::unordered_map<int, petuum::UpdateBatch<int> > word_topic_updates;
-  std::set<int32_t> local_vocabs;
+  std::unordered_map<petuum::RowId, petuum::UpdateBatch<int> > word_topic_updates;
+  std::set<petuum::RowId> local_vocabs;
 
   auto doc_iter = corpus_.GetOneDoc();
 
   while (!corpus_.EndOfWorkUnit(doc_iter)) {
     for (WordOccurrenceIterator it(&(*doc_iter)); !it.End(); it.Next()) {
+      //LOG(INFO) << "word = " << it.Word() << " topic = " << it.Topic();
       local_vocabs.insert(it.Word());
       word_topic_updates[it.Word()].Update(it.Topic(), 1);
       summary_updates.Update(it.Topic(), 1);
     }
     doc_iter = corpus_.GetOneDoc();
   }
-
-  summary_table.BatchInc(0, summary_updates);
-
-  for (auto it = word_topic_updates.begin();
-      it != word_topic_updates.end(); ++it) {
-    word_topic_table.BatchInc(it->first, it->second);
-  }
-  petuum::PSTableGroup::GlobalBarrier();
 
   {
     std::unique_lock<std::mutex> ulock(local_vocabs_mtx_);
@@ -84,23 +70,6 @@ void LDAEngine::Start() {
     }
   }
 
-  int num_clients = context.get_int32("num_clients");
-  int max_vocab_id = context.get_int32("max_vocab_id");
-  // How many vocabs a thread is in charged of for computing LLH.
-  int num_vocabs_per_thread = max_vocab_id / (num_clients * num_threads_);
-  // Figure out the range of vocabs this thread works on for LLH.
-  int vocab_id_start = (client_id * num_threads_ +
-                        thread_id) * num_vocabs_per_thread;
-  int vocab_id_end = (client_id == (num_clients - 1)
-                      && thread_id == (num_threads_ - 1))
-                     ? max_vocab_id + 1 : vocab_id_start + num_vocabs_per_thread;
-
-  {
-    std::unique_lock<std::mutex> ulock(local_vocabs_mtx_);
-    for(int i = vocab_id_start; i < vocab_id_end; ++i) {
-      local_vocabs_.insert(i);
-    }
-  }
   STATS_APP_INIT_END();
 
   // need barrier sync to make sure all workers have added their local vocabs to
@@ -110,16 +79,31 @@ void LDAEngine::Start() {
   if (thread_id == 0) {
     LOG(INFO) << "Done initializing topic assignments (uniform random).";
     STATS_APP_BOOTSTRAP_BEGIN();
-    int32_t max_word_id = 0;
-    for (auto it = local_vocabs_.begin(); it != local_vocabs_.end(); ++it) {
-      word_topic_table.GetAsyncForced(*it);
-      if (*it > max_word_id) max_word_id = *it;
-    }
-    LOG(INFO) << "max_workd_id = " << max_word_id;
-    word_topic_table.WaitPendingAsyncGet();
+    word_topic_table.RegisterRowSet(local_vocabs_);
     STATS_APP_BOOTSTRAP_END();
   }
+  word_topic_table.WaitForBulkInit();
+  LOG(INFO) << "bulk init done!";
+  int num_clients = context.get_int32("num_clients");
+  std::vector<petuum::RowId> row_id_vec;
+  size_t total_num_rows = 0;
+  word_topic_table.GetLocalRowIdSet(&row_id_vec,
+                                    num_clients,
+                                    num_threads_,
+                                    thread_id,
+                                    &total_num_rows);
+  LOG(INFO) << "get local row id set done";
+  FastDocSampler sampler(total_num_rows);
+  if (thread_id == 0) {
+    lda_stats_.reset(new LDAStats(total_num_rows));
+  }
+  summary_table.BatchInc(0, summary_updates);
 
+  for (auto it = word_topic_updates.begin();
+      it != word_topic_updates.end(); ++it) {
+    LOG(INFO) << "batch in for " << it->first;
+    word_topic_table.BatchInc(it->first, it->second);
+  }
   petuum::PSTableGroup::GlobalBarrier();
 
   process_barrier_->wait();
@@ -129,7 +113,7 @@ void LDAEngine::Start() {
 
   int32_t llh_table_id = context.get_int32("llh_table_id");
   petuum::Table<double> llh_table =
-    petuum::PSTableGroup::GetTableOrDie<double>(llh_table_id);
+      petuum::PSTableGroup::GetTableOrDie<double>(llh_table_id);
   int32_t num_work_units = context.get_int32("num_work_units");
   int32_t num_clocks_per_work_unit = context.get_int32("num_clocks_per_work_unit");
   int32_t num_iters_per_work_unit = context.get_int32("num_iters_per_work_unit");
@@ -194,7 +178,7 @@ void LDAEngine::Start() {
           STATS_APP_DEFINED_ACCUM_SEC_END();
           petuum::HighResolutionTimer refresh_timer;
           sampler.RefreshCachedSummaryRow();
-          double refresh_sec = refresh_timer.elapsed();
+          //double refresh_sec = refresh_timer.elapsed();
           //LOG(INFO) << " thread id = " << thread_id
           //        << " refresh sec = " << refresh_sec;
           STATS_APP_DEFINED_ACCUM_SEC_BEGIN();
@@ -253,14 +237,14 @@ void LDAEngine::Start() {
       // have 0 staleness.
       if (ith_llh % num_clients == client_id && thread_id == 0) {
         petuum::HighResolutionTimer word_llh_timer;
-        lda_stats_->ComputeWordLLH(ith_llh, vocab_id_start, vocab_id_end);
+        lda_stats_->ComputeWordLLH(ith_llh, row_id_vec);
         lda_stats_->ComputeWordLLHSummary(ith_llh, work_unit*num_iters_per_work_unit);
         LOG(INFO) << "word llh compute seconds = " << word_llh_timer.elapsed();
         LOG(INFO) << " LLH (work_unit " << (ith_llh - 1) * compute_ll_interval_
           << "): " << lda_stats_->PrintOneLLH(ith_llh - 1);
         lda_stats_->SetTime(ith_llh, total_timer.elapsed());
       } else {
-        lda_stats_->ComputeWordLLH(ith_llh, vocab_id_start, vocab_id_end);
+        lda_stats_->ComputeWordLLH(ith_llh, row_id_vec);
       }
       // Keep the approximate time (the time when head thread finishes).
       process_barrier_->wait();
@@ -297,24 +281,73 @@ void LDAEngine::Start() {
   petuum::PSTableGroup::DeregisterThread();
 }
 
-void LDAEngine::ReadData(const std::string& db_path) {
-  leveldb::DB *db;
-
-  leveldb::Status status = leveldb::DB::Open(leveldb::Options(), db_path, &db);
-  CHECK(status.ok()) << "Open level db failed, path = " << db_path;
-
-  leveldb::ReadOptions read_options;
-  read_options.fill_cache = false;
-
-  leveldb::Iterator* it = db->NewIterator(read_options);
-  for (it->SeekToFirst(); it->Valid(); it->Next()) {
-    const uint8_t *doc_data
-      = reinterpret_cast<const uint8_t*>(it->value().data());
-    corpus_.AddDoc(doc_data);
+void LDAEngine::ReadData(const char* data_path,
+                         int32_t client_index,
+                         size_t num_clients,
+                         size_t max_num_files) {
+  std::vector<std::string> file_list;
+  DIR *dir = opendir(data_path);
+  CHECK(dir != nullptr);
+  struct dirent *ent = nullptr;
+  /* print all the files and directories within directory */
+  while ((ent = readdir(dir)) != nullptr) {
+    auto *d_name = ent->d_name;
+    if (strlen(d_name) == 0 || d_name[0] == '.' || d_name[0] == '_') continue;
+    file_list.emplace_back(d_name);
+    //LOG(INFO) << "got file " << d_name;
   }
-  assert(it->status().ok());  // Check for any errors found during the scan
-  delete it;
-  delete db;
+  std::sort(file_list.begin(), file_list.end());
+  size_t num_files = (max_num_files > 0) ? std::min(max_num_files, file_list.size()) : file_list.size();
+  size_t num_files_per_client = (num_files + num_clients - 1) / num_clients;
+  size_t my_num_files = ((client_index >= (num_files % num_clients)) && (num_files % num_clients > 0)) ?
+                        num_files_per_client - 1 : num_files_per_client;
+  size_t my_file_index_start = (client_index >= (num_files % num_clients)) ?
+                               num_files_per_client * (num_files % num_clients) +
+                               (num_files_per_client - 1) * (client_index - (num_files % num_clients))
+                               : num_files_per_client * client_index;
+  LOG(INFO) << "index start = " << my_file_index_start
+            << " my_num_files = " << my_num_files;
+  size_t num_docs = 0;
+  size_t num_words = 0;
+  for (size_t i = my_file_index_start; i < my_file_index_start + my_num_files; i++) {
+    std::string file_path = std::string(data_path) + "/" + file_list[i];
+    LOG(INFO) << "read file " << file_path;
+    FILE *data_file = fopen(file_path.c_str(), "r");
+    CHECK(data_file != nullptr);
+    fseek(data_file, 0, SEEK_END);
+    size_t file_size = ftell(data_file);
+    fseek(data_file, 0, SEEK_SET);
+    std::vector<char> char_buff(file_size + 1);
+    fread(char_buff.data(), 1, file_size, data_file);
+    char_buff[file_size] = '\0';
+    fclose(data_file);
+    char *line = strtok(char_buff.data(), "\n");
+    while (line != nullptr) {
+      auto *doc = corpus_.CreateAndGet();
+      doc->InitAppendWord();
+      char *cursor = line;
+      while (*cursor != '\0') {
+        int64_t word_id = strtol(cursor, &cursor, 16);
+        CHECK_EQ(*cursor, ':') << "word id = " << word_id
+                               << " [" << *cursor << "] "
+                               << cursor;
+        size_t count = strtol(cursor + 1, &cursor, 10);
+        //LOG(INFO) << word_id << " " << count << "[" << *cursor << "]";
+        doc->AppendWord(word_id, count);
+        num_words++;
+        while(isspace(*cursor) && *cursor != '\0') cursor++;
+      }
+      corpus_.RandomInit(doc);
+      line = strtok(nullptr, "\n");
+      num_docs++;
+      if (num_docs % 100 == 0) {
+        LOG(INFO) << "num_docs = " << num_docs;
+        break;
+      }
+    }
+  }
+  LOG(INFO) << "total num_docs = " << num_docs
+            << " num words = " << num_words;
 }
 
 }   // namespace lda

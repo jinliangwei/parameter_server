@@ -18,7 +18,7 @@ SSPAggrValueConsistencyController::SSPAggrValueConsistencyController(
                                  sample_row, thread_cache, oplog_index,
                                  row_oplog_type) { }
 
-void SSPAggrValueConsistencyController::Inc(int32_t row_id, int32_t column_id,
+void SSPAggrValueConsistencyController::Inc(RowId row_id, int32_t column_id,
   const void *delta) {
   size_t thread_update_count
       = thread_cache_->IndexUpdateAndGetCount(row_id, 1);
@@ -47,7 +47,7 @@ void SSPAggrValueConsistencyController::Inc(int32_t row_id, int32_t column_id,
   CheckAndFlushThreadCache(thread_update_count);
 }
 
-void SSPAggrValueConsistencyController::BatchInc(int32_t row_id,
+void SSPAggrValueConsistencyController::BatchInc(RowId row_id,
   const int32_t *column_ids,
   const void *updates, int32_t num_updates) {
 
@@ -84,7 +84,7 @@ void SSPAggrValueConsistencyController::BatchInc(int32_t row_id,
 }
 
 void SSPAggrValueConsistencyController::DenseBatchInc(
-    int32_t row_id, const void *updates, int32_t index_st,
+    RowId row_id, const void *updates, int32_t index_st,
     int32_t num_updates) {
   size_t thread_update_count
       = thread_cache_->IndexUpdateAndGetCount(row_id, num_updates);
@@ -109,16 +109,16 @@ void SSPAggrValueConsistencyController::DenseBatchInc(
   ClientRow *client_row = process_storage_.Find(row_id, &row_accessor);
   if (client_row != 0) {
     if (!version_maintain_) {
-      importance 
+      importance
 	= client_row->GetRowDataPtr()->ApplyDenseBatchIncGetImportance(
 								       updates, index_st, num_updates);
     } else {
-      importance 
+      importance
 	= client_row->GetRowDataPtr()->GetDenseAccumImportance(
 							       updates, index_st, num_updates);
     }
   } else {
-    importance 
+    importance
       = sample_row_->GetDenseAccumImportance(
 					     updates, index_st, num_updates);
   }

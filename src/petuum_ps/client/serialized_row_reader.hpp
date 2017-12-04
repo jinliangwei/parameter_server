@@ -46,7 +46,7 @@ public:
     return true;
   }
 
-  const void *Next(int32_t *table_id, int32_t *row_id, size_t *row_size) {
+  const void *Next(int32_t *table_id, RowId *row_id, size_t *row_size) {
     // When starting, there are 4 possiblilities:
     // 1. finished reading the mem buffer
     // 2. encounter the end of an table but there are other tables following
@@ -71,8 +71,8 @@ public:
         if (offset_ + sizeof (int32_t) > mem_size_)
           return NULL;
 
-        *row_id = *(reinterpret_cast<const int32_t*>(mem_ + offset_));
-        offset_ += sizeof(int32_t);
+        *row_id = *(reinterpret_cast<const RowId*>(mem_ + offset_));
+        offset_ += sizeof(RowId);
         // row_id could be
         // 1) st_separator: if the table is empty and there there are other
         // tables following;

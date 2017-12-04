@@ -11,6 +11,7 @@
 
 #include <petuum_ps_common/util/striped_lock.hpp>
 #include <petuum_ps_common/util/lock.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 #include <petuum_ps_common/util/mt_queue.hpp>
 
 namespace petuum {
@@ -29,7 +30,7 @@ public:
   // refreshing) before user comes back to evict it or unlock it (the row has
   // positive reference count and can't be evicted). FindOneToEvict will
   // either return or fail after searching for MAX_NUM_ROUNDS times.
-  int32_t FindOneToEvict();
+  RowId FindOneToEvict();
 
   // User must call Evict or NoEvict after FindOneToEvict to unlock the slot.
   // Note that Reference() called on row_id during Evict() could fail (no-op).
@@ -42,13 +43,13 @@ public:
   // (this is not checked). Return the slot # associated with row_id. The
   // number of occupied slots plus the number of ongoing Insert() should be
   // less or equal to capacity.
-  int32_t Insert(int32_t row_id);
+  int32_t Insert(RowId row_id);
 
   // Reference a row (i.e., row_id is used) by the slot #.
   void Reference(int32_t slot);
 
   // For testing purpose; not part of standard LRU interface.
-  bool HasRow(int32_t row_id, int32_t slot);
+  bool HasRow(RowId row_id, int32_t slot);
 
   // Going around the clock at most MAX_NUM_ROUNDS times when looking for
   // eviction.
@@ -80,14 +81,14 @@ private:    // private members
   //
   // Note that referencing an existing slot does not need to lock. Reference
   // during insertion or erasure could fail (which is okay).
-  StripedLock<int32_t, SpinMutex> locks_;
+  StripedLock<RowId, SpinMutex> locks_;
 
   // staled_[i] is set to false if the row in slot i is referenced. It's
   // set to true when the evict_hand_ comes around.
   std::unique_ptr<std::atomic_flag[]> stale_;
 
   // Store associated row_id needed during eviction. -1 implies empty.
-  std::vector<int32_t> row_ids_;
+  std::vector<RowId> row_ids_;
 };
 
 }  // namespace petuum

@@ -37,24 +37,24 @@ public:
     }
   }
 
-  void BatchIncTmp(int32_t row_id, const int32_t *col_ids,
+  void BatchIncTmp(RowId row_id, const int32_t *col_ids,
                    const void *updates, int32_t num_updates);
 
-  void BatchInc(int32_t row_id, const int32_t *col_ids,
+  void BatchInc(RowId row_id, const int32_t *col_ids,
                 const void *updates, int32_t num_updates);
 
   void MergeTmpOpLog();
 
-  AbstractRowOpLog *InitReadTmpOpLog(int32_t *row_id);
-  AbstractRowOpLog *NextReadTmpOpLog(int32_t *row_id);
+  AbstractRowOpLog *InitReadTmpOpLog(RowId *row_id);
+  AbstractRowOpLog *NextReadTmpOpLog(RowId *row_id);
 
-  AbstractRowOpLog *InitReadRmOpLog(int32_t *row_id);
-  AbstractRowOpLog *NextReadRmOpLog(int32_t *row_id);
+  AbstractRowOpLog *InitReadRmOpLog(RowId *row_id);
+  AbstractRowOpLog *NextReadRmOpLog(RowId *row_id);
 
-  AbstractRowOpLog *InitReadOpLog(int32_t *row_id);
-  AbstractRowOpLog *NextReadOpLog(int32_t *row_id);
+  AbstractRowOpLog *InitReadOpLog(RowId *row_id);
+  AbstractRowOpLog *NextReadOpLog(RowId *row_id);
 
-  AbstractRowOpLog *GetRowOpLog(int32_t row_id) const;
+  AbstractRowOpLog *GetRowOpLog(RowId row_id) const;
 
 private:
   void BatchIncGeneral(
@@ -74,9 +74,9 @@ private:
   const size_t update_size_;
   const AbstractRow *sample_row_;
   RowOpLogRecycle row_oplog_generator_;
-  std::unordered_map<int32_t, AbstractRowOpLog*> row_oplog_map_;
-  std::unordered_map<int32_t, AbstractRowOpLog*> tmp_row_oplog_map_;
-  std::unordered_map<int32_t, AbstractRowOpLog*>::iterator map_iter_;
+  std::unordered_map<RowId, AbstractRowOpLog*> row_oplog_map_;
+  std::unordered_map<RowId, AbstractRowOpLog*> tmp_row_oplog_map_;
+  std::unordered_map<RowId, AbstractRowOpLog*>::iterator map_iter_;
 };
 
 }

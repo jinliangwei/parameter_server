@@ -43,7 +43,7 @@ void Server::Init(int32_t server_id,
    }
  }
 
- ServerRow *Server::FindCreateRow(int32_t table_id, int32_t row_id){
+ ServerRow *Server::FindCreateRow(int32_t table_id, RowId row_id){
    // access ServerTable via reference to avoid copying
    auto iter = tables_.find(table_id);
    CHECK(iter != tables_.end());
@@ -58,6 +58,20 @@ void Server::Init(int32_t server_id,
 
    return server_row;
  }
+
+bool Server::RegisterRowSet(int32_t table_id, const RowId *row_id_vec,
+                            size_t num_row_ids, int32_t client_id,
+                            std::vector<std::vector<RowId>> *bulk_init_rows) {
+   auto iter = tables_.find(table_id);
+   CHECK(iter != tables_.end());
+
+   ServerTable &server_table = iter->second;
+   bool bulk_init = server_table.RegisterRowSet(row_id_vec, num_row_ids, client_id);
+   if (bulk_init) {
+     server_table.GetBulkInitRows(bulk_init_rows);
+   }
+   return bulk_init;
+}
 
  bool Server::ClockUntil(int32_t bg_id, int32_t clock) {
    int new_clock = bg_clock_.TickUntil(bg_id, clock);
@@ -78,7 +92,7 @@ void Server::Init(int32_t server_id,
    return false;
  }
 
- void Server::AddRowRequest(int32_t bg_id, int32_t table_id, int32_t row_id,
+ void Server::AddRowRequest(int32_t bg_id, int32_t table_id, RowId row_id,
    int32_t clock) {
 
    ServerRowRequest server_row_request;
@@ -136,7 +150,7 @@ void Server::Init(int32_t server_id,
    if(!to_read) return;
 
    int32_t table_id;
-   int32_t row_id;
+   RowId row_id;
    const int32_t * column_ids; // the variable pointer points to const memory
    int32_t num_updates;
    bool started_new_table;
@@ -220,7 +234,7 @@ void Server::Init(int32_t server_id,
     for (client_id = 0;
          client_id < GlobalContext::get_num_clients(); ++client_id) {
       RecordBuff &record_buff = buffs[client_id];
-      int32_t *table_id_ptr = record_buff.GetMemPtrInt32();
+      auto *table_id_ptr = record_buff.GetMemPtrInt64();
       if (table_id_ptr == 0) {
         int32_t bg_id = GlobalContext::get_bg_thread_id(client_id,
                                                         comm_channel_idx);
@@ -228,7 +242,7 @@ void Server::Init(int32_t server_id,
                     GetBgVersion(bg_id), GetMinClock(), msg_tracker_);
         memset((msg_map[client_id])->get_data(), 0, push_row_msg_data_size_);
         record_buff.ResetOffset();
-        table_id_ptr = record_buff.GetMemPtrInt32();
+        table_id_ptr = record_buff.GetMemPtrInt64();
       }
       *table_id_ptr = table_id;
     }
@@ -243,7 +257,7 @@ void Server::Init(int32_t server_id,
 
     while (!pack_suc) {
       RecordBuff &record_buff = buffs[failed_client_id];
-      int32_t *buff_end_ptr = record_buff.GetMemPtrInt32();
+      auto *buff_end_ptr = record_buff.GetMemPtrInt64();
       if (buff_end_ptr != 0)
         *buff_end_ptr = GlobalContext::get_serialized_table_end();
 
@@ -254,7 +268,7 @@ void Server::Init(int32_t server_id,
       memset((msg_map[failed_client_id])->get_data(), 0,
              push_row_msg_data_size_);
       record_buff.ResetOffset();
-      int32_t *table_id_ptr = record_buff.GetMemPtrInt32();
+      auto *table_id_ptr = record_buff.GetMemPtrInt64();
       *table_id_ptr = table_id;
       pack_suc = server_table.AppendTableToBuffs(
           failed_client_id, &buffs, &failed_client_id, true,
@@ -267,7 +281,7 @@ void Server::Init(int32_t server_id,
            client_id < GlobalContext::get_num_clients(); ++client_id) {
 
         RecordBuff &record_buff = buffs[client_id];
-        int32_t *table_sep_ptr = record_buff.GetMemPtrInt32();
+        auto *table_sep_ptr = record_buff.GetMemPtrInt64();
         if (table_sep_ptr == 0) {
           int32_t bg_id = GlobalContext::get_bg_thread_id(client_id,
                                                           comm_channel_idx);
@@ -287,7 +301,7 @@ void Server::Init(int32_t server_id,
   for (client_id = 0;
        client_id < GlobalContext::get_num_clients(); ++client_id) {
     RecordBuff &record_buff = buffs[client_id];
-    int32_t *table_end_ptr = record_buff.GetMemPtrInt32();
+    auto *table_end_ptr = record_buff.GetMemPtrInt64();
     if (table_end_ptr == 0) {
       int32_t bg_id = GlobalContext::get_bg_thread_id(client_id,
                                                       comm_channel_idx);
@@ -313,8 +327,8 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
   boost::unordered_map<int32_t, RecordBuff> buffs;
   boost::unordered_map<int32_t, ServerPushRowMsg*> msg_map;
   boost::unordered_map<int32_t, size_t> client_buff_size;
-  boost::unordered_map<int32_t,
-                       std::vector<std::pair<int32_t, ServerRow*> > >
+  std::unordered_map<int32_t,
+                     std::vector<std::pair<RowId, ServerRow*> > >
       table_rows_to_send;
 
   bool has_to_send = false;
@@ -337,7 +351,7 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
 
     table_rows_to_send.insert(std::make_pair(
         table_id,
-        std::vector<std::pair<int32_t, ServerRow*> >()));
+        std::vector<std::pair<RowId, ServerRow*> >()));
 
     table_pair.second.GetPartialTableToSend(
         &(table_rows_to_send[table_id]),
@@ -383,7 +397,7 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
     for (auto buff_iter = buffs.begin(); buff_iter != buffs.end();
          ++buff_iter) {
       RecordBuff &record_buff = buff_iter->second;
-      int32_t *table_id_ptr = record_buff.GetMemPtrInt32();
+      auto *table_id_ptr = record_buff.GetMemPtrInt64();
       CHECK_NOTNULL(table_id_ptr);
       *table_id_ptr = table_id;
     }
@@ -396,7 +410,7 @@ size_t Server::CreateSendServerPushRowMsgsPartial(
     for (auto buff_iter = buffs.begin(); buff_iter != buffs.end();
          ++buff_iter) {
       RecordBuff &record_buff = buff_iter->second;
-      int32_t *table_end_ptr = record_buff.GetMemPtrInt32();
+      auto *table_end_ptr = record_buff.GetMemPtrInt64();
       CHECK_NOTNULL(table_end_ptr);
 
       if (num_tables_left == 0)
@@ -433,7 +447,7 @@ bool Server::AccumedOpLogSinceLastPush() {
   return accum_oplog_count_ > 0;
 }
 
-void Server::RowSent(int32_t table_id, int32_t row_id,
+void Server::RowSent(int32_t table_id, RowId row_id,
                      ServerRow *row, size_t num_clients) {
   auto table_iter = tables_.find(table_id);
   CHECK(table_iter != tables_.end());

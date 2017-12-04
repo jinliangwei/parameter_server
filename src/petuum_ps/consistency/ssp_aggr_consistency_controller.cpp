@@ -17,7 +17,7 @@ SSPAggrConsistencyController::SSPAggrConsistencyController(
     SSPPushConsistencyController(info, table_id, process_storage, oplog,
                                  sample_row, thread_cache, oplog_index, row_oplog_type) { }
 
-void SSPAggrConsistencyController::Inc(int32_t row_id, int32_t column_id,
+void SSPAggrConsistencyController::Inc(RowId row_id, int32_t column_id,
                                        const void *delta) {
   size_t thread_update_count
       = thread_cache_->IndexUpdateAndGetCount(row_id, 1);
@@ -43,7 +43,7 @@ void SSPAggrConsistencyController::Inc(int32_t row_id, int32_t column_id,
   CheckAndFlushThreadCache(thread_update_count);
 }
 
-void SSPAggrConsistencyController::BatchInc(int32_t row_id,
+void SSPAggrConsistencyController::BatchInc(RowId row_id,
   const int32_t *column_ids,
   const void *updates, int32_t num_updates) {
 
@@ -77,7 +77,7 @@ void SSPAggrConsistencyController::BatchInc(int32_t row_id,
 }
 
 void SSPAggrConsistencyController::DenseBatchInc(
-    int32_t row_id, const void *updates, int32_t index_st,
+    RowId row_id, const void *updates, int32_t index_st,
     int32_t num_updates) {
   size_t thread_update_count
       = thread_cache_->IndexUpdateAndGetCount(row_id, num_updates);
@@ -108,7 +108,7 @@ void SSPAggrConsistencyController::DenseBatchInc(
   CheckAndFlushThreadCache(thread_update_count);
 }
 
-void SSPAggrConsistencyController::ThreadInc(int32_t row_id, int32_t column_id,
+void SSPAggrConsistencyController::ThreadInc(RowId row_id, int32_t column_id,
   const void *delta) {
   thread_cache_->Inc(row_id, column_id, delta);
   thread_cache_->AddToUpdateCount(1);
@@ -116,7 +116,7 @@ void SSPAggrConsistencyController::ThreadInc(int32_t row_id, int32_t column_id,
   CheckAndFlushThreadCache(thread_update_count);
 }
 
-void SSPAggrConsistencyController::ThreadBatchInc(int32_t row_id,
+void SSPAggrConsistencyController::ThreadBatchInc(RowId row_id,
   const int32_t *column_ids, const void *updates, int32_t num_updates) {
 
   thread_cache_->BatchInc(row_id, column_ids, updates, num_updates);
@@ -126,7 +126,7 @@ void SSPAggrConsistencyController::ThreadBatchInc(int32_t row_id,
 }
 
 void SSPAggrConsistencyController::ThreadDenseBatchInc(
-    int32_t row_id, const void *updates, int32_t index_st,
+    RowId row_id, const void *updates, int32_t index_st,
     int32_t num_updates) {
   thread_cache_->DenseBatchInc(row_id, updates, index_st, num_updates);
   thread_cache_->AddToUpdateCount(num_updates);

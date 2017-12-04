@@ -64,4 +64,39 @@ void SSPPushServerThread::HandleBgServerPushRowAck(
   }
 }
 
+void SSPPushServerThread::HandleRegisterRowSet(
+    int32_t sender_bg_id,
+    RegisterRowSetMsg &register_row_set_msg) {
+  int32_t client_id = GlobalContext::thread_id_to_client_id(sender_bg_id);
+  int32_t table_id = register_row_set_msg.get_table_id();
+  RowId* row_id_vec = reinterpret_cast<RowId*>(register_row_set_msg.get_data());
+  size_t num_row_ids = register_row_set_msg.get_avai_size() / sizeof(RowId);
+  LOG(INFO) << "register num_row_ids = " << num_row_ids;
+  std::vector<std::vector<RowId>> bulk_init_rows;
+  bool bulk_init = server_obj_.RegisterRowSet(table_id, row_id_vec,
+                                              num_row_ids, client_id,
+                                              &bulk_init_rows);
+  int32_t comm_channel_idx = GlobalContext::GetCommChannelIndexServer(my_id_);
+  if (bulk_init) {
+    for (int32_t i = 0; i < GlobalContext::get_num_clients(); i++) {
+      auto &init_row_id_vec = bulk_init_rows[i];
+      size_t init_num_row_ids = bulk_init_rows[i].size();
+      LOG(INFO) << "init_num_row_ids = " << init_num_row_ids;
+      BulkInitRowMsg bulk_init_row_msg(init_num_row_ids * sizeof(RowId));
+      bulk_init_row_msg.get_table_id() = table_id;
+      bulk_init_row_msg.get_num_table_rows() = server_obj_.GetTableSize(table_id);
+      if (init_num_row_ids > 0) {
+        memcpy(bulk_init_row_msg.get_data(), init_row_id_vec.data(), init_num_row_ids * sizeof(RowId));
+      }
+      int32_t bg_id = GlobalContext::get_bg_thread_id(i, comm_channel_idx);
+      LOG(INFO) << "bg_id = " << bg_id
+                << " size = " << bulk_init_row_msg.get_size();
+      size_t sent_size = (GlobalContext::comm_bus->*(
+          GlobalContext::comm_bus->SendAny_))(
+              bg_id, bulk_init_row_msg.get_mem(),
+              bulk_init_row_msg.get_size());
+      CHECK_EQ(sent_size, bulk_init_row_msg.get_size());
+    }
+  }
+}
 }

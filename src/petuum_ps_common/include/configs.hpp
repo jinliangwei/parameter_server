@@ -42,7 +42,8 @@ struct RowOpLogType {
 enum OpLogType {
   Sparse = 0,
   AppendOnly = 1,
-  Dense = 2
+  Dense = 2,
+  StaticSparse = 3
 };
 
 enum AppendOnlyOpLogType {
@@ -53,7 +54,8 @@ enum AppendOnlyOpLogType {
 
 enum ProcessStorageType {
   BoundedDense = 0,
-  BoundedSparse = 1
+  BoundedSparse = 1,
+  UnboundedSparse = 2
 };
 
 enum NumaPolicy {

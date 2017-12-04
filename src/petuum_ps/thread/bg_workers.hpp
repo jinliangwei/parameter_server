@@ -18,6 +18,8 @@ public:
   static bool CreateTable(int32_t table_id,
                           const ClientTableConfig& table_config);
   static void WaitCreateTable();
+  static void RegisterRowSet(int32_t table_id, const std::set<RowId> &row_id_set);
+  static void WaitForBulkInit();
   static bool RequestRow(int32_t table_id, int32_t row_id, int32_t clock);
   // If forced is set to true, a row request is forced to send even if
   // it exists in the process storage and clock is fresh enough.

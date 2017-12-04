@@ -27,34 +27,49 @@ public:
   void RegisterThread();
   void DeregisterThread();
 
-  void GetAsyncForced(int32_t row_id);
-  void GetAsync(int32_t row_id);
+  void GetAsyncForced(RowId row_id);
+  void GetAsync(RowId row_id);
   void WaitPendingAsyncGet();
-  void ThreadGet(int32_t row_id, ThreadRowAccessor *row_accessor);
-  void ThreadInc(int32_t row_id, int32_t column_id, const void *update);
-  void ThreadBatchInc(int32_t row_id, const int32_t* column_ids,
+  void GetLocalRowIdSet(std::vector<RowId> *row_id_vec,
+                        size_t num_clients,
+                        size_t num_table_threads,
+                        size_t table_thread_id,
+                        size_t *total_num_rows);
+  void RegisterRowSet(const std::set<RowId> &row_id_set);
+  void WaitForBulkInit();
+  void ThreadGet(RowId row_id, ThreadRowAccessor *row_accessor);
+  void ThreadInc(RowId row_id, int32_t column_id, const void *update);
+  void ThreadBatchInc(RowId row_id, const int32_t* column_ids,
                       const void* updates, int32_t num_updates);
-  void ThreadDenseBatchInc(int32_t row_id, const void *updates,
+  void ThreadDenseBatchInc(RowId row_id, const void *updates,
                            int32_t index_st, int32_t num_updates);
   void FlushThreadCache();
 
-  ClientRow *Get(int32_t row_id, RowAccessor *row_accessor);
-  void Inc(int32_t row_id, int32_t column_id, const void *update);
-  void BatchInc(int32_t row_id, const int32_t* column_ids, const void* updates,
+  ClientRow *Get(RowId row_id, RowAccessor *row_accessor);
+  void Inc(RowId row_id, int32_t column_id, const void *update);
+  void BatchInc(RowId row_id, const int32_t* column_ids, const void* updates,
     int32_t num_updates);
-  void DenseBatchInc(int32_t row_id, const void *updates, int32_t index_st,
+  void DenseBatchInc(RowId row_id, const void *updates, int32_t index_st,
                      int32_t num_updates);
 
   void Clock();
-  cuckoohash_map<int32_t, bool> *GetAndResetOpLogIndex(int32_t partition_num);
+  SharedOpLogIndex *GetAndResetOpLogIndex(int32_t partition_num);
   size_t GetNumRowOpLogs(int32_t partition_num);
 
   AbstractProcessStorage& get_process_storage () {
     return *process_storage_;
   }
 
+  AbstractProcessStorage* get_process_storage_ptr () {
+    return process_storage_;
+  }
+
   AbstractOpLog& get_oplog () {
     return *oplog_;
+  }
+
+  AbstractOpLog* get_oplog_ptr () {
+    return oplog_;
   }
 
   const AbstractRow* get_sample_row () const {

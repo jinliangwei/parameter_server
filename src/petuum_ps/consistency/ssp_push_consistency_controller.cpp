@@ -18,7 +18,7 @@ SSPPushConsistencyController::SSPPushConsistencyController(
   SSPConsistencyController(info, table_id, process_storage, oplog,
                            sample_row, thread_cache, oplog_index, row_oplog_type) { }
 
-void SSPPushConsistencyController::GetAsyncForced(int32_t row_id) {
+void SSPPushConsistencyController::GetAsyncForced(RowId row_id) {
   // Look for row_id in process_storage_.
   int32_t stalest_clock = 0;
 
@@ -36,7 +36,7 @@ void SSPPushConsistencyController::GetAsyncForced(int32_t row_id) {
   *pending_async_get_cnt_ += 1;
 }
 
-void SSPPushConsistencyController::GetAsync(int32_t row_id) {
+void SSPPushConsistencyController::GetAsync(RowId row_id) {
   // Look for row_id in process_storage_.
   int32_t stalest_clock = 0;
 
@@ -67,7 +67,7 @@ void SSPPushConsistencyController::WaitPendingAsnycGet() {
   }
 }
 
-ClientRow *SSPPushConsistencyController::Get(int32_t row_id,
+ClientRow *SSPPushConsistencyController::Get(RowId row_id,
   RowAccessor* row_accessor) {
   STATS_APP_SAMPLE_SSP_GET_BEGIN(table_id_);
 
@@ -117,7 +117,7 @@ ClientRow *SSPPushConsistencyController::Get(int32_t row_id,
 }
 
 void SSPPushConsistencyController::ThreadGet(
-    int32_t row_id, ThreadRowAccessor* row_accessor) {
+    RowId row_id, ThreadRowAccessor* row_accessor) {
   STATS_APP_SAMPLE_THREAD_GET_BEGIN(table_id_);
 
   // Look for row_id in process_storage_.

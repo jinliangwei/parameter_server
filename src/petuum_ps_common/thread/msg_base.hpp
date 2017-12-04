@@ -39,6 +39,9 @@ enum MsgType {
   kEarlyCommOff = 24,
   kBgServerPushRowAck = 25,
   kAdjustSuppressionLevel = 26,
+  kRegisterRowSet = 27,
+  kBulkInitRow = 28,
+  kBulkInitDone = 29,
   kMemTransfer = 50,
   kNonExist = 100
 };

@@ -12,7 +12,7 @@ RandomTableOpLogMetaDense::RandomTableOpLogMetaDense(const AbstractRow *sample_r
 RandomTableOpLogMetaDense::~RandomTableOpLogMetaDense() { }
 
 void RandomTableOpLogMetaDense::InsertMergeRowOpLogMeta(
-    int32_t row_id, const RowOpLogMeta &row_oplog_meta) {
+    RowId row_id, const RowOpLogMeta &row_oplog_meta) {
   auto &my_row_oplog_meta = meta_vec_[row_id];
   if (my_row_oplog_meta.get_clock() == -1) {
     num_valid_oplogs_++;
@@ -40,7 +40,7 @@ void RandomTableOpLogMetaDense::Prepare(size_t num_rows_to_send) {
   meta_iter_ = meta_vec_.begin();
 }
 
-int32_t RandomTableOpLogMetaDense::GetAndClearNextInOrder() {
+RowId RandomTableOpLogMetaDense::GetAndClearNextInOrder() {
   if (num_valid_oplogs_ == 0)
     return -1;
 
@@ -65,14 +65,14 @@ int32_t RandomTableOpLogMetaDense::GetAndClearNextInOrder() {
   return -1;
 }
 
-int32_t RandomTableOpLogMetaDense::InitGetUptoClock(int32_t clock) {
+RowId RandomTableOpLogMetaDense::InitGetUptoClock(int32_t clock) {
   meta_iter_ = meta_vec_.begin();
   clock_to_clear_ = clock;
 
   return GetAndClearNextUptoClock();
 }
 
-int32_t RandomTableOpLogMetaDense::GetAndClearNextUptoClock() {
+RowId RandomTableOpLogMetaDense::GetAndClearNextUptoClock() {
   if (num_valid_oplogs_ == 0)
     return -1;
 
@@ -86,7 +86,7 @@ int32_t RandomTableOpLogMetaDense::GetAndClearNextUptoClock() {
 
   if (meta_iter_ == meta_vec_.end()) return -1;
 
-  int32_t row_id = meta_iter_ - meta_vec_.begin();
+  RowId row_id = meta_iter_ - meta_vec_.begin();
   meta_iter_->invalidate_clock();
   num_valid_oplogs_--;
 

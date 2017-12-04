@@ -33,7 +33,7 @@ OpLogType GetOpLogType(const std::string &oplog_type);
 AppendOnlyOpLogType GetAppendOnlyOpLogType(
     const std::string &append_only_oplog_type);
 
-ProcessStorageType GetProcessStroageType(
+ProcessStorageType GetProcessStorageType(
     const std::string &process_storage_type);
 
 float RestoreInf(float x);

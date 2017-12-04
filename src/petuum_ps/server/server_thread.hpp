@@ -11,6 +11,7 @@
 #include <petuum_ps_common/thread/msg_tracker.hpp>
 #include <petuum_ps_common/util/max_vector_clock.hpp>
 #include <petuum_ps_common/include/constants.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 
 namespace petuum {
 class ServerThread : public Thread {
@@ -58,7 +59,7 @@ protected:
   void HandleCreateTable(int32_t sender_id, CreateTableMsg &create_table_msg);
   void HandleRowRequest(int32_t sender_id, RowRequestMsg &row_request_msg);
   void ReplyRowRequest(int32_t bg_id, ServerRow *server_row,
-                       int32_t table_id, int32_t row_id, int32_t server_clock,
+                       int32_t table_id, RowId row_id, int32_t server_clock,
                        uint32_t version);
   void HandleOpLogMsg(int32_t sender_id,
                       ClientSendOpLogMsg &client_send_oplog_msg);
@@ -84,6 +85,9 @@ protected:
   virtual void ClockNotice();
 
   virtual void AdjustSuppressionLevel(int32_t bg_id, int32_t bg_clock);
+
+  virtual void HandleRegisterRowSet(int32_t sender_bg_id,
+                                    RegisterRowSetMsg &register_row_set_msg) { }
 
   int32_t my_id_;
   std::vector<int32_t> bg_worker_ids_;

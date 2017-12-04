@@ -15,7 +15,7 @@
 
 namespace lda {
 
-FastDocSampler::FastDocSampler() :
+FastDocSampler::FastDocSampler(size_t num_words) :
     rng_engine_(time(NULL)),
     uniform_zero_one_dist_(0, 1),
     zero_one_rng_(new rng_t(rng_engine_, uniform_zero_one_dist_)) {
@@ -24,7 +24,7 @@ FastDocSampler::FastDocSampler() :
 
   // Topic model parameters.
   K_ = context.get_int32("num_topics");
-  V_ = context.get_int32("num_vocabs");
+  V_ = num_words;
   CHECK_NE(-1, V_);
   beta_ = context.get_double("beta");
   beta_sum_ = beta_ * V_;

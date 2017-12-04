@@ -23,9 +23,9 @@ namespace petuum {
 class AbstractBgWorker : public Thread {
 public:
   AbstractBgWorker(int32_t id, int32_t comm_channel_idx,
-           std::map<int32_t, ClientTable* > *tables,
-           pthread_barrier_t *init_barrier,
-           pthread_barrier_t *create_table_barrier);
+                   std::map<int32_t, ClientTable* > *tables,
+                   pthread_barrier_t *init_barrier,
+                   pthread_barrier_t *create_table_barrier);
   virtual ~AbstractBgWorker();
 
   void ShutDown();
@@ -36,8 +36,11 @@ public:
   bool CreateTable(int32_t table_id,
                    const ClientTableConfig& table_config);
 
-  bool RequestRow(int32_t table_id, int32_t row_id, int32_t clock);
-  void RequestRowAsync(int32_t table_id, int32_t row_id, int32_t clock,
+  void RegisterRowSet(int32_t table_id,
+                      const std::vector<RowId> &row_id_set);
+
+  bool RequestRow(int32_t table_id, RowId row_id, int32_t clock);
+  void RequestRowAsync(int32_t table_id, RowId row_id, int32_t clock,
                        bool forced);
   void GetAsyncRowRequestReply();
   void SignalHandleAppendOnlyBuffer(int32_t table_id);
@@ -104,7 +107,7 @@ protected:
   size_t SendOpLogMsgs(bool clock_advanced) ;
 
   size_t CountRowOpLogToSend(
-      int32_t row_id, AbstractRowOpLog *row_oplog,
+      RowId row_id, AbstractRowOpLog *row_oplog,
       std::map<int32_t, size_t> *table_num_bytes_by_server,
       BgOpLogPartition *bg_table_oplog,
       GetSerializedRowOpLogSizeFunc GetSerializedRowOpLogSize);
@@ -126,7 +129,7 @@ protected:
       ServerRowRequestReplyMsg &server_row_request_reply_msg);
 
   virtual void CheckAndApplyOldOpLogsToRowData(int32_t table_id,
-                                               int32_t row_id, uint32_t row_version,
+                                               RowId row_id, uint32_t row_version,
                                                AbstractRow *row_data) = 0;
   /* Handles Row Requests -- END */
 
@@ -140,14 +143,14 @@ protected:
 
   virtual ClientRow *CreateClientRow(int32_t clock, AbstractRow *row_data) = 0;
 
-  virtual void UpdateExistingRow(int32_t table_id, int32_t row_id,
+  virtual void UpdateExistingRow(int32_t table_id, RowId row_id,
                                  ClientRow *clien_row, ClientTable *client_table,
                                  const void *data, size_t row_size,
                                  uint32_t version, bool version_maintain,
                                  uint64_t row_version);
 
   virtual void InsertNonexistentRow(int32_t table_id,
-                                    int32_t row_id, ClientTable *client_table, const void *data,
+                                    RowId row_id, ClientTable *client_table, const void *data,
                                     size_t row_size, uint32_t version, int32_t clock);
 
   virtual void HandleEarlyCommOn();
@@ -156,6 +159,9 @@ protected:
   void SendClientShutDownMsgs();
 
   virtual void HandleAdjustSuppressionLevel();
+
+  void HandleRegisterRowSet(RegisterRowSetMsg &register_msg);
+  void HandleBulkInitRow(BulkInitRowMsg &bulk_init_row_msg);
 
   uint64_t ExtractRowVersion(const void *bytes, size_t *num_bytes);
 

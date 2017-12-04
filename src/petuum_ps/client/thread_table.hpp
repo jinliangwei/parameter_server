@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 #include <boost/noncopyable.hpp>
 
@@ -19,16 +20,16 @@ public:
   explicit ThreadTable(const AbstractRow *sample_row, int32_t row_oplog_type,
                        size_t dense_row_oplog_capacity);
   ~ThreadTable();
-  void IndexUpdate(int32_t row_id);
+  void IndexUpdate(RowId row_id);
   void FlushOpLogIndex(TableOpLogIndex &oplog_index);
 
-  AbstractRow *GetRow(int32_t row_id);
-  void InsertRow(int32_t row_id, const AbstractRow *to_insert);
-  void Inc(int32_t row_id, int32_t column_id, const void *delta);
-  void BatchInc(int32_t row_id, const int32_t *column_ids,
+  AbstractRow *GetRow(RowId row_id);
+  void InsertRow(RowId row_id, const AbstractRow *to_insert);
+  void Inc(RowId row_id, int32_t column_id, const void *delta);
+  void BatchInc(RowId row_id, const int32_t *column_ids,
                 const void *deltas, int32_t num_updates);
 
-  void DenseBatchInc(int32_t row_id, const void *updates, int32_t index_st,
+  void DenseBatchInc(RowId row_id, const void *updates, int32_t index_st,
                      int32_t num_updates);
 
   void FlushCache(AbstractProcessStorage &process_storage, AbstractOpLog &table_oplog,
@@ -36,7 +37,7 @@ public:
   void FlushCacheOpLog(AbstractProcessStorage &process_storage, AbstractOpLog &table_oplog,
                        const AbstractRow *sample_row);
 
-  size_t IndexUpdateAndGetCount(int32_t row_id, size_t num_updates = 1);
+  size_t IndexUpdateAndGetCount(RowId row_id, size_t num_updates = 1);
   void ResetUpdateCount();
 
   void AddToUpdateCount(size_t num_updates);
@@ -46,9 +47,9 @@ public:
   }
 
 private:
-  std::vector<std::unordered_set<int32_t> > oplog_index_;
-  boost::unordered_map<int32_t, AbstractRow* > row_storage_;
-  boost::unordered_map<int32_t, AbstractRowOpLog* > oplog_map_;
+  std::vector<OpLogRowIdSet> oplog_index_;
+  std::unordered_map<RowId, AbstractRow* > row_storage_;
+  std::unordered_map<RowId, AbstractRowOpLog* > oplog_map_;
   const AbstractRow *sample_row_;
 
   size_t update_count_;
@@ -65,15 +66,15 @@ private:
 
   void ApplyThreadOpLogSSP(
       OpLogAccessor *oplog_accessor, ClientRow *client_row,
-      AbstractRowOpLog *row_oplog, int32_t row_id);
+      AbstractRowOpLog *row_oplog, RowId row_id);
 
   void ApplyThreadOpLogGetImportance(
       OpLogAccessor *oplog_accessor, ClientRow *client_row,
-      AbstractRowOpLog *row_oplog, int32_t row_id);
+      AbstractRowOpLog *row_oplog, RowId row_id);
 
   typedef void (ThreadTable::*ApplyThreadOpLogFunc)(
       OpLogAccessor *oplog_accessor, ClientRow *client_row,
-      AbstractRowOpLog *row_oplog, int32_t row_id);
+      AbstractRowOpLog *row_oplog, RowId row_id);
 
   ThreadTable::ApplyThreadOpLogFunc ApplyThreadOpLog_;
 };

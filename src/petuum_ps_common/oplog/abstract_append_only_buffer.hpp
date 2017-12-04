@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <boost/noncopyable.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 
 namespace petuum {
 
@@ -29,14 +30,14 @@ public:
   }
 
   // return true if succeed, otherwise false
-  virtual bool Inc(int32_t row_id, int32_t col_id, const void *delta) = 0;
-  virtual bool BatchInc(int32_t row_id, const int32_t *col_ids,
+  virtual bool Inc(RowId row_id, int32_t col_id, const void *delta) = 0;
+  virtual bool BatchInc(RowId row_id, const int32_t *col_ids,
                         const void *deltas, int32_t num_updates) = 0;
-  virtual bool DenseBatchInc(int32_t row_id, const void *updates, int32_t index_st,
-                     int32_t num_updates) = 0;
+  virtual bool DenseBatchInc(RowId row_id, const void *updates, int32_t index_st,
+                             int32_t num_updates) = 0;
   virtual void InitRead() = 0;
-  virtual const void *Next(int32_t *row_id, int32_t const **col_ids,
-                   int32_t *num_updates) = 0;
+  virtual const void *Next(RowId *row_id, int32_t const **col_ids,
+                           int32_t *num_updates) = 0;
 
 protected:
   const int32_t thread_id_;

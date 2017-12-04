@@ -54,7 +54,7 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
   if (table->GetNumRowOpLogs(my_comm_channel_idx_) == 0) return;
 
   // Get OpLog index
-  cuckoohash_map<int32_t, bool> *new_table_oplog_index_ptr
+  SharedOpLogIndex *new_table_oplog_index_ptr
       = table->GetAndResetOpLogIndex(my_comm_channel_idx_);
 
   //LOG(INFO) << "table_id = " << table_id
@@ -66,9 +66,9 @@ void SSPAggrBgWorker::ReadTableOpLogsIntoOpLogMeta(int32_t table_id,
   {
     auto lt = new_table_oplog_index_ptr->lock_table();
     for (const auto& it : lt) {
-        int32_t row_id = it.first;
+        auto row_id = it.first;
         RowOpLogMeta row_oplog_meta;
-        bool found = 
+        bool found =
             table_oplog.GetInvalidateOpLogMeta(row_id, &row_oplog_meta);
         if (!found || (row_oplog_meta.get_clock() == -1)) {
           continue;
@@ -100,8 +100,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClock(
 
   AbstractOpLog &table_oplog = table->get_oplog();
 
-  int32_t row_id;
-  row_id = table_oplog_meta->InitGetUptoClock(clock_to_push);
+  RowId row_id = table_oplog_meta->InitGetUptoClock(clock_to_push);
   while (row_id >= 0) {
     AbstractRowOpLog* row_oplog = 0;
     bool found = table_oplog.GetEraseOpLog(row_id, &row_oplog);
@@ -135,8 +134,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToClockNoReplay(
 
   AbstractOpLog &table_oplog = table->get_oplog();
 
-  int32_t row_id;
-  row_id = table_oplog_meta->InitGetUptoClock(clock_to_push);
+  RowId row_id = table_oplog_meta->InitGetUptoClock(clock_to_push);
   while (row_id >= 0) {
     OpLogAccessor oplog_accessor;
     bool found = table_oplog.FindAndLock(row_id, &oplog_accessor);
@@ -183,8 +181,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacity(
 
   table_oplog_meta->Prepare(num_rows_to_add);
 
-  int32_t row_id;
-  row_id = table_oplog_meta->GetAndClearNextInOrder();
+  RowId row_id = table_oplog_meta->GetAndClearNextInOrder();
 
   while (row_id >= 0) {
     AbstractRowOpLog* row_oplog = 0;
@@ -227,9 +224,7 @@ size_t SSPAggrBgWorker::ReadTableOpLogMetaUpToCapacityNoReplay(
 
   table_oplog_meta->Prepare(num_rows_to_add);
 
-  int32_t row_id;
-  row_id = table_oplog_meta->GetAndClearNextInOrder();
-
+  RowId row_id = table_oplog_meta->GetAndClearNextInOrder();
   while (row_id >= 0) {
     OpLogAccessor oplog_accessor;
     bool found = table_oplog.FindAndLock(row_id, &oplog_accessor);
@@ -472,7 +467,7 @@ long SSPAggrBgWorker::HandleClockMsg(bool clock_advanced) {
   //        << " send milli sec = " << oplog_send_milli_sec_
   //        << " left over milli = " << left_over_send_milli_sec
   //        << " size = " << sent_size;
-  
+
   long ret_sec = early_comm_on_ ? oplog_send_milli_sec_ : ResetBgIdleMilli();
   return ret_sec;
 }

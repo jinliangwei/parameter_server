@@ -25,7 +25,7 @@ typedef double real_t;
 // FastDocSampler does not store any documents.
 class FastDocSampler {
 public:
-  FastDocSampler();
+  FastDocSampler(size_t num_words);
   ~FastDocSampler();
 
   // Read off summary_table and cache it to summary_row_ to simulate thread
@@ -61,7 +61,7 @@ private:  // private members.
   int32_t K_;
 
   // Number of vocabs.
-  int32_t V_;
+  size_t V_;
 
   // Dirichlet prior for word-topic vectors.
   real_t beta_;

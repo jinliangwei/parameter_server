@@ -38,12 +38,12 @@ public:
     offset_ = 0;
   }
 
-  bool Append(int32_t record_id, const void *record, size_t record_size) {
-    if (offset_ + sizeof(int32_t) + record_size + sizeof(size_t) > mem_size_) {
+  bool Append(int64_t record_id, const void *record, size_t record_size) {
+    if (offset_ + sizeof(int64_t) + record_size + sizeof(size_t) > mem_size_) {
       return false;
     }
-    *(reinterpret_cast<int32_t*>(mem_ + offset_)) = record_id;
-    offset_ += sizeof(int32_t);
+    *(reinterpret_cast<int64_t*>(mem_ + offset_)) = record_id;
+    offset_ += sizeof(int64_t);
     *(reinterpret_cast<size_t*>(mem_ + offset_)) = record_size;
     offset_ += sizeof(size_t);
     memcpy(mem_ + offset_, record, record_size);
@@ -56,12 +56,12 @@ public:
     return offset_;
   }
 
-  int32_t *GetMemPtrInt32() {
-    if (offset_ + sizeof(int32_t) > mem_size_) {
+  int64_t *GetMemPtrInt64() {
+    if (offset_ + sizeof(int64_t) > mem_size_) {
       return 0;
     }
-    int32_t *ret_ptr = reinterpret_cast<int32_t*>(mem_ + offset_);
-    offset_ += sizeof(int32_t);
+    int64_t *ret_ptr = reinterpret_cast<int64_t*>(mem_ + offset_);
+    offset_ += sizeof(int64_t);
 
     return ret_ptr;
   }

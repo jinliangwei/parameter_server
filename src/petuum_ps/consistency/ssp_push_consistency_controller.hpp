@@ -22,15 +22,15 @@ public:
       TableOpLogIndex &oplog_index,
       int32_t row_oplog_type);
 
-  void GetAsyncForced(int32_t row_id);
-  void GetAsync(int32_t row_id);
+  void GetAsyncForced(RowId row_id);
+  void GetAsync(RowId row_id);
   void WaitPendingAsnycGet();
 
   // Check freshness; make request and block if too stale or row_id not found
   // in storage.
-  ClientRow *Get(int32_t row_id, RowAccessor* row_accessor);
+  ClientRow *Get(RowId row_id, RowAccessor* row_accessor);
 
-  void ThreadGet(int32_t row_id, ThreadRowAccessor* row_accessor);
+  void ThreadGet(RowId row_id, ThreadRowAccessor* row_accessor);
 
 private:
   static const size_t kMaxPendingAsyncGetCnt = 256;

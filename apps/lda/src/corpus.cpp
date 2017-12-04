@@ -14,10 +14,22 @@ Corpus::Corpus():
 
 void Corpus::AddDoc(const uint8_t *doc_data) {
   docs_.emplace_back();
-  
+
   DocumentWordTopics &last_doc = docs_.back();
   last_doc.DeserializeDoc(doc_data);
   last_doc.RandomInitWordTopics(one_K_rng_.get());
+}
+
+DocumentWordTopics*
+Corpus::CreateAndGet() {
+  docs_.emplace_back();
+  DocumentWordTopics &last_doc = docs_.back();
+  return &last_doc;
+}
+
+void
+Corpus::RandomInit(DocumentWordTopics *doc) {
+  doc->RandomInitWordTopics(one_K_rng_.get());
 }
 
 void Corpus::RestartWorkUnit(uint32_t iters_per_work_unit) {
@@ -25,13 +37,13 @@ void Corpus::RestartWorkUnit(uint32_t iters_per_work_unit) {
 
   std::unique_lock<std::mutex> ulock(docs_mtx_);
   docs_iter_ = docs_.begin();
-    
+
   num_iters_this_work_unit_ = 0;
 }
 
 std::list<DocumentWordTopics>::iterator Corpus::GetOneDoc() {
   std::unique_lock<std::mutex> ulock(docs_mtx_);
- 
+
   if (num_iters_this_work_unit_ == iters_per_work_unit_) {
     return docs_.end();
   }
@@ -50,7 +62,7 @@ std::list<DocumentWordTopics>::iterator Corpus::GetOneDoc() {
 
 std::list<DocumentWordTopics>::iterator Corpus::GetOneDoc(int32_t *num_iters_this_work_unit) {
   std::unique_lock<std::mutex> ulock(docs_mtx_);
- 
+
   *num_iters_this_work_unit = -1;
   if (num_iters_this_work_unit_ == iters_per_work_unit_) {
     return docs_.end();

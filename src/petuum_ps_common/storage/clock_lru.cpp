@@ -16,7 +16,7 @@ ClockLRU::ClockLRU(int capacity, size_t lock_pool_size) :
     }
   }
 
-int32_t ClockLRU::FindOneToEvict() {
+RowId ClockLRU::FindOneToEvict() {
   for (int i = 0; i < MAX_NUM_ROUNDS * capacity_; ++i) {
     // Check slot pointed by evict_hand_ and increment it so other thread will
     // not check this slot immediately.
@@ -67,7 +67,7 @@ void ClockLRU::NoEvict(int32_t slot) {
   locks_.Unlock(slot);
 }
 
-int32_t ClockLRU::Insert(int32_t row_id) {
+int32_t ClockLRU::Insert(RowId row_id) {
   Unlocker<SpinMutex> unlocker;
   int32_t slot = FindEmptySlot(&unlocker);
   stale_[slot].clear();
@@ -114,7 +114,7 @@ int32_t ClockLRU::FindEmptySlot(
   return slot;
 }
 
-bool ClockLRU::HasRow(int32_t row_id, int32_t slot) {
+bool ClockLRU::HasRow(RowId row_id, int32_t slot) {
   return (row_ids_[slot] == row_id);
 }
 

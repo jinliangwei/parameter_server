@@ -120,11 +120,11 @@ public:
     return *this;
   }
 
-  void GetAsyncForced(int32_t row_id){
+  void GetAsyncForced(RowId row_id){
     system_table_->GetAsyncForced(row_id);
   }
 
-  void GetAsync(int32_t row_id){
+  void GetAsync(RowId row_id){
     system_table_->GetAsync(row_id);
   }
 
@@ -132,20 +132,20 @@ public:
     system_table_->WaitPendingAsyncGet();
   }
 
-  void ThreadGet(int32_t row_id, ThreadRowAccessor* row_accessor){
+  void ThreadGet(RowId row_id, ThreadRowAccessor* row_accessor){
     system_table_->ThreadGet(row_id, row_accessor);
   }
 
-  void ThreadInc(int32_t row_id, int32_t column_id, UPDATE update){
+  void ThreadInc(RowId row_id, int32_t column_id, UPDATE update){
     system_table_->ThreadInc(row_id, column_id, &update);
   }
 
-  void ThreadBatchInc(int32_t row_id, const UpdateBatch<UPDATE>& update_batch){
+  void ThreadBatchInc(RowId row_id, const UpdateBatch<UPDATE>& update_batch){
     system_table_->ThreadBatchInc(row_id, update_batch.GetColIDs().data(),
       update_batch.GetUpdates(), update_batch.GetBatchSize());
   }
 
-  void ThreadDenseBatchInc(int32_t row_id,
+  void ThreadDenseBatchInc(RowId row_id,
                            const DenseUpdateBatch<UPDATE> &update_batch) {
     system_table_->ThreadDenseBatchInc(row_id, update_batch.get_mem_const(),
                                        update_batch.get_index_st(),
@@ -158,26 +158,26 @@ public:
 
   // row_accessor helps maintain the reference count to prevent premature
   // cache eviction.
-  void Get(int32_t row_id, RowAccessor *row_accessor) {
+  void Get(RowId row_id, RowAccessor *row_accessor) {
     system_table_->Get(row_id, row_accessor);
   }
 
   template<typename ROW>
-  const ROW &Get(int32_t row_id, RowAccessor *row_accessor = 0) {
+  const ROW &Get(RowId row_id, RowAccessor *row_accessor = 0) {
     return *(static_cast<ROW*>(
         system_table_->Get(row_id, row_accessor)->GetRowDataPtr()));
   }
 
-  void Inc(int32_t row_id, int32_t column_id, UPDATE update){
+  void Inc(RowId row_id, int32_t column_id, UPDATE update){
     system_table_->Inc(row_id, column_id, &update);
   }
 
-  void BatchInc(int32_t row_id, const UpdateBatch<UPDATE>& update_batch){
+  void BatchInc(RowId row_id, const UpdateBatch<UPDATE>& update_batch){
     system_table_->BatchInc(row_id, update_batch.GetColIDs().data(),
       update_batch.GetUpdates(), update_batch.GetBatchSize());
   }
 
-  void DenseBatchInc(int32_t row_id,
+  void DenseBatchInc(RowId row_id,
                      const DenseUpdateBatch<UPDATE> &update_batch) {
     system_table_->DenseBatchInc(row_id, update_batch.get_mem_const(),
                                  update_batch.get_index_st(),
@@ -186,6 +186,24 @@ public:
 
   int32_t get_row_type() const {
     return system_table_->get_row_type();
+  }
+
+  void RegisterRowSet(const std::set<RowId> &row_id_set) {
+    system_table_->RegisterRowSet(row_id_set);
+  }
+
+  void WaitForBulkInit() {
+    system_table_->WaitForBulkInit();
+  }
+
+  void GetLocalRowIdSet(std::vector<RowId> *row_id_vec,
+                        size_t num_clients,
+                        size_t num_table_threads,
+                        size_t table_thread_id,
+                        size_t *total_num_rows) {
+    system_table_->GetLocalRowIdSet(row_id_vec, num_clients,
+                                    num_table_threads, table_thread_id,
+                                    total_num_rows);
   }
 
 private:

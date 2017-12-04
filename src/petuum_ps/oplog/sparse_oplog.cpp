@@ -54,7 +54,7 @@ SparseOpLog::~SparseOpLog() {
   }
 }
 
-int32_t SparseOpLog::Inc(int32_t row_id, int32_t column_id, const void *delta) {
+int32_t SparseOpLog::Inc(RowId row_id, int32_t column_id, const void *delta) {
   locks_.Lock(row_id);
   AbstractRowOpLog *row_oplog = 0;
   if(!oplog_map_.find(row_id, row_oplog)){
@@ -70,7 +70,7 @@ int32_t SparseOpLog::Inc(int32_t row_id, int32_t column_id, const void *delta) {
   return 0;
 }
 
-int32_t SparseOpLog::BatchInc(int32_t row_id, const int32_t *column_ids,
+int32_t SparseOpLog::BatchInc(RowId row_id, const int32_t *column_ids,
   const void *deltas, int32_t num_updates) {
   locks_.Lock(row_id);
   AbstractRowOpLog *row_oplog = 0;
@@ -90,13 +90,13 @@ int32_t SparseOpLog::BatchInc(int32_t row_id, const int32_t *column_ids,
   return 0;
 }
 
-int32_t SparseOpLog::DenseBatchInc(int32_t row_id, const void *updates,
+int32_t SparseOpLog::DenseBatchInc(RowId row_id, const void *updates,
                                    int32_t index_st, int32_t num_updates) {
   LOG(FATAL) << "Unsupported operation";
   return 0;
 }
 
-bool SparseOpLog::FindOpLog(int32_t row_id, OpLogAccessor *oplog_accessor) {
+bool SparseOpLog::FindOpLog(RowId row_id, OpLogAccessor *oplog_accessor) {
   locks_.Lock(row_id, oplog_accessor->get_unlock_ptr());
   AbstractRowOpLog *row_oplog;
   if (oplog_map_.find(row_id, row_oplog)) {
@@ -108,7 +108,7 @@ bool SparseOpLog::FindOpLog(int32_t row_id, OpLogAccessor *oplog_accessor) {
   return false;
 }
 
-bool SparseOpLog::FindInsertOpLog(int32_t row_id,
+bool SparseOpLog::FindInsertOpLog(RowId row_id,
   OpLogAccessor *oplog_accessor) {
   bool new_create = false;
   locks_.Lock(row_id, oplog_accessor->get_unlock_ptr());
@@ -123,7 +123,7 @@ bool SparseOpLog::FindInsertOpLog(int32_t row_id,
   return new_create;
 }
 
-bool SparseOpLog::FindAndLock(int32_t row_id,
+bool SparseOpLog::FindAndLock(RowId row_id,
                                  OpLogAccessor *oplog_accessor) {
   locks_.Lock(row_id, oplog_accessor->get_unlock_ptr());
   AbstractRowOpLog *row_oplog;
@@ -134,7 +134,7 @@ bool SparseOpLog::FindAndLock(int32_t row_id,
   return false;
 }
 
-AbstractRowOpLog *SparseOpLog::FindOpLog(int row_id) {
+AbstractRowOpLog *SparseOpLog::FindOpLog(RowId row_id) {
   AbstractRowOpLog *row_oplog;
   if (oplog_map_.find(row_id, row_oplog)) {
     return row_oplog;
@@ -142,7 +142,7 @@ AbstractRowOpLog *SparseOpLog::FindOpLog(int row_id) {
   return 0;
 }
 
-AbstractRowOpLog *SparseOpLog::FindInsertOpLog(int row_id) {
+AbstractRowOpLog *SparseOpLog::FindInsertOpLog(RowId row_id) {
   AbstractRowOpLog *row_oplog;
   if (!oplog_map_.find(row_id, row_oplog)) {
     row_oplog = CreateRowOpLog_(update_size_, sample_row_,
@@ -152,7 +152,7 @@ AbstractRowOpLog *SparseOpLog::FindInsertOpLog(int row_id) {
   return row_oplog;
 }
 
-bool SparseOpLog::GetEraseOpLog(int32_t row_id,
+bool SparseOpLog::GetEraseOpLog(RowId row_id,
                                 AbstractRowOpLog **row_oplog_ptr) {
   Unlocker<> unlocker;
   locks_.Lock(row_id, &unlocker);
@@ -165,7 +165,7 @@ bool SparseOpLog::GetEraseOpLog(int32_t row_id,
   return true;
 }
 
-bool SparseOpLog::GetEraseOpLogIf(int32_t row_id,
+bool SparseOpLog::GetEraseOpLogIf(RowId row_id,
                                   GetOpLogTestFunc test,
                                   void *test_args,
                                   AbstractRowOpLog **row_oplog_ptr) {
@@ -186,7 +186,7 @@ bool SparseOpLog::GetEraseOpLogIf(int32_t row_id,
   return true;
 }
 
-bool SparseOpLog::GetInvalidateOpLogMeta(int32_t row_id,
+bool SparseOpLog::GetInvalidateOpLogMeta(RowId row_id,
                                          RowOpLogMeta *row_oplog_meta) {
   Unlocker<> unlocker;
   locks_.Lock(row_id, &unlocker);

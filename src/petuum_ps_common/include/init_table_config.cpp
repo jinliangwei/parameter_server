@@ -30,7 +30,7 @@ void InitTableConfig(ClientTableConfig *config) {
   config->bg_apply_append_oplog_freq = FLAGS_bg_apply_append_oplog_freq;
 
   config->process_storage_type
-      = GetProcessStroageType(FLAGS_process_storage_type);
+      = GetProcessStorageType(FLAGS_process_storage_type);
 
   config->no_oplog_replay = FLAGS_no_oplog_replay;
   config->table_info.server_push_row_upper_bound

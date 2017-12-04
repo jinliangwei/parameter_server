@@ -77,7 +77,8 @@ public:
 private:
   int GetLockIndex(K idx) {
     //    return hasher(idx) % lock_pool_size_;
-    return int(idx) % lock_pool_size_;
+    //LOG(INFO) << __func__ << " " << idx;
+    return idx % lock_pool_size_;
   }
 
   // Use default HASH function.

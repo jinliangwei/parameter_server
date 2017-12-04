@@ -11,7 +11,7 @@ FixedTableOpLogMetaDense::FixedTableOpLogMetaDense(const AbstractRow *sample_row
 FixedTableOpLogMetaDense::~FixedTableOpLogMetaDense() { }
 
 void FixedTableOpLogMetaDense::InsertMergeRowOpLogMeta(
-    int32_t row_id, const RowOpLogMeta &row_oplog_meta) {
+    RowId row_id, const RowOpLogMeta &row_oplog_meta) {
   auto &my_row_oplog_meta = meta_vec_[row_id];
   if (my_row_oplog_meta.get_clock() == -1) {
     num_valid_oplogs_++;
@@ -29,7 +29,7 @@ size_t FixedTableOpLogMetaDense::GetCleanNumNewOpLogMeta() {
 
 void FixedTableOpLogMetaDense::Prepare(size_t num_rows_to_send) { }
 
-int32_t FixedTableOpLogMetaDense::GetAndClearNextInOrder() {
+RowId FixedTableOpLogMetaDense::GetAndClearNextInOrder() {
   if (num_valid_oplogs_ == 0)
     return -1;
 
@@ -55,19 +55,19 @@ int32_t FixedTableOpLogMetaDense::GetAndClearNextInOrder() {
   return -1;
 }
 
-int32_t FixedTableOpLogMetaDense::InitGetUptoClock(int32_t clock) {
+RowId FixedTableOpLogMetaDense::InitGetUptoClock(int32_t clock) {
   meta_iter_ = meta_vec_.begin();
   clock_to_clear_ = clock;
 
   return GetAndClearNextUptoClock();
 }
 
-int32_t FixedTableOpLogMetaDense::GetAndClearNextUptoClock() {
+RowId FixedTableOpLogMetaDense::GetAndClearNextUptoClock() {
   if (num_valid_oplogs_ == 0)
     return -1;
 
   for (; meta_iter_ != meta_vec_.end(); ++meta_iter_) {
-    int32_t clock_to_check = meta_iter_->get_clock();
+    RowId clock_to_check = meta_iter_->get_clock();
     if (clock_to_check >= 0
         && clock_to_check <= clock_to_clear_) {
       break;
@@ -76,7 +76,7 @@ int32_t FixedTableOpLogMetaDense::GetAndClearNextUptoClock() {
 
   if (meta_iter_ == meta_vec_.end()) return -1;
 
-  int32_t row_id = meta_iter_ - meta_vec_.begin();
+  RowId row_id = meta_iter_ - meta_vec_.begin();
   meta_iter_->invalidate_clock();
   num_valid_oplogs_--;
 

@@ -29,33 +29,33 @@ public:
   // We don't need GetAsync because in SSP we reply on the clock count of each
   // client row to check whether the row is too stale and fetch it from server
   // when it is too stale.
-  virtual void GetAsyncForced(int32_t row_id) { }
-  virtual void GetAsync(int32_t row_id) { }
+  virtual void GetAsyncForced(RowId row_id) { }
+  virtual void GetAsync(RowId row_id) { }
   virtual void WaitPendingAsnycGet() { }
 
   // Check freshness; make request and block if too stale or row_id not found
   // in storage.
-  virtual ClientRow *Get(int32_t row_id, RowAccessor* row_accessor);
+  virtual ClientRow *Get(RowId row_id, RowAccessor* row_accessor);
 
   // Return immediately.
-  virtual void Inc(int32_t row_id, int32_t column_id, const void* delta);
+  virtual void Inc(RowId row_id, int32_t column_id, const void* delta);
 
-  virtual void BatchInc(int32_t row_id, const int32_t* column_ids, const void* updates,
+  virtual void BatchInc(RowId row_id, const int32_t* column_ids, const void* updates,
 			int32_t num_updates);
 
-  virtual void DenseBatchInc(int32_t row_id, const void *updates,
+  virtual void DenseBatchInc(RowId row_id, const void *updates,
                              int32_t index_st, int32_t num_updates);
 
-  virtual void ThreadGet(int32_t row_id, ThreadRowAccessor* row_accessor);
+  virtual void ThreadGet(RowId row_id, ThreadRowAccessor* row_accessor);
 
-  virtual void ThreadInc(int32_t row_id, int32_t column_id, const void* delta);
+  virtual void ThreadInc(RowId row_id, int32_t column_id, const void* delta);
 
   // Increment column_ids.size() entries of a row. deltas points to an array.
-  virtual void ThreadBatchInc(int32_t row_id, const int32_t* column_ids,
+  virtual void ThreadBatchInc(RowId row_id, const int32_t* column_ids,
 			      const void* updates, int32_t num_updates);
 
   virtual void ThreadDenseBatchInc(
-      int32_t row_id, const void *updates, int32_t index_st,
+      RowId row_id, const void *updates, int32_t index_st,
       int32_t num_updates);
 
   virtual void FlushThreadCache();

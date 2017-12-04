@@ -13,16 +13,16 @@ public:
   FixedTableOpLogMetaDense(const AbstractRow *sample_row, size_t table_size);
   virtual ~FixedTableOpLogMetaDense();
 
-  void InsertMergeRowOpLogMeta(int32_t row_id,
+  void InsertMergeRowOpLogMeta(RowId row_id,
                                const RowOpLogMeta& row_oplog_meta);
 
   virtual size_t GetCleanNumNewOpLogMeta();
 
   void Prepare(size_t num_rows_to_send);
-  virtual int32_t GetAndClearNextInOrder();
+  virtual RowId GetAndClearNextInOrder();
 
-  virtual int32_t InitGetUptoClock(int32_t clock);
-  virtual int32_t GetAndClearNextUptoClock();
+  virtual RowId InitGetUptoClock(int32_t clock);
+  virtual RowId GetAndClearNextUptoClock();
 
   virtual size_t GetNumRowOpLogs() const;
 

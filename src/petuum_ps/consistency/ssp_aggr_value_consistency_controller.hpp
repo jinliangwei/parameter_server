@@ -17,12 +17,12 @@ public:
       int32_t row_oplog_type);
 
     // Return immediately.
-  virtual void Inc(int32_t row_id, int32_t column_id, const void* delta);
+  virtual void Inc(RowId row_id, int32_t column_id, const void* delta);
 
-  virtual void BatchInc(int32_t row_id, const int32_t* column_ids,
+  virtual void BatchInc(RowId row_id, const int32_t* column_ids,
                         const void* updates, int32_t num_updates);
 
-  virtual void DenseBatchInc(int32_t row_id, const void *updates,
+  virtual void DenseBatchInc(RowId row_id, const void *updates,
                              int32_t index_st, int32_t num_updates);
 
 };

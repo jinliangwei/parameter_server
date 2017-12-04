@@ -29,7 +29,7 @@ public:
 protected:
   virtual void CreateRowRequestOpLogMgr();
 
-  virtual bool GetRowOpLog(AbstractOpLog &table_oplog, int32_t row_id,
+  virtual bool GetRowOpLog(AbstractOpLog &table_oplog, RowId row_id,
                            AbstractRowOpLog **row_oplog_ptr);
 
   /* Functions Called From Main Loop -- BEGIN */
@@ -56,10 +56,10 @@ protected:
 
   /* Handles Row Requests -- BEGIN */
   void CheckAndApplyOldOpLogsToRowData(int32_t table_id,
-                                       int32_t row_id, uint32_t row_version,
+                                       RowId row_id, uint32_t row_version,
                                        AbstractRow *row_data);
   void ApplyOldOpLogsToRowData(int32_t table_id,
-                               int32_t row_id,
+                               RowId row_id,
                                uint32_t version_st,
                                uint32_t version_end,
                                AbstractRow *row_data);

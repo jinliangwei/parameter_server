@@ -4,27 +4,27 @@
 
 namespace petuum {
 
-bool DenseAppendOnlyBuffer::Inc(int32_t row_id, int32_t col_id,
+bool DenseAppendOnlyBuffer::Inc(RowId row_id, int32_t col_id,
                                 const void *delta) {
   LOG(FATAL) << "Unsupported operation for this buffer type";
   return false;
 }
 
-bool DenseAppendOnlyBuffer::BatchInc(int32_t row_id, const int32_t *col_ids,
+bool DenseAppendOnlyBuffer::BatchInc(RowId row_id, const int32_t *col_ids,
                                      const void *deltas, int32_t num_updates) {
   LOG(FATAL) << "Unsupported operation for this buffer type";
   return false;
 }
 
 // The assumption is row_capacity_ == num_updates
-bool DenseAppendOnlyBuffer::DenseBatchInc(int32_t row_id, const void *deltas,
+bool DenseAppendOnlyBuffer::DenseBatchInc(RowId row_id, const void *deltas,
                                           int32_t index_st,
                                           int32_t num_updates) {
-  if (size_ + sizeof(int32_t) + update_size_*num_updates > capacity_)
+  if (size_ + sizeof(RowId) + update_size_*num_updates > capacity_)
     return false;
 
-  *(reinterpret_cast<int32_t*>(buff_.get() + size_)) = row_id;
-  size_ += sizeof(int32_t);
+  *(reinterpret_cast<RowId*>(buff_.get() + size_)) = row_id;
+  size_ += sizeof(RowId);
 
   memcpy(buff_.get() + size_, deltas, update_size_*num_updates);
   size_ += update_size_*num_updates;
@@ -38,12 +38,12 @@ void DenseAppendOnlyBuffer::InitRead() {
 }
 
 const void *DenseAppendOnlyBuffer::Next(
-    int32_t *row_id, int32_t const **col_ids, int32_t *num_updates) {
+    RowId *row_id, int32_t const **col_ids, int32_t *num_updates) {
   if (read_ptr_ >= buff_.get() + size_)
     return 0;
 
-  *row_id = *(reinterpret_cast<int32_t*>(read_ptr_));
-  read_ptr_ += sizeof(int32_t);
+  *row_id = *(reinterpret_cast<RowId*>(read_ptr_));
+  read_ptr_ += sizeof(RowId);
 
   *num_updates = row_capacity_;
 

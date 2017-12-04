@@ -36,6 +36,10 @@ public:
     return bit_changed;
   }
 
+  bool IsSubscribed(int32_t client_id) {
+    return subscriptions_.test(client_id);
+  }
+
   bool AppendRowToBuffs(
       int32_t client_id_st,
       boost::unordered_map<int32_t, RecordBuff> *buffs,

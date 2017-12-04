@@ -17,11 +17,11 @@ const int LDAStats::kNumLogGammaAlpha_ = 100000;
 const int LDAStats::kNumLogGammaAlphaSum_ = 10000;
 const int LDAStats::kNumLogGammaBeta_ = 1000000;
 
-LDAStats::LDAStats() {
+LDAStats::LDAStats(size_t num_words) {
   // Topic model parameters.
   Context& context = Context::get_instance();
   K_ = context.get_int32("num_topics");
-  V_ = context.get_int32("num_vocabs");
+  V_ = num_words;
   CHECK_NE(-1, V_);
   beta_ = context.get_double("beta");
   beta_sum_ = beta_ * V_;
@@ -100,16 +100,16 @@ double LDAStats::ComputeOneDocLLH(DocumentWordTopics* doc) {
   return one_doc_llh;
 }
 
-void LDAStats::ComputeWordLLH(int32_t ith_llh, int word_idx_start,
-    int word_idx_end) {
-
+void LDAStats::ComputeWordLLH(int32_t ith_llh,
+                              const std::vector<petuum::RowId> &row_id_set) {
   std::vector<petuum::Entry<int32_t> > word_topic_row_buff;
 
   double word_llh = 0.;
   static double zero_entry_llh = GetLogGammaBetaOffset(0);
-  for (int w = word_idx_start; w < word_idx_end; ++w) {
+  for (auto &w : row_id_set) {
     petuum::RowAccessor word_topic_row_acc;
-    const auto& word_topic_row = word_topic_table_.Get<petuum::SortedVectorMapRow<int32_t> >(w, &word_topic_row_acc);
+    const auto& word_topic_row = word_topic_table_.Get<
+      petuum::SortedVectorMapRow<int32_t> >(w, &word_topic_row_acc);
 
     CHECK(&word_topic_row != 0) << "null pointer read!";
 

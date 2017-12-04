@@ -25,7 +25,7 @@ void AppendOnlyRowOpLogBuffer::BatchIncDense(
 }
 
 void AppendOnlyRowOpLogBuffer::BatchInc(
-    int32_t row_id, const int32_t *col_ids,
+    RowId row_id, const int32_t *col_ids,
     const void *updates, int32_t num_updates) {
   auto iter = row_oplog_map_.find(row_id);
   if (iter == row_oplog_map_.end()) {
@@ -37,7 +37,7 @@ void AppendOnlyRowOpLogBuffer::BatchInc(
 }
 
 void AppendOnlyRowOpLogBuffer::BatchIncTmp(
-    int32_t row_id, const int32_t *col_ids,
+    RowId row_id, const int32_t *col_ids,
     const void *updates, int32_t num_updates) {
   auto iter = tmp_row_oplog_map_.find(row_id);
   if (iter == tmp_row_oplog_map_.end()) {
@@ -51,7 +51,7 @@ void AppendOnlyRowOpLogBuffer::BatchIncTmp(
 
 void AppendOnlyRowOpLogBuffer::MergeTmpOpLog() {
   for (auto &tmp_row_oplog_iter : tmp_row_oplog_map_) {
-    int32_t row_id = tmp_row_oplog_iter.first;
+    RowId row_id = tmp_row_oplog_iter.first;
     AbstractRowOpLog *tmp_row_oplog = tmp_row_oplog_iter.second;
 
     auto row_oplog_iter = row_oplog_map_.find(row_id);
@@ -71,7 +71,7 @@ void AppendOnlyRowOpLogBuffer::MergeTmpOpLog() {
   tmp_row_oplog_map_.clear();
 }
 
-AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadTmpOpLog(int32_t *row_id) {
+AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadTmpOpLog(RowId *row_id) {
   map_iter_ = tmp_row_oplog_map_.begin();
 
   if (map_iter_ == tmp_row_oplog_map_.end())
@@ -81,7 +81,7 @@ AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadTmpOpLog(int32_t *row_id) {
   return map_iter_->second;
 }
 
-AbstractRowOpLog *AppendOnlyRowOpLogBuffer::NextReadTmpOpLog(int32_t *row_id) {
+AbstractRowOpLog *AppendOnlyRowOpLogBuffer::NextReadTmpOpLog(RowId *row_id) {
   ++map_iter_;
   if (map_iter_ == tmp_row_oplog_map_.end())
     return 0;
@@ -90,7 +90,7 @@ AbstractRowOpLog *AppendOnlyRowOpLogBuffer::NextReadTmpOpLog(int32_t *row_id) {
   return map_iter_->second;
 }
 
-AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadRmOpLog(int32_t *row_id) {
+AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadRmOpLog(RowId *row_id) {
   map_iter_ = row_oplog_map_.begin();
 
   if (map_iter_ == row_oplog_map_.end())
@@ -99,29 +99,27 @@ AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadRmOpLog(int32_t *row_id) {
   *row_id = map_iter_->first;
   AbstractRowOpLog *row_oplog = map_iter_->second;
 
-  std::unordered_map<int32_t, AbstractRowOpLog*>::iterator tmp_iter
-      = row_oplog_map_.erase(map_iter_);
+  auto tmp_iter = row_oplog_map_.erase(map_iter_);
 
   map_iter_ = tmp_iter;
 
   return row_oplog;
 }
 
-AbstractRowOpLog *AppendOnlyRowOpLogBuffer::NextReadRmOpLog(int32_t *row_id) {
+AbstractRowOpLog *AppendOnlyRowOpLogBuffer::NextReadRmOpLog(RowId *row_id) {
   if (map_iter_ == row_oplog_map_.end())
     return 0;
 
   *row_id = map_iter_->first;
   AbstractRowOpLog *row_oplog = map_iter_->second;
 
-  std::unordered_map<int32_t, AbstractRowOpLog*>::iterator tmp_iter
-      = row_oplog_map_.erase(map_iter_);
+  auto tmp_iter = row_oplog_map_.erase(map_iter_);
 
   map_iter_ = tmp_iter;
   return row_oplog;
 }
 
-AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadOpLog(int32_t *row_id) {
+AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadOpLog(RowId *row_id) {
   map_iter_ = row_oplog_map_.begin();
 
   if (map_iter_ == row_oplog_map_.end())
@@ -131,7 +129,7 @@ AbstractRowOpLog *AppendOnlyRowOpLogBuffer::InitReadOpLog(int32_t *row_id) {
   return map_iter_->second;
 }
 
-AbstractRowOpLog *AppendOnlyRowOpLogBuffer::NextReadOpLog(int32_t *row_id) {
+AbstractRowOpLog *AppendOnlyRowOpLogBuffer::NextReadOpLog(RowId *row_id) {
   ++map_iter_;
   if (map_iter_ == row_oplog_map_.end())
     return 0;
@@ -140,7 +138,7 @@ AbstractRowOpLog *AppendOnlyRowOpLogBuffer::NextReadOpLog(int32_t *row_id) {
   return map_iter_->second;
 }
 
-AbstractRowOpLog *AppendOnlyRowOpLogBuffer::GetRowOpLog(int32_t row_id) const {
+AbstractRowOpLog *AppendOnlyRowOpLogBuffer::GetRowOpLog(RowId row_id) const {
   auto map_iter = row_oplog_map_.find(row_id);
 
   if (map_iter == row_oplog_map_.end())

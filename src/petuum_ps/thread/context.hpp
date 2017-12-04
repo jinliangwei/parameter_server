@@ -11,6 +11,7 @@
 #include <petuum_ps_common/include/abstract_row.hpp>
 #include <petuum_ps_common/comm_bus/comm_bus.hpp>
 #include <petuum_ps_common/include/configs.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 #include <petuum_ps_common/util/vector_clock_mt.hpp>
 
 namespace petuum {
@@ -288,16 +289,16 @@ public:
     return client_id_;
   }
 
-  static int32_t GetPartitionCommChannelIndex(int32_t row_id) {
+  static int32_t GetPartitionCommChannelIndex(RowId row_id) {
     return row_id % num_comm_channels_per_client_;
   }
 
   // get the id of the server who is responsible for holding that row
-  static int32_t GetPartitionClientID(int32_t row_id) {
+  static int32_t GetPartitionClientID(RowId row_id) {
     return (row_id / num_comm_channels_per_client_) % num_clients_;
   }
 
-  static int32_t GetPartitionServerID(int32_t row_id,
+  static int32_t GetPartitionServerID(RowId row_id,
                                       int32_t comm_channel_idx) {
     int32_t client_id = GetPartitionClientID(row_id);
     return get_server_thread_id(client_id, comm_channel_idx);

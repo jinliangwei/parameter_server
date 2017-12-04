@@ -15,10 +15,12 @@ namespace lda {
 
 class Corpus {
 public:
-  
+
   Corpus();
 
   void AddDoc(const uint8_t *doc_data);
+  DocumentWordTopics *CreateAndGet();
+  void RandomInit(DocumentWordTopics *doc);
 
   void RestartWorkUnit(uint32_t iters_per_work_unit);
 
@@ -32,7 +34,7 @@ public:
   // this work unit.
   std::list<DocumentWordTopics>::iterator
   GetOneDoc(int32_t *num_iters_this_work_unit);
-  
+
   std::list<DocumentWordTopics>::iterator
   GetOneDoc();
 

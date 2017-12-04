@@ -13,23 +13,23 @@ public:
   RandomTableOpLogMeta(const AbstractRow *sample_row);
   virtual ~RandomTableOpLogMeta();
 
-  virtual void InsertMergeRowOpLogMeta(int32_t row_id,
+  virtual void InsertMergeRowOpLogMeta(RowId row_id,
                                        const RowOpLogMeta& row_oplog_meta);
 
   virtual size_t GetCleanNumNewOpLogMeta();
 
-  virtual int32_t GetAndClearNextInOrder();
+  virtual RowId GetAndClearNextInOrder();
 
-  virtual int32_t InitGetUptoClock(int32_t clock);
-  virtual int32_t GetAndClearNextUptoClock();
+  virtual RowId InitGetUptoClock(int32_t clock);
+  virtual RowId GetAndClearNextUptoClock();
 
   virtual size_t GetNumRowOpLogs() const;
 
 protected:
   const AbstractRow *sample_row_;
-  std::unordered_map<int32_t, RowOpLogMeta> oplog_meta_;
+  std::unordered_map<RowId, RowOpLogMeta> oplog_meta_;
 
-  std::unordered_map<int32_t, RowOpLogMeta>::iterator meta_iter_;
+  std::unordered_map<RowId, RowOpLogMeta>::iterator meta_iter_;
 
   int32_t clock_to_clear_;
   size_t num_new_oplog_metas_;

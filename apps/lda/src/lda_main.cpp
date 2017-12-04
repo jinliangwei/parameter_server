@@ -1,6 +1,3 @@
-// Author: Dai Wei (wdai@cs.cmu.edu)
-// Date: 2014.03.25
-
 #include <petuum_ps_common/include/petuum_ps.hpp>
 #include <petuum_ps_common/include/system_gflags_declare.hpp>
 #include <petuum_ps_common/include/table_gflags_declare.hpp>
@@ -17,11 +14,7 @@ DEFINE_uint64(word_topic_table_process_cache_capacity, 100000,
               "Word topic table process cache capacity");
 
 // LDA Parameters
-DEFINE_string(doc_file, "",
-    "File containing document in LibSVM format. Each document is a line.");
-DEFINE_int32(num_vocabs, -1, "Number of vocabs.");
-DEFINE_int32(max_vocab_id, -1, "Maximum word index, which could be different "
-    "from num_vocabs if there are unused vocab indices.");
+DEFINE_string(data_path, "", "data path");
 DEFINE_double(alpha, 1, "Dirichlet prior on document-topic vectors.");
 DEFINE_double(beta, 0.1, "Dirichlet prior on vocab-topic vectors.");
 DEFINE_int32(num_topics, 100, "Number of topics.");
@@ -74,7 +67,8 @@ int main(int argc, char *argv[]) {
   lda::LDAEngine lda_engine;
   LOG(INFO) << "Loading data";
   STATS_APP_LOAD_DATA_BEGIN();
-  lda_engine.ReadData(FLAGS_doc_file);
+  std::string data_path = FLAGS_data_path;
+  lda_engine.ReadData(data_path.c_str(), FLAGS_client_id, FLAGS_num_clients, 1);
   STATS_APP_LOAD_DATA_END();
 
   LOG(INFO) << "Read data done!";

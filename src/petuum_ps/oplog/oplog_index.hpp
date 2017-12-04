@@ -7,10 +7,14 @@
 #include <boost/noncopyable.hpp>
 
 #include <petuum_ps_common/util/lock.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 #include <petuum_ps_common/util/striped_lock.hpp>
 #include <petuum_ps/thread/context.hpp>
 
 namespace petuum {
+using OpLogRowIdSet = std::unordered_set<RowId>;
+using SharedOpLogIndex = cuckoohash_map<RowId, bool>;
+
 class PartitionOpLogIndex : boost::noncopyable {
 public:
   explicit PartitionOpLogIndex(size_t capacity);
@@ -18,22 +22,22 @@ public:
   PartitionOpLogIndex & operator = (PartitionOpLogIndex && other) = delete;
 
   ~PartitionOpLogIndex();
-  void AddIndex(const std::unordered_set<int32_t> &oplog_index);
-  cuckoohash_map<int32_t, bool> *Reset();
+  void AddIndex(const OpLogRowIdSet &oplog_index);
+  SharedOpLogIndex *Reset();
   size_t GetNumRowOpLogs();
 private:
   size_t capacity_;
   SharedMutex smtx_;
-  StripedLock<int32_t> locks_;
-  cuckoohash_map<int32_t, bool> *shared_oplog_index_;
+  StripedLock<RowId> locks_;
+  SharedOpLogIndex *shared_oplog_index_;
 };
 
 class TableOpLogIndex : boost::noncopyable{
 public:
   explicit TableOpLogIndex(size_t capacity);
   void AddIndex(int32_t partition_num,
-                const std::unordered_set<int32_t> &oplog_index);
-  cuckoohash_map<int32_t, bool> *ResetPartition(int32_t partition_num);
+                const OpLogRowIdSet &oplog_index);
+  SharedOpLogIndex *ResetPartition(int32_t partition_num);
   size_t GetNumRowOpLogs(int32_t partition_num);
 private:
   std::vector<PartitionOpLogIndex> partition_oplog_index_;

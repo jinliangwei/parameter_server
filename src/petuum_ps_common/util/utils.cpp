@@ -89,6 +89,8 @@ OpLogType GetOpLogType(const std::string &oplog_type) {
     return AppendOnly;
   } else if (oplog_type == "Dense") {
     return Dense;
+  } else if (oplog_type == "StaticSparse") {
+    return StaticSparse;
   } else {
     LOG(FATAL) << "Unknown oplog type = " << oplog_type;
   }
@@ -110,20 +112,22 @@ AppendOnlyOpLogType GetAppendOnlyOpLogType(
     return Inc;
 }
 
-ProcessStorageType GetProcessStroageType(
+ProcessStorageType GetProcessStorageType(
     const std::string &process_storage_type) {
   if (process_storage_type == "BoundedDense") {
     return BoundedDense;
   } else if (process_storage_type == "BoundedSparse") {
     return BoundedSparse;
+  } else if (process_storage_type == "UnboundedSparse") {
+    return UnboundedSparse;
   } else {
     LOG(FATAL) << "Unknown process storage type " << process_storage_type;
   }
   return BoundedSparse;
 }
-  
+
 float RestoreInf(float x) {
-  if (isinf(x)) { 
+  if (isinf(x)) {
     if (x > 0) {
       return FLT_MAX;
     } else {
@@ -133,9 +137,9 @@ float RestoreInf(float x) {
     return x;
   }
 }
-  
+
 float RestoreInfNaN(float x) {
-  if (isinf(x)) { 
+  if (isinf(x)) {
     if (x > 0) {
       return FLT_MAX;
     } else {

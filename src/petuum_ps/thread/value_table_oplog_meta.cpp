@@ -28,8 +28,8 @@ bool ValueTableOpLogMeta::CompRowOpLogMeta(
 }
 
 void ValueTableOpLogMeta::HeapSwap(int32_t index1, int32_t index2) {
-  int32_t row_id1 = heap_[index1].row_id;
-  int32_t row_id2 = heap_[index2].row_id;
+  RowId row_id1 = heap_[index1].row_id;
+  RowId row_id2 = heap_[index2].row_id;
 
   std::swap(heap_[index1], heap_[index2]);
   std::swap(heap_index_[row_id1], heap_index_[row_id2]);
@@ -67,7 +67,7 @@ void ValueTableOpLogMeta::HeapIncrease(
 }
 
 void ValueTableOpLogMeta::HeapInsert(
-    int32_t row_id, const RowOpLogMeta &row_oplog_meta) {
+    RowId row_id, const RowOpLogMeta &row_oplog_meta) {
   heap_size_++;
   int32_t heap_last = heap_size_ - 1;
   heap_[heap_last] = {row_id, -1, 0.0};
@@ -124,7 +124,7 @@ void ValueTableOpLogMeta::HeapBuildMaxHeap() {
 }
 
 void ValueTableOpLogMeta::InsertMergeRowOpLogMeta(
-    int32_t row_id,
+    RowId row_id,
     const RowOpLogMeta& row_oplog_meta) {
   int32_t index = heap_index_[row_id];
   if (index >= 0) {
@@ -141,13 +141,13 @@ size_t ValueTableOpLogMeta::GetCleanNumNewOpLogMeta() {
   return tmp;
 }
 
-int32_t ValueTableOpLogMeta::GetAndClearNextInOrder() {
+RowId ValueTableOpLogMeta::GetAndClearNextInOrder() {
   auto max = HeapExtractMax();
   //LOG(INFO) << "OpMeta " << "r " << max.row_id << " x " << max.importance;
   return max.row_id;
 }
 
-int32_t ValueTableOpLogMeta::InitGetUptoClock(int32_t clock) {
+RowId ValueTableOpLogMeta::InitGetUptoClock(int32_t clock) {
   heap_walker_ = 0;
   clock_to_clear_ = clock;
   heap_last_ = (heap_size_) > 0 ? heap_size_ - 1 : -1;
@@ -156,7 +156,7 @@ int32_t ValueTableOpLogMeta::InitGetUptoClock(int32_t clock) {
 }
 
 
-int32_t ValueTableOpLogMeta::GetAndClearNextUptoClock() {
+RowId ValueTableOpLogMeta::GetAndClearNextUptoClock() {
   while (heap_walker_ <= heap_last_) {
     int32_t clock = heap_[heap_walker_].clock;
     if (clock >= 0 && clock <= clock_to_clear_)
@@ -203,7 +203,7 @@ int32_t ValueTableOpLogMeta::GetAndClearNextUptoClock() {
 
   heap_size_--;
   heap_[heap_walker_].clock = -1;
-  int32_t row_id = heap_[heap_walker_].row_id;
+  RowId row_id = heap_[heap_walker_].row_id;
   heap_walker_++;
   return row_id;
 }

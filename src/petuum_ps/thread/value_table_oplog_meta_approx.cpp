@@ -10,7 +10,7 @@ ValueTableOpLogMetaApprox::ValueTableOpLogMetaApprox(const AbstractRow *sample_r
 ValueTableOpLogMetaApprox::~ValueTableOpLogMetaApprox() { }
 
 void ValueTableOpLogMetaApprox::InsertMergeRowOpLogMeta(
-    int32_t row_id,
+    RowId row_id,
     const RowOpLogMeta& row_oplog_meta) {
   auto iter = oplog_meta_.find(row_id);
   if (iter == oplog_meta_.end()) {
@@ -49,8 +49,8 @@ void ValueTableOpLogMetaApprox::Prepare(size_t num_rows_to_send) {
   }
 
   std::sort(sorted_vec_.begin(), sorted_vec_.end(),
-            [] (const std::pair<int32_t, RowOpLogMeta> &oplog1,
-                const std::pair<int32_t, RowOpLogMeta> &oplog2) {
+            [] (const std::pair<RowId, RowOpLogMeta> &oplog1,
+                const std::pair<RowId, RowOpLogMeta> &oplog2) {
               if (oplog1.second.get_importance()
                   == oplog2.second.get_importance()) {
                 return oplog1.first < oplog2.first;
@@ -62,10 +62,9 @@ void ValueTableOpLogMetaApprox::Prepare(size_t num_rows_to_send) {
   vec_iter_ = sorted_vec_.begin();
 }
 
-int32_t ValueTableOpLogMetaApprox::GetAndClearNextInOrder() {
-  int32_t row_id = -1;
-  std::unordered_map<int32_t, RowOpLogMeta>::iterator map_iter
-      = oplog_meta_.end();
+RowId ValueTableOpLogMetaApprox::GetAndClearNextInOrder() {
+  RowId row_id = -1;
+  auto map_iter = oplog_meta_.end();
 
   do {
     if (vec_iter_ == sorted_vec_.end()) return -1;

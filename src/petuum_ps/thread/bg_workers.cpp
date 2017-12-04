@@ -44,6 +44,14 @@ void BgWorkers::WaitCreateTable() {
   bg_worker_group_->WaitCreateTable();
 }
 
+void BgWorkers::RegisterRowSet(int32_t table_id, const std::set<RowId> &row_id_set) {
+  bg_worker_group_->RegisterRowSet(table_id, row_id_set);
+}
+
+void BgWorkers::WaitForBulkInit() {
+  bg_worker_group_->WaitForBulkInit();
+}
+
 bool BgWorkers::RequestRow(int32_t table_id, int32_t row_id, int32_t clock) {
   return bg_worker_group_->RequestRow(table_id, row_id, clock);
 }

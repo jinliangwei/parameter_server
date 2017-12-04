@@ -40,19 +40,19 @@ public:
     delete[] mem_;
   }
 
-  size_t AppendRowOpLog(int32_t row_id, AbstractRowOpLog *row_oplog) {
+  size_t AppendRowOpLog(RowId row_id, AbstractRowOpLog *row_oplog) {
     size_t serialized_size = GetSerializedRowOpLogSize_(row_oplog);
-    if (size_ + sizeof(int32_t) + serialized_size > capacity_)
+    if (size_ + sizeof(RowId) + serialized_size > capacity_)
       return 0;
 
-    *(reinterpret_cast<int32_t*>(mem_ + size_)) = row_id;
-    size_ += sizeof(int32_t);
+    *(reinterpret_cast<RowId*>(mem_ + size_)) = row_id;
+    size_ += sizeof(RowId);
 
     serialized_size = (row_oplog->*SerializeOpLog_)(mem_ + size_);
     size_ += serialized_size;
     ++num_row_oplogs_;
 
-    return sizeof(int32_t) + serialized_size;
+    return sizeof(RowId) + serialized_size;
   }
 
   size_t get_size() const {
@@ -97,7 +97,7 @@ public:
     return total_accum_num_rows_;
   }
 
-  size_t AppendRowOpLog(int32_t row_id, AbstractRowOpLog *row_oplog) {
+  size_t AppendRowOpLog(RowId row_id, AbstractRowOpLog *row_oplog) {
     int32_t server_id = GlobalContext::GetPartitionServerID(
         row_id, my_comm_channel_idx_);
 

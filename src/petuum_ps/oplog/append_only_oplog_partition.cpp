@@ -48,7 +48,7 @@ void AppendOnlyOpLogPartition::FlushOpLog() {
   STATS_APP_ACCUM_APPEND_ONLY_FLUSH_OPLOG_END();
 }
 
-int32_t AppendOnlyOpLogPartition::Inc(int32_t row_id, int32_t column_id,
+int32_t AppendOnlyOpLogPartition::Inc(RowId row_id, int32_t column_id,
                                       const void *delta) {
   if(!append_only_buff_->Inc(row_id, column_id, delta)) {
     FlushOpLog();
@@ -58,7 +58,7 @@ int32_t AppendOnlyOpLogPartition::Inc(int32_t row_id, int32_t column_id,
   return 0;
 }
 
-int32_t AppendOnlyOpLogPartition::BatchInc(int32_t row_id, const int32_t *column_ids,
+int32_t AppendOnlyOpLogPartition::BatchInc(RowId row_id, const int32_t *column_ids,
                                         const void *deltas, int32_t num_updates) {
   if(!append_only_buff_->BatchInc(row_id, column_ids, deltas, num_updates)) {
     FlushOpLog();
@@ -69,7 +69,7 @@ int32_t AppendOnlyOpLogPartition::BatchInc(int32_t row_id, const int32_t *column
 }
 
 int32_t AppendOnlyOpLogPartition::DenseBatchInc(
-    int32_t row_id, const void *updates,
+    RowId row_id, const void *updates,
     int32_t index_st, int32_t num_updates) {
   if(!append_only_buff_->DenseBatchInc
      (row_id, updates, index_st, num_updates)) {
@@ -81,48 +81,48 @@ int32_t AppendOnlyOpLogPartition::DenseBatchInc(
 }
 
 bool AppendOnlyOpLogPartition::FindOpLog(
-    int32_t row_id, OpLogAccessor *oplog_accessor) {
+    RowId row_id, OpLogAccessor *oplog_accessor) {
   LOG(FATAL) << "Operation not supported!";
   return false;
 }
 
 bool AppendOnlyOpLogPartition::FindInsertOpLog(
-    int32_t row_id, OpLogAccessor *oplog_accessor) {
+    RowId row_id, OpLogAccessor *oplog_accessor) {
   LOG(FATAL) << "Operation not supported!";
   return false;
 }
 
 bool AppendOnlyOpLogPartition::FindAndLock(
-    int32_t row_id, OpLogAccessor *oplog_accessor) {
+    RowId row_id, OpLogAccessor *oplog_accessor) {
   LOG(FATAL) << "Operation not supported!";
   return false;
 }
 
-AbstractRowOpLog *AppendOnlyOpLogPartition::FindOpLog(int32_t row_id) {
+AbstractRowOpLog *AppendOnlyOpLogPartition::FindOpLog(RowId row_id) {
   LOG(FATAL) << "Operation not supported!";
   return 0;
 }
 
-AbstractRowOpLog *AppendOnlyOpLogPartition::FindInsertOpLog(int32_t row_id) {
+AbstractRowOpLog *AppendOnlyOpLogPartition::FindInsertOpLog(RowId row_id) {
   LOG(FATAL) << "Operation not supported!";
   return 0;
 }
 
 bool AppendOnlyOpLogPartition::GetEraseOpLog(
-    int32_t row_id, AbstractRowOpLog **row_oplog_ptr) {
+    RowId row_id, AbstractRowOpLog **row_oplog_ptr) {
   LOG(FATAL) << "Operation not supported!";
   return false;
 }
 
 bool AppendOnlyOpLogPartition::GetEraseOpLogIf(
-    int32_t row_id, GetOpLogTestFunc test,
+    RowId row_id, GetOpLogTestFunc test,
     void *test_args, AbstractRowOpLog **row_oplog_ptr) {
   LOG(FATAL) << "Operation not supported!";
   return false;
 }
 
 bool AppendOnlyOpLogPartition::GetInvalidateOpLogMeta(
-    int32_t row_id, RowOpLogMeta *row_oplog_meta) {
+    RowId row_id, RowOpLogMeta *row_oplog_meta) {
   LOG(FATAL) << "Operation not supported!";
   return false;
 }

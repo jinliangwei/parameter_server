@@ -34,7 +34,7 @@ SSPConsistencyController::SSPConsistencyController(
   }
 }
 
-ClientRow *SSPConsistencyController::Get(int32_t row_id, RowAccessor* row_accessor) {
+ClientRow *SSPConsistencyController::Get(RowId row_id, RowAccessor* row_accessor) {
   STATS_APP_SAMPLE_SSP_GET_BEGIN(table_id_);
 
   // Look for row_id in process_storage_.
@@ -75,7 +75,7 @@ ClientRow *SSPConsistencyController::Get(int32_t row_id, RowAccessor* row_access
   return client_row;
 }
 
-void SSPConsistencyController::Inc(int32_t row_id, int32_t column_id,
+void SSPConsistencyController::Inc(RowId row_id, int32_t column_id,
     const void* delta) {
   //LOG(INFO) << "row_id = " << row_id;
   thread_cache_->IndexUpdate(row_id);
@@ -95,7 +95,7 @@ void SSPConsistencyController::Inc(int32_t row_id, int32_t column_id,
   }
 }
 
-void SSPConsistencyController::BatchInc(int32_t row_id,
+void SSPConsistencyController::BatchInc(RowId row_id,
   const int32_t* column_ids, const void* updates, int32_t num_updates) {
 
   STATS_APP_SAMPLE_BATCH_INC_OPLOG_BEGIN();
@@ -103,6 +103,7 @@ void SSPConsistencyController::BatchInc(int32_t row_id,
 
   OpLogAccessor oplog_accessor;
   oplog_.FindInsertOpLog(row_id, &oplog_accessor);
+  LOG(INFO) << "FindInsertOpLog " << row_id;
 
   const uint8_t* deltas_uint8 = reinterpret_cast<const uint8_t*>(updates);
 
@@ -127,7 +128,7 @@ void SSPConsistencyController::BatchInc(int32_t row_id,
 }
 
 void SSPConsistencyController::DenseBatchInc(
-    int32_t row_id, const void *updates,
+    RowId row_id, const void *updates,
     int32_t index_st, int32_t num_updates) {
   STATS_APP_SAMPLE_BATCH_INC_OPLOG_BEGIN();
   thread_cache_->IndexUpdate(row_id);
@@ -198,7 +199,7 @@ void SSPConsistencyController::DenseBatchIncNonDenseOpLog(
   }
 }
 
-void SSPConsistencyController::ThreadGet(int32_t row_id,
+void SSPConsistencyController::ThreadGet(RowId row_id,
   ThreadRowAccessor* row_accessor) {
   STATS_APP_SAMPLE_THREAD_GET_BEGIN(table_id_);
   AbstractRow *row_data = thread_cache_->GetRow(row_id);
@@ -251,18 +252,18 @@ void SSPConsistencyController::ThreadGet(int32_t row_id,
   STATS_APP_SAMPLE_THREAD_GET_END(table_id_);
 }
 
-void SSPConsistencyController::ThreadInc(int32_t row_id, int32_t column_id,
+void SSPConsistencyController::ThreadInc(RowId row_id, int32_t column_id,
     const void* delta) {
   thread_cache_->Inc(row_id, column_id, delta);
 }
 
-void SSPConsistencyController::ThreadBatchInc(int32_t row_id,
+void SSPConsistencyController::ThreadBatchInc(RowId row_id,
   const int32_t* column_ids, const void* updates, int32_t num_updates) {
   thread_cache_->BatchInc(row_id, column_ids, updates, num_updates);
 }
 
 void SSPConsistencyController::ThreadDenseBatchInc(
-    int32_t row_id, const void *updates, int32_t index_st,
+    RowId row_id, const void *updates, int32_t index_st,
     int32_t num_updates) {
   thread_cache_->DenseBatchInc(row_id, updates, index_st, num_updates);
 }

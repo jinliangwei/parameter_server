@@ -47,7 +47,7 @@ public:
   virtual bool AppendRowToBuffs(
       int32_t client_id_st,
       boost::unordered_map<int32_t, RecordBuff> *buffs,
-      const void *row_data, size_t row_size, int32_t row_id,
+      const void *row_data, size_t row_size, RowId row_id,
       int32_t *failed_client_id, uint64_t *num_clients) = 0;
 
   virtual bool IsDirty() const = 0;
@@ -59,7 +59,7 @@ public:
 
   virtual void AppendRowToBuffs(
       boost::unordered_map<int32_t, RecordBuff> *buffs,
-      const void *row_data, size_t row_size, int32_t row_id,
+      const void *row_data, size_t row_size, RowId row_id,
       size_t *num_clients) = 0;
 
   virtual double get_importance() = 0;

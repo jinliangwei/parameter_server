@@ -16,7 +16,7 @@
 namespace lda {
 typedef boost::variate_generator<boost::mt19937&, boost::uniform_int<> >
   rng_t;
-
+using WordId = int64_t;
 // The structure representing a document as a bag of words and the
 // topic assigned to each occurrence of a word.  In term of Bayesian
 // learning and LDA, the bag of words are ``observable'' data; the
@@ -67,9 +67,9 @@ public:
     return accum_token_count_[word_index];
   }
 
-  int32_t Word(int32_t word_index) const { return words_[word_index]; }
+  WordId Word(int32_t word_index) const { return words_[word_index]; }
   int32_t WordTopics(int32_t index) const { return word_topics_[index]; }
-  int32_t &MutableWordTopics(int32_t index) { return word_topics_[index]; }
+  int32_t &WordTopics(int32_t index) { return word_topics_[index]; }
 
   void RandomInitWordTopics(rng_t *one_K_rng) {
     word_topics_.clear();
@@ -93,8 +93,8 @@ public:
     buf_ptr += sizeof(size_t);
 
     memcpy(buf_ptr, words_.data(),
-           words_.size() * sizeof(int32_t));
-    buf_ptr += words_.size()*sizeof(int32_t);
+           words_.size() * sizeof(WordId));
+    buf_ptr += words_.size()*sizeof(WordId);
 
     memcpy(buf_ptr, accum_token_count_.data(),
            accum_token_count_.size() * sizeof(size_t));
@@ -108,13 +108,13 @@ public:
 
     words_.resize(num_unique_words);
 
-    memcpy(words_.data(), buf_ptr, num_unique_words*sizeof(int32_t));
-    buf_ptr += num_unique_words*sizeof(int32_t);
+    memcpy(words_.data(), buf_ptr, num_unique_words*sizeof(WordId));
+    buf_ptr += num_unique_words*sizeof(WordId);
 
     accum_token_count_.resize(num_unique_words + 1);
     memcpy(accum_token_count_.data(), buf_ptr,
            (num_unique_words + 1)*sizeof(size_t));
-    
+
     int32_t last_count_index = words_.size();
     num_tokens_ = accum_token_count_[last_count_index];
   }
@@ -127,7 +127,7 @@ public:
     num_tokens_ = 0;
   }
 
-  void AppendWord(int32_t word_id, size_t count) {
+  void AppendWord(WordId word_id, size_t count) {
     int32_t word_idx = words_.size();
     words_.push_back(word_id);
 
@@ -139,7 +139,7 @@ public:
 
 private:
     // The document unique words list.
-  std::vector<int32_t> words_;
+  std::vector<WordId> words_;
 
   // Accumulative count of the tokens. Length is words_.size() + 1.
   // All unique words are ordered as in the above words_ list.
@@ -192,11 +192,11 @@ class WordOccurrenceIterator {
 
   // Changes the topic of the current occurrence.
   void SetTopic(int new_topic) {
-    doc_->MutableWordTopics(word_occur_index_) = new_topic;
+    doc_->WordTopics(word_occur_index_) = new_topic;
   }
 
   // Returns the word of the current occurrence.
-  int Word() {
+  WordId Word() {
     return doc_->Word(word_index_);
   }
 

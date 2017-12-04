@@ -9,9 +9,7 @@ namespace petuum {
 PartitionOpLogIndex::PartitionOpLogIndex(size_t capacity):
     capacity_(capacity),
     locks_(GlobalContext::GetLockPoolSize()),
-    shared_oplog_index_(new cuckoohash_map<int32_t, bool>
-                        (capacity*kCuckooExpansionFactor)){
-}
+    shared_oplog_index_(new SharedOpLogIndex(capacity*kCuckooExpansionFactor)){ }
 
 PartitionOpLogIndex::~PartitionOpLogIndex() {
   if (shared_oplog_index_ != 0)
@@ -25,8 +23,7 @@ PartitionOpLogIndex::PartitionOpLogIndex(PartitionOpLogIndex && other):
   other.shared_oplog_index_ = 0;
 }
 
-void PartitionOpLogIndex::AddIndex(const std::unordered_set<int32_t>
-                                   &oplog_index) {
+void PartitionOpLogIndex::AddIndex(const OpLogRowIdSet &oplog_index) {
   smtx_.lock_shared();
   for (auto iter = oplog_index.cbegin(); iter != oplog_index.cend(); iter++) {
     locks_.Lock(*iter);
@@ -36,10 +33,10 @@ void PartitionOpLogIndex::AddIndex(const std::unordered_set<int32_t>
   smtx_.unlock_shared();
 }
 
-cuckoohash_map<int32_t, bool> *PartitionOpLogIndex::Reset() {
+SharedOpLogIndex *PartitionOpLogIndex::Reset() {
   smtx_.lock();
-  cuckoohash_map<int32_t, bool> *old_index = shared_oplog_index_;
-  shared_oplog_index_ = new cuckoohash_map<int32_t, bool>
+  SharedOpLogIndex *old_index = shared_oplog_index_;
+  shared_oplog_index_ = new SharedOpLogIndex
                     (capacity_*kCuckooExpansionFactor);
   smtx_.unlock();
   return old_index;
@@ -60,13 +57,11 @@ TableOpLogIndex::TableOpLogIndex(size_t capacity) {
 }
 
 void TableOpLogIndex::AddIndex(int32_t partition_num,
-                               const std::unordered_set<int32_t>
-                               &oplog_index) {
-
+                               const OpLogRowIdSet &oplog_index) {
   partition_oplog_index_[partition_num].AddIndex(oplog_index);
 }
 
-cuckoohash_map<int32_t, bool> *TableOpLogIndex::ResetPartition(
+SharedOpLogIndex *TableOpLogIndex::ResetPartition(
     int32_t partition_num) {
   return partition_oplog_index_[partition_num].Reset();
 }

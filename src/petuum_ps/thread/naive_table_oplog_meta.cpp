@@ -47,7 +47,7 @@ NaiveTableOpLogMeta::~NaiveTableOpLogMeta() {
   }
 }
 
-void NaiveTableOpLogMeta::InsertMergeRowOpLogMeta(int32_t row_id,
+void NaiveTableOpLogMeta::InsertMergeRowOpLogMeta(RowId row_id,
                                              const RowOpLogMeta& row_oplog_meta) {
   auto iter = oplog_map_.find(row_id);
 
@@ -76,13 +76,13 @@ void NaiveTableOpLogMeta::Prepare(size_t num_rows_to_send
 }
 
 
-int32_t NaiveTableOpLogMeta::GetAndClearNextInOrder() {
+RowId NaiveTableOpLogMeta::GetAndClearNextInOrder() {
   if (oplog_list_.empty())
     return -1;
 
-  std::pair<int32_t, RowOpLogMeta*> &oplog_pair
+  std::pair<RowId, RowOpLogMeta*> &oplog_pair
       = oplog_list_.front();
-  int32_t row_id = oplog_pair.first;
+  RowId row_id = oplog_pair.first;
   delete oplog_pair.second;
 
   oplog_list_.pop_front();
@@ -91,7 +91,7 @@ int32_t NaiveTableOpLogMeta::GetAndClearNextInOrder() {
   return row_id;
 }
 
-int32_t NaiveTableOpLogMeta::InitGetUptoClock(int32_t clock) {
+RowId NaiveTableOpLogMeta::InitGetUptoClock(int32_t clock) {
   list_iter_ = oplog_list_.begin();
   clock_to_clear_ = clock;
 
@@ -99,7 +99,7 @@ int32_t NaiveTableOpLogMeta::InitGetUptoClock(int32_t clock) {
   return GetAndClearNextUptoClock();
 }
 
-int32_t NaiveTableOpLogMeta::GetAndClearNextUptoClock() {
+RowId NaiveTableOpLogMeta::GetAndClearNextUptoClock() {
   for (; list_iter_ != oplog_list_.end(); ++list_iter_) {
     if (list_iter_->second->get_clock() > clock_to_clear_) {
       continue;
@@ -110,7 +110,7 @@ int32_t NaiveTableOpLogMeta::GetAndClearNextUptoClock() {
   if (list_iter_ == oplog_list_.end())
     return -1;
 
-  int32_t row_id = list_iter_->first;
+  RowId row_id = list_iter_->first;
   delete list_iter_->second;
 
   list_iter_ = oplog_list_.erase(list_iter_);
@@ -119,8 +119,8 @@ int32_t NaiveTableOpLogMeta::GetAndClearNextUptoClock() {
 }
 
 bool NaiveTableOpLogMeta::CompRowOpLogMetaClock(
-    const std::pair<int32_t, RowOpLogMeta*> &oplog1,
-    const std::pair<int32_t, RowOpLogMeta*> &oplog2) {
+    const std::pair<RowId, RowOpLogMeta*> &oplog1,
+    const std::pair<RowId, RowOpLogMeta*> &oplog2) {
 
   if (oplog1.second->get_clock() == oplog2.second->get_clock()) {
     return oplog1.first < oplog2.first;
@@ -130,8 +130,8 @@ bool NaiveTableOpLogMeta::CompRowOpLogMetaClock(
 }
 
 bool NaiveTableOpLogMeta::CompRowOpLogMetaImportance(
-    const std::pair<int32_t, RowOpLogMeta*> &oplog1,
-    const std::pair<int32_t, RowOpLogMeta*> &oplog2) {
+    const std::pair<RowId, RowOpLogMeta*> &oplog1,
+    const std::pair<RowId, RowOpLogMeta*> &oplog2) {
 
   if (oplog1.second->get_importance() == oplog2.second->get_importance()) {
     return oplog1.first < oplog2.first;
@@ -141,14 +141,14 @@ bool NaiveTableOpLogMeta::CompRowOpLogMetaImportance(
 }
 
 bool NaiveTableOpLogMeta::CompRowOpLogMetaRelativeFIFONReMag(
-    const std::pair<int32_t, RowOpLogMeta*> &oplog1,
-    const std::pair<int32_t, RowOpLogMeta*> &oplog2) {
+    const std::pair<RowId, RowOpLogMeta*> &oplog1,
+    const std::pair<RowId, RowOpLogMeta*> &oplog2) {
 
   return CompRowOpLogMetaImportance(oplog1, oplog2);
 }
 
 void NaiveTableOpLogMeta::ReassignImportanceRandom(
-    std::list<std::pair<int32_t, RowOpLogMeta*> > *oplog_list) {
+    std::list<std::pair<RowId, RowOpLogMeta*> > *oplog_list) {
   srand(time(NULL));
   for (auto list_iter = (*oplog_list).begin(); list_iter != (*oplog_list).end();
        ++list_iter) {
@@ -158,7 +158,7 @@ void NaiveTableOpLogMeta::ReassignImportanceRandom(
 }
 
 void NaiveTableOpLogMeta::ReassignImportanceNoOp(
-    std::list<std::pair<int32_t, RowOpLogMeta*> > *oplog_list) { }
+    std::list<std::pair<RowId, RowOpLogMeta*> > *oplog_list) { }
 
 void NaiveTableOpLogMeta::MergeRowOpLogMetaAccum(RowOpLogMeta *row_oplog_meta,
                                             const RowOpLogMeta& to_merge) {

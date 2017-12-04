@@ -23,7 +23,7 @@ BoundedSparseProcessStorage::~BoundedSparseProcessStorage() {
   }
 }
 
-ClientRow *BoundedSparseProcessStorage::Find(int32_t row_id, RowAccessor* row_accessor) {
+ClientRow *BoundedSparseProcessStorage::Find(RowId row_id, RowAccessor* row_accessor) {
   CHECK_NOTNULL(row_accessor);
   std::pair<ClientRow*, int32_t> row_info;
   // Lock to avoid eviction before incrementing ref count of client_row_ptr.
@@ -42,7 +42,7 @@ ClientRow *BoundedSparseProcessStorage::Find(int32_t row_id, RowAccessor* row_ac
   return 0;
 }
 
-bool BoundedSparseProcessStorage::Find(int32_t row_id) {
+bool BoundedSparseProcessStorage::Find(RowId row_id) {
   std::pair<ClientRow*, int32_t> row_info;
   bool found = storage_map_.find(row_id, row_info);
   if (found)
@@ -50,7 +50,7 @@ bool BoundedSparseProcessStorage::Find(int32_t row_id) {
   return false;
 }
 
-bool BoundedSparseProcessStorage::Insert(int32_t row_id, ClientRow* client_row) {
+bool BoundedSparseProcessStorage::Insert(RowId row_id, ClientRow* client_row) {
   // row_id does not exist in storage. Check space and evict if necessary.
   if (capacity_ < (++num_rows_)) {
     std::pair<int32_t, ClientRow*> evicted = EvictOneRow();
@@ -73,10 +73,10 @@ bool BoundedSparseProcessStorage::Insert(int32_t row_id, ClientRow* client_row) 
 
 // ==================== Private Methods ======================
 
-std::pair<int32_t, ClientRow*> BoundedSparseProcessStorage::EvictOneRow() {
+std::pair<RowId, ClientRow*> BoundedSparseProcessStorage::EvictOneRow() {
   --num_rows_;
   while (true) {
-    int32_t evict_candidate = clock_lru_.FindOneToEvict();
+    auto evict_candidate = clock_lru_.FindOneToEvict();
     // Lock to prevent concurrent insert on evict_candidate.
     Unlocker<> unlocker;
     locks_.Lock(evict_candidate, &unlocker);
@@ -90,7 +90,7 @@ std::pair<int32_t, ClientRow*> BoundedSparseProcessStorage::EvictOneRow() {
       // erase() and Evict() can be called in either order
       storage_map_.erase(evict_candidate);
       clock_lru_.Evict(row_info.second);
-      return std::pair<int32_t, ClientRow*>(evict_candidate,
+      return std::pair<RowId, ClientRow*>(evict_candidate,
                                             candidate_client_row_ptr);
     } else {
       // Can't evict with non-zero ref count.

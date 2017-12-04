@@ -10,6 +10,7 @@
 #include <glog/logging.h>
 
 #include <petuum_ps/thread/bg_oplog.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 
 namespace petuum {
 
@@ -47,13 +48,13 @@ public:
   // return true unless there's a previous request with lower or same clock
   // number
   virtual bool AddRowRequest(RowRequestInfo &request, int32_t table_id,
-                             int32_t row_id) = 0;
+                             RowId row_id) = 0;
 
   // Get a list of app thread ids that can be satisfied with this reply.
   // Corresponding row requests are removed upon returning.
   // If all row requests prior to some version are removed, those OpLogs are
   // removed as well.
-  virtual int32_t InformReply(int32_t table_id, int32_t row_id, int32_t clock,
+  virtual int32_t InformReply(int32_t table_id, RowId row_id, int32_t clock,
     uint32_t curr_version, std::vector<int32_t> *app_thread_ids) = 0;
 
   // Get OpLog of a particular version.
@@ -119,13 +120,13 @@ public:
 
   // return true unless there's a previous request with lower or same clock
   // number
-  bool AddRowRequest(RowRequestInfo &request, int32_t table_id, int32_t row_id);
+  bool AddRowRequest(RowRequestInfo &request, int32_t table_id, RowId row_id);
 
   // Get a list of app thread ids that can be satisfied with this reply.
   // Corresponding row requests are removed upon returning.
   // If all row requests prior to some version are removed, those OpLogs are
   // removed as well.
-  int32_t InformReply(int32_t table_id, int32_t row_id, int32_t clock,
+  int32_t InformReply(int32_t table_id, RowId row_id, int32_t clock,
     uint32_t curr_version, std::vector<int32_t> *app_thread_ids);
 
   // Get OpLog of a particular version.
@@ -155,7 +156,7 @@ private:
 
   // map <table_id, row_id> to a list of requests
   // The list is in increasing order of clock.
-  std::map<std::pair<int32_t, int32_t>,
+  std::map<std::pair<int32_t, RowId>,
     std::list<RowRequestInfo> > pending_row_requests_;
 
   // version -> (table_id, OpLogPartition)

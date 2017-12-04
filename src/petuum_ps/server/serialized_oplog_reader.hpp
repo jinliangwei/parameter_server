@@ -3,7 +3,7 @@
 #include <boost/noncopyable.hpp>
 #include <petuum_ps/server/server_table.hpp>
 #include <petuum_ps/thread/context.hpp>
-
+#include <petuum_ps_common/include/row_id.hpp>
 
 namespace petuum {
 
@@ -38,9 +38,9 @@ public:
     return true;
   }
 
-  const void *Next(int32_t *table_id, int32_t *row_id,
-    int32_t const ** column_ids, int32_t *num_updates,
-    bool *started_new_table) {
+  const void *Next(int32_t *table_id, RowId *row_id,
+                   int32_t const ** column_ids, int32_t *num_updates,
+                   bool *started_new_table) {
     // I have read all.
     if (num_tables_left_ == 0) return 0;
     *started_new_table = false;
@@ -48,9 +48,9 @@ public:
       // can read from current row
       if (num_rows_left_in_current_table_ > 0) {
         *table_id = current_table_id_;
-        *row_id = *(reinterpret_cast<const int32_t*>(
+        *row_id = *(reinterpret_cast<const RowId*>(
             serialized_oplog_ptr_ + offset_));
-        offset_ += sizeof(int32_t);
+        offset_ += sizeof(RowId);
         size_t serialized_size;
         const void *update
             = GetNextUpdate_(curr_sample_row_oplog_,

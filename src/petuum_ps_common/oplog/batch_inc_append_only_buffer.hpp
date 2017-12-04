@@ -23,13 +23,13 @@ public:
   virtual ~BatchIncAppendOnlyBuffer() { }
 
   // return true if succeed, otherwise false
-  bool Inc(int32_t row_id, int32_t col_id, const void *delta);
-  bool BatchInc(int32_t row_id, const int32_t *col_ids,
+  bool Inc(RowId row_id, int32_t col_id, const void *delta);
+  bool BatchInc(RowId row_id, const int32_t *col_ids,
                 const void *deltas, int32_t num_updates) ;
-  bool DenseBatchInc(int32_t row_id, const void *updates, int32_t index_st,
+  bool DenseBatchInc(RowId row_id, const void *updates, int32_t index_st,
                      int32_t num_updates);
   void InitRead();
-  const void *Next(int32_t *row_id, int32_t const **col_ids,
+  const void *Next(RowId *row_id, int32_t const **col_ids,
                    int32_t *num_updates);
 };
 

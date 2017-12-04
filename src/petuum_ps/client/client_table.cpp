@@ -5,6 +5,7 @@
 #include <petuum_ps_common/client/client_row.hpp>
 #include <petuum_ps_common/storage/bounded_dense_process_storage.hpp>
 #include <petuum_ps_common/storage/bounded_sparse_process_storage.hpp>
+#include <petuum_ps_common/storage/unbounded_sparse_process_storage.hpp>
 #include <petuum_ps_common/util/class_register.hpp>
 
 #include <petuum_ps/client/ssp_client_row.hpp>
@@ -14,8 +15,10 @@
 #include <petuum_ps/consistency/ssp_aggr_consistency_controller.hpp>
 #include <petuum_ps/consistency/ssp_aggr_value_consistency_controller.hpp>
 #include <petuum_ps/thread/context.hpp>
+#include <petuum_ps/thread/bg_workers.hpp>
 
 #include <petuum_ps/oplog/sparse_oplog.hpp>
+#include <petuum_ps/oplog/static_sparse_oplog.hpp>
 #include <petuum_ps/oplog/dense_oplog.hpp>
 #include <petuum_ps/oplog/append_only_oplog.hpp>
 
@@ -68,6 +71,24 @@ ClientTable::ClientTable(int32_t table_id, const ClientTableConfig &config):
             GlobalContext::GetLockPoolSize(config.process_cache_capacity)));
       }
       break;
+    case UnboundedSparse:
+      {
+        UnboundedSparseProcessStorage::CreateClientRowFunc StorageCreateClientRow;
+        if (GlobalContext::get_consistency_model() == SSP) {
+          StorageCreateClientRow = std::bind(&ClientTable::CreateSSPClientRow, this,
+                                             std::placeholders::_1);
+        } else if (GlobalContext::get_consistency_model() == SSPPush
+                   || GlobalContext::get_consistency_model() == SSPAggr) {
+          StorageCreateClientRow = std::bind(&ClientTable::CreateClientRow, this,
+                                             std::placeholders::_1);
+        } else {
+          LOG(FATAL) << "Unknown consistency model " << GlobalContext::get_consistency_model();
+        }
+
+        process_storage_ = static_cast<AbstractProcessStorage*>(
+            new UnboundedSparseProcessStorage(StorageCreateClientRow));
+      }
+      break;
     default:
       LOG(FATAL) << "Unknown process storage type " << config.process_storage_type;
   }
@@ -94,6 +115,13 @@ ClientTable::ClientTable(int32_t table_id, const ClientTableConfig &config):
           row_oplog_type_,
           config.table_info.version_maintain);
       break;
+    case StaticSparse:
+      oplog_ = new StaticSparseOpLog(
+          sample_row_,
+          dense_row_oplog_capacity_,
+          row_oplog_type_,
+          config.table_info.version_maintain);
+      break;
     default:
       LOG(FATAL) << "Unknown oplog type = " << config.oplog_type;
   }
@@ -110,7 +138,8 @@ ClientTable::ClientTable(int32_t table_id, const ClientTableConfig &config):
       break;
     case SSPPush:
       {
-        if (config.oplog_type == Sparse || config.oplog_type == Dense) {
+        if (config.oplog_type == Sparse || config.oplog_type == Dense
+            || config.oplog_type == StaticSparse) {
         consistency_controller_
             = new SSPPushConsistencyController(
                 config.table_info,
@@ -179,11 +208,11 @@ void ClientTable::DeregisterThread() {
   oplog_->DeregisterThread();
 }
 
-void ClientTable::GetAsyncForced(int32_t row_id) {
+void ClientTable::GetAsyncForced(RowId row_id) {
   consistency_controller_->GetAsyncForced(row_id);
 }
 
-void ClientTable::GetAsync(int32_t row_id) {
+void ClientTable::GetAsync(RowId row_id) {
   consistency_controller_->GetAsync(row_id);
 }
 
@@ -191,15 +220,37 @@ void ClientTable::WaitPendingAsyncGet() {
   consistency_controller_->WaitPendingAsnycGet();
 }
 
-void ClientTable::ThreadGet(int32_t row_id, ThreadRowAccessor *row_accessor) {
+void ClientTable::RegisterRowSet(const std::set<RowId> &row_id_set) {
+  BgWorkers::RegisterRowSet(table_id_, row_id_set);
+}
+
+void ClientTable::WaitForBulkInit() {
+  BgWorkers::WaitForBulkInit();
+}
+
+void ClientTable::GetLocalRowIdSet(std::vector<RowId> *row_id_vec,
+                                   size_t num_clients,
+                                   size_t num_table_threads,
+                                   size_t table_thread_id,
+                                   size_t *total_num_rows) {
+  auto* unbounded_sparse_process_storage
+      = dynamic_cast<UnboundedSparseProcessStorage*>(process_storage_);
+  CHECK(unbounded_sparse_process_storage != nullptr);
+  unbounded_sparse_process_storage->GetLocalRowIdSet(row_id_vec, num_clients,
+                                                     num_table_threads,
+                                                     table_thread_id,
+                                                     total_num_rows);
+}
+
+void ClientTable::ThreadGet(RowId row_id, ThreadRowAccessor *row_accessor) {
   consistency_controller_->ThreadGet(row_id, row_accessor);
 }
 
-void ClientTable::ThreadInc(int32_t row_id, int32_t column_id,
+void ClientTable::ThreadInc(RowId row_id, int32_t column_id,
                             const void *update) {
   consistency_controller_->ThreadInc(row_id, column_id, update);
 }
-void ClientTable::ThreadBatchInc(int32_t row_id, const int32_t* column_ids,
+void ClientTable::ThreadBatchInc(RowId row_id, const int32_t* column_ids,
                                  const void* updates,
                                  int32_t num_updates) {
   consistency_controller_->ThreadBatchInc(row_id, column_ids, updates,
@@ -210,17 +261,17 @@ void ClientTable::FlushThreadCache() {
   consistency_controller_->FlushThreadCache();
 }
 
-ClientRow *ClientTable::Get(int32_t row_id, RowAccessor *row_accessor) {
+ClientRow *ClientTable::Get(RowId row_id, RowAccessor *row_accessor) {
   return consistency_controller_->Get(row_id, row_accessor);
 }
 
-void ClientTable::Inc(int32_t row_id, int32_t column_id, const void *update) {
+void ClientTable::Inc(RowId row_id, int32_t column_id, const void *update) {
   STATS_APP_SAMPLE_INC_BEGIN(table_id_);
   consistency_controller_->Inc(row_id, column_id, update);
   STATS_APP_SAMPLE_INC_END(table_id_);
 }
 
-void ClientTable::BatchInc(int32_t row_id, const int32_t* column_ids,
+void ClientTable::BatchInc(RowId row_id, const int32_t* column_ids,
   const void* updates, int32_t num_updates) {
   STATS_APP_SAMPLE_BATCH_INC_BEGIN(table_id_);
   consistency_controller_->BatchInc(row_id, column_ids, updates,
@@ -229,7 +280,7 @@ void ClientTable::BatchInc(int32_t row_id, const int32_t* column_ids,
 }
 
 void ClientTable::DenseBatchInc(
-    int32_t row_id, const void *updates, int32_t index_st,
+    RowId row_id, const void *updates, int32_t index_st,
     int32_t num_updates) {
   STATS_APP_SAMPLE_BATCH_INC_BEGIN(table_id_);
   consistency_controller_->DenseBatchInc(row_id, updates, index_st,
@@ -237,7 +288,7 @@ void ClientTable::DenseBatchInc(
   STATS_APP_SAMPLE_BATCH_INC_END(table_id_);
 }
 
-void ClientTable::ThreadDenseBatchInc(int32_t row_id, const void *updates,
+void ClientTable::ThreadDenseBatchInc(RowId row_id, const void *updates,
                                       int32_t index_st,
                                       int32_t num_updates) {
   consistency_controller_->ThreadDenseBatchInc(row_id, updates, index_st,
@@ -251,7 +302,7 @@ void ClientTable::Clock() {
   STATS_APP_SAMPLE_CLOCK_END(table_id_);
 }
 
-cuckoohash_map<int32_t, bool> *ClientTable::GetAndResetOpLogIndex(
+SharedOpLogIndex *ClientTable::GetAndResetOpLogIndex(
     int32_t partition_num) {
   return oplog_index_.ResetPartition(partition_num);
 }

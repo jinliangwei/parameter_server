@@ -77,7 +77,7 @@ void SSPPushBgWorker::ApplyServerPushedRow(uint32_t version, void *mem,
   if (!not_empty) return;
 
   int32_t table_id = 0;
-  int32_t row_id = 0;
+  RowId row_id = 0;
   size_t row_size = 0;
   const void *data = row_reader.Next(&table_id, &row_id, &row_size);
 

@@ -185,7 +185,7 @@ void ServerThread::HandleCreateTable(int32_t sender_id,
 void ServerThread::HandleRowRequest(int32_t sender_id,
                                     RowRequestMsg &row_request_msg) {
   int32_t table_id = row_request_msg.get_table_id();
-  int32_t row_id = row_request_msg.get_row_id();
+  auto row_id = row_request_msg.get_row_id();
   int32_t clock = row_request_msg.get_clock();
   int32_t server_clock = server_obj_.GetMinClock();
   if (server_clock < clock) {
@@ -203,7 +203,7 @@ void ServerThread::HandleRowRequest(int32_t sender_id,
 }
 
 void ServerThread::ReplyRowRequest(int32_t bg_id, ServerRow *server_row,
-                                   int32_t table_id, int32_t row_id,
+                                   int32_t table_id, RowId row_id,
                                    int32_t server_clock, uint32_t version) {
   size_t row_size = server_row->SerializedSize();
 
@@ -267,7 +267,7 @@ void ServerThread::HandleOpLogMsg(int32_t sender_id,
       for (auto request_iter = requests.begin();
 	   request_iter != requests.end(); request_iter++) {
 	int32_t table_id = request_iter->table_id;
-	int32_t row_id = request_iter->row_id;
+	auto row_id = request_iter->row_id;
 	int32_t bg_id = request_iter->bg_id;
 	uint32_t version = server_obj_.GetBgVersion(bg_id);
 	ServerRow *server_row = server_obj_.FindCreateRow(table_id, row_id);
@@ -448,6 +448,12 @@ void *ServerThread::operator() () {
             ShutDownServer();
             return 0;
           }
+        }
+        break;
+      case kRegisterRowSet:
+        {
+          RegisterRowSetMsg msg(msg_mem);
+          HandleRegisterRowSet(sender_id, msg);
         }
         break;
     default:

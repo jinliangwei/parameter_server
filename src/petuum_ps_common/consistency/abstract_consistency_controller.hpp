@@ -2,6 +2,7 @@
 
 #include <petuum_ps_common/storage/abstract_process_storage.hpp>
 #include <petuum_ps_common/include/configs.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 #include <petuum_ps_common/include/abstract_row.hpp>
 #include <petuum_ps_common/util/vector_clock_mt.hpp>
 
@@ -28,46 +29,46 @@ public:
 
   virtual ~AbstractConsistencyController() { }
 
-  virtual void GetAsyncForced(int32_t row_id) = 0;
-  virtual void GetAsync(int32_t row_id) = 0;
+  virtual void GetAsyncForced(RowId row_id) = 0;
+  virtual void GetAsync(RowId row_id) = 0;
   virtual void WaitPendingAsnycGet() = 0;
 
   // Read a row in the table and is blocked until a valid row is obtained
   // (e.g., from server). A row is valid if, for example, it is sufficiently
   // fresh in SSP. The result is returned in row_accessor.
-  virtual ClientRow *Get(int32_t row_id, RowAccessor* row_accessor) = 0;
+  virtual ClientRow *Get(RowId row_id, RowAccessor* row_accessor) = 0;
 
   // Increment (update) an entry. Does not take ownership of input argument
   // delta, which should be of template type UPDATE in Table. This may trigger
   // synchronization (e.g., in value-bound) and is blocked until consistency
   // is ensured.
-  virtual void Inc(int32_t row_id, int32_t column_id, const void* delta) = 0;
+  virtual void Inc(RowId row_id, int32_t column_id, const void* delta) = 0;
 
   // Increment column_ids.size() entries of a row. deltas points to an array.
-  virtual void BatchInc(int32_t row_id, const int32_t* column_ids,
+  virtual void BatchInc(RowId row_id, const int32_t* column_ids,
     const void* updates, int32_t num_updates) = 0;
 
-  virtual void DenseBatchInc(int32_t row_id, const void *updates,
+  virtual void DenseBatchInc(RowId row_id, const void *updates,
                              int32_t index_st, int32_t num_updates) = 0;
 
   // Read a row in the table and is blocked until a valid row is obtained
   // (e.g., from server). A row is valid if, for example, it is sufficiently
   // fresh in SSP. The result is returned in row_accessor.
-  virtual void ThreadGet(int32_t row_id, ThreadRowAccessor* row_accessor) = 0;
+  virtual void ThreadGet(RowId row_id, ThreadRowAccessor* row_accessor) = 0;
 
   // Increment (update) an entry. Does not take ownership of input argument
   // delta, which should be of template type UPDATE in Table. This may trigger
   // synchronization (e.g., in value-bound) and is blocked until consistency
   // is ensured.
-  virtual void ThreadInc(int32_t row_id, int32_t column_id, const void* delta)
+  virtual void ThreadInc(RowId row_id, int32_t column_id, const void* delta)
   = 0;
 
   // Increment column_ids.size() entries of a row. deltas points to an array.
-  virtual void ThreadBatchInc(int32_t row_id, const int32_t* column_ids,
+  virtual void ThreadBatchInc(RowId row_id, const int32_t* column_ids,
     const void* updates, int32_t num_updates) = 0;
 
   virtual void ThreadDenseBatchInc(
-      int32_t row_id, const void *updates, int32_t index_st,
+      RowId row_id, const void *updates, int32_t index_st,
       int32_t num_updates) = 0;
 
   virtual void FlushThreadCache() = 0;

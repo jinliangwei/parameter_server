@@ -24,7 +24,10 @@ class LDAEngine {
 public:
   LDAEngine();
 
-  void ReadData(const std::string& doc_file);
+  void ReadData(const char* data_path,
+                int32_t client_index,
+                size_t num_clients,
+                size_t max_num_files);
 
   // The main thread (in main()) should spin threads, each running Start()
   // concurrently.
@@ -39,7 +42,7 @@ private:  // private data
   int32_t num_threads_;
 
   // vocabs in this data partition.
-  std::set<int32_t> local_vocabs_;
+  std::set<petuum::RowId> local_vocabs_;
   std::mutex local_vocabs_mtx_;
 
   // Compute complete log-likelihood (ll) every compute_ll_interval_

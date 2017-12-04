@@ -69,6 +69,26 @@ void BgWorkerGroup::WaitCreateTable() {
   pthread_barrier_wait(&create_table_barrier_);
 }
 
+void BgWorkerGroup::RegisterRowSet(int32_t table_id,
+                                   const std::set<RowId> &row_id_set) {
+  std::vector<std::vector<RowId>> worker_row_id_set(bg_worker_vec_.size());
+  for (auto row_id : row_id_set) {
+    int32_t bg_idx = GlobalContext::GetPartitionCommChannelIndex(row_id);
+    worker_row_id_set[bg_idx].push_back(row_id);
+  }
+  for (size_t i = 0; i < worker_row_id_set.size(); i++) {
+    bg_worker_vec_[i]->RegisterRowSet(table_id, worker_row_id_set[i]);
+  }
+}
+
+void BgWorkerGroup::WaitForBulkInit() {
+  zmq::message_t zmq_msg;
+  int32_t sender_id;
+  GlobalContext::comm_bus->RecvInProc(&sender_id, &zmq_msg);
+  MsgType msg_type = MsgBase::get_msg_type(zmq_msg.data());
+  CHECK_EQ(msg_type, kBulkInitDone);
+}
+
 bool BgWorkerGroup::RequestRow(int32_t table_id, int32_t row_id,
                                int32_t clock) {
   int32_t bg_idx = GlobalContext::GetPartitionCommChannelIndex(row_id);

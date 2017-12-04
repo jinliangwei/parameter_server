@@ -9,6 +9,8 @@
 #include <petuum_ps_common/util/stats.hpp>
 #include <petuum_ps_common/comm_bus/comm_bus.hpp>
 #include <petuum_ps_common/thread/mem_transfer.hpp>
+#include <petuum_ps_common/storage/unbounded_sparse_process_storage.hpp>
+#include <petuum_ps/oplog/static_sparse_oplog.hpp>
 #include <petuum_ps/thread/context.hpp>
 #include <glog/logging.h>
 #include <utility>
@@ -130,7 +132,17 @@ bool AbstractBgWorker::CreateTable(int32_t table_id,
   return true;
 }
 
-bool AbstractBgWorker::RequestRow(int32_t table_id, int32_t row_id, int32_t clock) {
+void
+AbstractBgWorker::RegisterRowSet(int32_t table_id,
+                                 const std::vector<RowId> &row_id_set) {
+  RegisterRowSetMsg register_msg(sizeof(RowId) * row_id_set.size());
+  register_msg.get_table_id() = table_id;
+  memcpy(register_msg.get_data(), row_id_set.data(), row_id_set.size() * sizeof(RowId));
+  size_t sent_size = SendMsg(reinterpret_cast<MsgBase*>(&register_msg));
+  CHECK_EQ(sent_size, register_msg.get_size());
+}
+
+bool AbstractBgWorker::RequestRow(int32_t table_id, RowId row_id, int32_t clock) {
   {
     RowRequestMsg request_row_msg;
     request_row_msg.get_table_id() = table_id;
@@ -153,7 +165,7 @@ bool AbstractBgWorker::RequestRow(int32_t table_id, int32_t row_id, int32_t cloc
   return true;
 }
 
-void AbstractBgWorker::RequestRowAsync(int32_t table_id, int32_t row_id,
+void AbstractBgWorker::RequestRowAsync(int32_t table_id, RowId row_id,
                                        int32_t clock, bool forced) {
   RowRequestMsg request_row_msg;
   request_row_msg.get_table_id() = table_id;
@@ -418,6 +430,74 @@ void AbstractBgWorker::HandleCreateTables() {
   }
 }
 
+void
+AbstractBgWorker::HandleRegisterRowSet(RegisterRowSetMsg &register_msg) {
+  int32_t table_id = register_msg.get_table_id();
+  RowId* row_id_vec = reinterpret_cast<RowId*>(register_msg.get_data());
+  size_t num_row_ids = register_msg.get_avai_size() / sizeof(RowId);
+  std::unordered_map<int32_t, std::vector<RowId>> server_row_id_map;
+  for (size_t i = 0; i < num_row_ids; i++) {
+    auto row_id = row_id_vec[i];
+    int32_t server_id
+        = GlobalContext::GetPartitionServerID(row_id, my_comm_channel_idx_);
+    server_row_id_map[server_id].push_back(row_id);
+  }
+
+  for (auto server_id : server_ids_) {
+    auto iter = server_row_id_map.find(server_id);
+    if (iter == server_row_id_map.end()) {
+      RegisterRowSetMsg register_msg((size_t) 0);
+      register_msg.get_table_id() = table_id;
+      size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(server_id,
+                                                             register_msg.get_mem(),
+                                                             register_msg.get_size());
+      CHECK_EQ(sent_size, register_msg.get_size());
+    } else {
+      auto &row_id_set = iter->second;
+      RegisterRowSetMsg register_msg(row_id_set.size() * sizeof(RowId));
+      register_msg.get_table_id() = table_id;
+      memcpy(register_msg.get_data(), row_id_set.data(),
+             row_id_set.size() * sizeof(RowId));
+      size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(server_id,
+                                                             register_msg.get_mem(),
+                                                             register_msg.get_size());
+      CHECK_EQ(sent_size, register_msg.get_size());
+    }
+  }
+}
+
+void
+AbstractBgWorker::HandleBulkInitRow(BulkInitRowMsg &bulk_init_row_msg) {
+  LOG(INFO) << __func__;
+  int32_t table_id = bulk_init_row_msg.get_table_id();
+  RowId* row_id_vec = reinterpret_cast<RowId*>(bulk_init_row_msg.get_data());
+  size_t num_row_ids = bulk_init_row_msg.get_avai_size() / sizeof(RowId);
+  LOG(INFO) << "num_row_ids = " << num_row_ids;
+  size_t total_num_rows = bulk_init_row_msg.get_num_table_rows();
+  auto iter = tables_->find(table_id);
+  CHECK(iter != tables_->end());
+  auto* process_storage
+      = dynamic_cast<UnboundedSparseProcessStorage*>(iter->second->get_process_storage_ptr());
+  CHECK(process_storage != nullptr);
+  size_t num_bulk_inits = process_storage->BulkInit(row_id_vec, num_row_ids, total_num_rows);
+  auto* oplog
+      = dynamic_cast<StaticSparseOpLog*>(iter->second->get_oplog_ptr());
+  CHECK(oplog != nullptr);
+  oplog->BulkInit(row_id_vec, num_row_ids);
+  if (num_bulk_inits == GlobalContext::get_num_total_comm_channels()) {
+    BulkInitDoneMsg bulk_init_done_msg;
+    bulk_init_done_msg.get_table_id() = table_id;
+    size_t head_table_thread_id = GlobalContext::get_head_table_thread_id();
+    for (size_t i = 0; i < GlobalContext::get_num_table_threads(); i++) {
+      size_t sent_size = (comm_bus_->*(comm_bus_->SendAny_))(
+          head_table_thread_id + i,
+          bulk_init_done_msg.get_mem(),
+          bulk_init_done_msg.get_size());
+    CHECK_EQ(sent_size, bulk_init_done_msg.get_size());
+    }
+  }
+}
+
 long AbstractBgWorker::HandleClockMsg(bool clock_advanced) {
   if (!msg_tracker_.CheckSendAll()) {
     STATS_BG_ACCUM_WAITS_ON_ACK_CLOCK();
@@ -502,7 +582,8 @@ void AbstractBgWorker::HandleAppendOpLogAndApply(
   AppendOnlyRowOpLogBuffer *append_only_row_oplog_buffer
       = CreateAppendOnlyRowOpLogBufferIfNotExist(table_id, table);
   {
-    int32_t row_id, num_updates;
+    RowId row_id;
+    int32_t num_updates;
     const int32_t *col_ids;
     buff->InitRead();
     const void *updates = buff->Next(&row_id, &col_ids, &num_updates);
@@ -522,7 +603,7 @@ void AbstractBgWorker::HandleAppendOpLogAndApply(
   ++(count_iter->second);
   if (count_iter->second % table->get_bg_apply_append_oplog_freq() == 0) {
     AbstractProcessStorage &process_storage = table->get_process_storage();
-    int32_t row_id;
+    RowId row_id;
     AbstractRowOpLog *row_oplog
         = append_only_row_oplog_buffer->InitReadTmpOpLog(&row_id);
     while (row_oplog != 0) {
@@ -553,7 +634,8 @@ void AbstractBgWorker::HandleAppendOpLogAndNotApply(
       = CreateAppendOnlyRowOpLogBufferIfNotExist(table_id, table);
 
   {
-    int32_t row_id, num_updates;
+    RowId row_id;
+    int32_t num_updates;
     const int32_t *col_ids;
     buff->InitRead();
     const void *updates = buff->Next(&row_id, &col_ids, &num_updates);
@@ -689,7 +771,7 @@ size_t AbstractBgWorker::SendOpLogMsgs(bool clock_advanced) {
 }
 
 size_t AbstractBgWorker::CountRowOpLogToSend(
-      int32_t row_id, AbstractRowOpLog *row_oplog,
+      RowId row_id, AbstractRowOpLog *row_oplog,
       std::map<int32_t, size_t> *table_num_bytes_by_server,
       BgOpLogPartition *bg_table_oplog,
       GetSerializedRowOpLogSizeFunc GetSerializedRowOpLogSize) {
@@ -699,7 +781,7 @@ size_t AbstractBgWorker::CountRowOpLogToSend(
       row_id, my_comm_channel_idx_);
   // 1) row id
   // 2) serialized row size
-  size_t serialized_size = sizeof(int32_t)
+  size_t serialized_size = sizeof(RowId)
                            + GetSerializedRowOpLogSize(row_oplog);
   (*table_num_bytes_by_server)[server_id] += serialized_size;
   bg_table_oplog->InsertOpLog(row_id, row_oplog);
@@ -720,7 +802,7 @@ void AbstractBgWorker::CheckForwardRowRequestToServer(
     int32_t app_thread_id, RowRequestMsg &row_request_msg) {
 
   int32_t table_id = row_request_msg.get_table_id();
-  int32_t row_id = row_request_msg.get_row_id();
+  RowId row_id = row_request_msg.get_row_id();
   int32_t clock = row_request_msg.get_clock();
   bool forced = row_request_msg.get_forced_request();
 
@@ -750,7 +832,6 @@ void AbstractBgWorker::CheckForwardRowRequestToServer(
     }
   }
 
-  std::pair<int32_t, int32_t> request_key(table_id, row_id);
   RowRequestInfo row_request;
   row_request.app_thread_id = app_thread_id;
   row_request.clock = row_request_msg.get_clock();
@@ -774,7 +855,7 @@ void AbstractBgWorker::CheckForwardRowRequestToServer(
 
 void AbstractBgWorker::UpdateExistingRow(
     int32_t table_id,
-    int32_t row_id, ClientRow *client_row, ClientTable *client_table,
+    RowId row_id, ClientRow *client_row, ClientTable *client_table,
     const void *data, size_t row_size, uint32_t version,
     bool version_maintain, uint64_t row_version) {
   AbstractRow *row_data = client_row->GetRowDataPtr();
@@ -849,7 +930,7 @@ void AbstractBgWorker::UpdateExistingRow(
   }
 }
 
-void AbstractBgWorker::InsertNonexistentRow(int32_t table_id, int32_t row_id,
+void AbstractBgWorker::InsertNonexistentRow(int32_t table_id, RowId row_id,
                                             ClientTable *client_table, const void *data,
                                             size_t row_size, uint32_t version,
                                             int32_t clock) {
@@ -909,7 +990,7 @@ void AbstractBgWorker::HandleServerRowRequestReply(
     ServerRowRequestReplyMsg &server_row_request_reply_msg) {
 
   int32_t table_id = server_row_request_reply_msg.get_table_id();
-  int32_t row_id = server_row_request_reply_msg.get_row_id();
+  RowId row_id = server_row_request_reply_msg.get_row_id();
   int32_t clock = server_row_request_reply_msg.get_clock();
   uint32_t version = server_row_request_reply_msg.get_version();
 
@@ -958,9 +1039,7 @@ void AbstractBgWorker::HandleServerRowRequestReply(
     CHECK_EQ(sent_size, row_request_msg.get_size());
   }
 
-  std::pair<int32_t, int32_t> request_key(table_id, row_id);
   RowRequestReplyMsg row_request_reply_msg;
-
   for (int i = 0; i < (int) app_thread_ids.size(); ++i) {
     size_t sent_size = comm_bus_->SendInProc(app_thread_ids[i],
       row_request_reply_msg.get_mem(), row_request_reply_msg.get_size());
@@ -1225,6 +1304,18 @@ void *AbstractBgWorker::operator() () {
       case kAdjustSuppressionLevel:
         {
           HandleAdjustSuppressionLevel();
+        }
+        break;
+      case kRegisterRowSet:
+        {
+          RegisterRowSetMsg register_row_set_msg(msg_mem);
+          HandleRegisterRowSet(register_row_set_msg);
+        }
+        break;
+      case kBulkInitRow:
+        {
+          BulkInitRowMsg bulk_init_row_msg(msg_mem);
+          HandleBulkInitRow(bulk_init_row_msg);
         }
         break;
       default:

@@ -32,7 +32,7 @@ void SSPBgWorker::CreateRowRequestOpLogMgr() {
   row_request_oplog_mgr_ = new SSPRowRequestOpLogMgr;
 }
 
-bool SSPBgWorker::GetRowOpLog(AbstractOpLog &table_oplog, int32_t row_id,
+bool SSPBgWorker::GetRowOpLog(AbstractOpLog &table_oplog, RowId row_id,
                               AbstractRowOpLog **row_oplog_ptr) {
   return table_oplog.GetEraseOpLog(row_id, row_oplog_ptr);
 }
@@ -61,7 +61,8 @@ BgOpLog *SSPBgWorker::PrepareOpLogsToSend() {
 
     if (table_pair.second->get_no_oplog_replay()) {
       if (table_pair.second->get_oplog_type() == Sparse ||
-          table_pair.second->get_oplog_type() == Dense)
+          table_pair.second->get_oplog_type() == Dense ||
+          table_pair.second->get_oplog_type() == StaticSparse)
         PrepareOpLogsNormalNoReplay(table_id, table_pair.second);
       else if (table_pair.second->get_oplog_type() == AppendOnly)
         PrepareOpLogsAppendOnlyNoReplay(table_id, table_pair.second);
@@ -70,7 +71,8 @@ BgOpLog *SSPBgWorker::PrepareOpLogsToSend() {
     } else {
       BgOpLogPartition *bg_table_oplog = 0;
       if (table_pair.second->get_oplog_type() == Sparse ||
-          table_pair.second->get_oplog_type() == Dense)
+          table_pair.second->get_oplog_type() == Dense ||
+          table_pair.second->get_oplog_type() == StaticSparse)
         bg_table_oplog = PrepareOpLogsNormal(table_id, table_pair.second);
       else if (table_pair.second->get_oplog_type() == AppendOnly)
         bg_table_oplog = PrepareOpLogsAppendOnly(table_id, table_pair.second);
@@ -97,7 +99,7 @@ BgOpLogPartition *SSPBgWorker::PrepareOpLogsNormal(
   }
 
   // Get OpLog index
-  cuckoohash_map<int32_t, bool> *new_table_oplog_index_ptr
+  SharedOpLogIndex *new_table_oplog_index_ptr
       = table->GetAndResetOpLogIndex(my_comm_channel_idx_);
 
   size_t table_update_size
@@ -113,7 +115,7 @@ BgOpLogPartition *SSPBgWorker::PrepareOpLogsNormal(
   {
     auto lt = new_table_oplog_index_ptr->lock_table();
     for (const auto& it : lt) {
-      int32_t row_id = it.first;
+      auto row_id = it.first;
       AbstractRowOpLog *row_oplog = 0;
       bool found = GetRowOpLog(table_oplog, row_id, &row_oplog);
       if (!found) continue;
@@ -155,7 +157,7 @@ BgOpLogPartition *SSPBgWorker::PrepareOpLogsAppendOnly(
     AppendOnlyRowOpLogBuffer *append_only_row_oplog_buffer = buff_iter->second;
     append_only_row_oplog_buffer->MergeTmpOpLog();
 
-    int32_t row_id;
+    RowId row_id;
     AbstractRowOpLog *row_oplog
         = append_only_row_oplog_buffer->InitReadRmOpLog(&row_id);
     while (row_oplog != 0) {
@@ -186,13 +188,13 @@ void SSPBgWorker::PrepareOpLogsNormalNoReplay(
   RowOpLogSerializer *row_oplog_serializer = serializer_iter->second;
 
   // Get OpLog index
-  cuckoohash_map<int32_t, bool> *new_table_oplog_index_ptr
+  SharedOpLogIndex *new_table_oplog_index_ptr
       = table->GetAndResetOpLogIndex(my_comm_channel_idx_);
 
   {
     auto lt = new_table_oplog_index_ptr->lock_table();
     for (const auto& it : lt) {
-      int32_t row_id = it.first;
+      auto row_id = it.first;
       OpLogAccessor oplog_accessor;
       bool found = table_oplog.FindAndLock(row_id, &oplog_accessor);
 
@@ -234,7 +236,7 @@ void SSPBgWorker::PrepareOpLogsAppendOnlyNoReplay(
   if (buff_iter != append_only_row_oplog_buffer_map_.end()) {
     AppendOnlyRowOpLogBuffer *append_only_row_oplog_buffer = buff_iter->second;
 
-    int32_t row_id;
+    RowId row_id;
     AbstractRowOpLog *row_oplog
         = append_only_row_oplog_buffer->InitReadOpLog(&row_id);
     while (row_oplog != 0) {
@@ -261,7 +263,7 @@ void SSPBgWorker::TrackBgOpLog(BgOpLog *bg_oplog) {
 }
 
 void SSPBgWorker::CheckAndApplyOldOpLogsToRowData(
-    int32_t table_id, int32_t row_id, uint32_t version,
+    int32_t table_id, RowId row_id, uint32_t version,
     AbstractRow *row_data) {
   if (version + 1 < version_) {
     int32_t version_st = version + 1;
@@ -272,7 +274,7 @@ void SSPBgWorker::CheckAndApplyOldOpLogsToRowData(
 }
 
 void SSPBgWorker::ApplyOldOpLogsToRowData(
-    int32_t table_id, int32_t row_id, uint32_t version_st,
+    int32_t table_id, RowId row_id, uint32_t version_st,
     uint32_t version_end, AbstractRow *row_data) {
   STATS_BG_ACCUM_SERVER_PUSH_VERSION_DIFF_ADD(
       version_end - version_st + 1);

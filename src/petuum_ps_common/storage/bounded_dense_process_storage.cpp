@@ -15,7 +15,7 @@ BoundedDenseProcessStorage::BoundedDenseProcessStorage(size_t capacity,
     CreateClientRow_(CreateClientRow),
     offset_(offset) {
 
-  for (int i = 0; i < capacity_; ++i) {
+  for (size_t i = 0; i < capacity_; ++i) {
     storage_vec_[i] = CreateClientRow_(0);
   }
 
@@ -32,27 +32,27 @@ BoundedDenseProcessStorage::~BoundedDenseProcessStorage() {
   }
 }
 
-ClientRow *BoundedDenseProcessStorage::Find(int32_t row_id,
+ClientRow *BoundedDenseProcessStorage::Find(RowId row_id,
                                             RowAccessor* row_accessor __attribute__ ((unused))) {
   return (this->*Find_)(row_id);
 }
 
-ClientRow *BoundedDenseProcessStorage::FindOffset(int32_t row_id) {
+ClientRow *BoundedDenseProcessStorage::FindOffset(RowId row_id) {
   int32_t vec_idx = row_id - offset_;
   return storage_vec_[vec_idx];
 }
 
-ClientRow *BoundedDenseProcessStorage::FindNoOffset(int32_t row_id) {
+ClientRow *BoundedDenseProcessStorage::FindNoOffset(RowId row_id) {
   CHECK(row_id < storage_vec_.size()) << "row id = " << row_id;
   //LOG(INFO) << "row_id = " << row_id;
   return storage_vec_[row_id];
 }
 
-bool BoundedDenseProcessStorage::Find(int32_t row_id) {
+bool BoundedDenseProcessStorage::Find(RowId row_id) {
   return true;
 }
 
-bool BoundedDenseProcessStorage::Insert(int32_t row_id, ClientRow* client_row) {
+bool BoundedDenseProcessStorage::Insert(RowId row_id, ClientRow* client_row) {
   LOG(FATAL) << "Operation not supported! to be inserted = " << row_id;
   return false;
 }

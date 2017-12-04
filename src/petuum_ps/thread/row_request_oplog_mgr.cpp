@@ -7,12 +7,12 @@
 namespace petuum {
 
 bool SSPRowRequestOpLogMgr::AddRowRequest(RowRequestInfo &request,
-  int32_t table_id, int32_t row_id) {
+  int32_t table_id, RowId row_id) {
   uint32_t version = request.version;
   request.sent = true;
 
   {
-    std::pair<int32_t, int32_t> request_key(table_id, row_id);
+    std::pair<int32_t, RowId> request_key(table_id, row_id);
     if (pending_row_requests_.count(request_key) == 0) {
       pending_row_requests_.insert(std::make_pair(request_key,
         std::list<RowRequestInfo>()));
@@ -53,10 +53,10 @@ bool SSPRowRequestOpLogMgr::AddRowRequest(RowRequestInfo &request,
   return request.sent;
 }
 
-int32_t SSPRowRequestOpLogMgr::InformReply(int32_t table_id, int32_t row_id,
+int32_t SSPRowRequestOpLogMgr::InformReply(int32_t table_id, RowId row_id,
   int32_t clock, uint32_t curr_version, std::vector<int32_t> *app_thread_ids) {
   (*app_thread_ids).clear();
-  std::pair<int32_t, int32_t> request_key(table_id, row_id);
+  std::pair<int32_t, RowId> request_key(table_id, row_id);
   std::list<RowRequestInfo> &request_list = pending_row_requests_[request_key];
   int32_t clock_to_request = -1;
 

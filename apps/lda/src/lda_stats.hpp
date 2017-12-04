@@ -14,14 +14,14 @@ namespace lda {
 // We reference Griffiths and Steyvers (PNAS, 2003).
 class LDAStats {
 public:
-  LDAStats();
+  LDAStats(size_t num_words);
 
   // This is part of log P(z) in eq.[3].
   double ComputeOneDocLLH(DocumentWordTopics* doc);
 
   // This computes the terms in numerator part of log P(w|z) in eq.[2].
   // Covers words within [word_idx_start, word_idx_end).
-  void ComputeWordLLH(int32_t ith_llh, int word_idx_start, int word_idx_end);
+  void ComputeWordLLH(int32_t ith_llh, const std::vector<petuum::RowId> &row_id_set);
 
   // Only 1 client should call this in a iteration.
   void ComputeWordLLHSummary(int32_t ith_llh, int iter);
@@ -51,7 +51,7 @@ private:
   int32_t K_;
 
   // Number of vocabs.
-  int32_t V_;
+  size_t V_;
 
   // Dirichlet prior for word-topic vectors.
   float beta_;

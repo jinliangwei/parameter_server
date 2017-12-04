@@ -22,20 +22,20 @@ public:
 
   ~BoundedDenseProcessStorage();
 
-  ClientRow *Find(int32_t row_id, RowAccessor* row_accessor);
+  ClientRow *Find(RowId row_id, RowAccessor* row_accessor);
 
-  bool Find(int32_t row_id);
+  bool Find(RowId row_id);
 
   // Insert a row, and take ownership of client_row.
   // Insertion failes if the row has already existed and return false; otherwise
   // return true.
-  bool Insert(int32_t row_id, ClientRow* client_row);
+  bool Insert(RowId row_id, ClientRow* client_row);
 
 private:
-  inline ClientRow *FindOffset(int32_t row_id);
-  inline ClientRow *FindNoOffset(int32_t row_id);
+  inline ClientRow *FindOffset(RowId row_id);
+  inline ClientRow *FindNoOffset(RowId row_id);
 
-  typedef ClientRow* (BoundedDenseProcessStorage::*FindFunc)(int32_t row_id);
+  typedef ClientRow* (BoundedDenseProcessStorage::*FindFunc)(RowId row_id);
 
   std::vector<ClientRow*> storage_vec_;
 

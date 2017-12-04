@@ -133,14 +133,14 @@ ServerTable::ServerTable(ServerTable && other):
   other.server_table_logic_ = 0;
 }
 
-ServerRow *ServerTable::FindRow(int32_t row_id) {
+ServerRow *ServerTable::FindRow(RowId row_id) {
   auto row_iter = storage_.find(row_id);
   if(row_iter == storage_.end())
     return 0;
   return row_iter->second;
 }
 
-ServerRow *ServerTable::CreateRow (int32_t row_id) {
+ServerRow *ServerTable::CreateRow (RowId row_id) {
   int32_t row_type = table_info_.row_type;
   AbstractRow *row_data
       = ClassRegistry<AbstractRow>::GetRegistry().CreateObject(row_type);
@@ -161,8 +161,46 @@ ServerRow *ServerTable::CreateRow (int32_t row_id) {
   return storage_[row_id];
 }
 
-bool ServerTable::ApplyRowOpLog (int32_t row_id, const int32_t *column_ids,
-        const void *updates, int32_t num_updates) {
+bool ServerTable::RegisterRowSet(const RowId *row_id_vec,
+                                 size_t num_row_ids,
+                                 int32_t client_id) {
+  for (size_t i = 0; i < num_row_ids; i++) {
+    auto row_id = row_id_vec[i];
+    auto row_iter = storage_.find(row_id);
+    ServerRow *row = nullptr;
+    if(row_iter == storage_.end()) {
+      row = CreateRow(row_id);
+    } else {
+      row = row_iter->second;
+    }
+    row->Subscribe(client_id);
+  }
+  num_row_set_registrations_received_++;
+  if (num_row_set_registrations_received_ == GlobalContext::get_num_clients()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void ServerTable::GetBulkInitRows(std::vector<std::vector<RowId>>* row_id_vec) {
+  row_id_vec->resize(GlobalContext::get_num_clients());
+  for (auto &row_pair : storage_) {
+    auto row_id = row_pair.first;
+    auto *row = row_pair.second;
+    int32_t client_id = row_id % GlobalContext::get_num_clients();
+    (*row_id_vec)[client_id].push_back(row_id);
+    for (int32_t i = 0; i < GlobalContext::get_num_clients(); i++) {
+      if (i == client_id) continue;
+      if (row->IsSubscribed(i)) {
+        (*row_id_vec)[i].push_back(row_id);
+      }
+    }
+  }
+}
+
+bool ServerTable::ApplyRowOpLog (RowId row_id, const int32_t *column_ids,
+                                 const void *updates, int32_t num_updates) {
 
   auto row_iter = storage_.find(row_id);
   if (row_iter == storage_.end()) {
@@ -188,7 +226,7 @@ bool ServerTable::ApplyRowOpLog (int32_t row_id, const int32_t *column_ids,
   return true;
 }
 
-void ServerTable::RowSent(int32_t row_id, ServerRow *row, size_t num_clients) {
+void ServerTable::RowSent(RowId row_id, ServerRow *row, size_t num_clients) {
   if (server_table_logic_ != 0) {
     server_table_logic_->ServerRowSent(row_id, row->get_version(), num_clients);
   }
@@ -287,7 +325,7 @@ void ServerTable::SortCandidateVectorImportance(
 }
 
 void ServerTable::GetPartialTableToSend(
-    std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+    std::vector<std::pair<RowId, ServerRow*> > *rows_to_send,
     boost::unordered_map<int32_t, size_t> *client_size_map) {
 
   if (server_table_logic_ != 0
@@ -299,7 +337,7 @@ void ServerTable::GetPartialTableToSend(
 }
 
 void ServerTable::GetPartialTableToSendRegular(
-    std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+    std::vector<std::pair<RowId, ServerRow*> > *rows_to_send,
     boost::unordered_map<int32_t, size_t> *client_size_map) {
 
   size_t num_rows_threshold = table_info_.server_push_row_upper_bound;
@@ -346,7 +384,7 @@ void ServerTable::GetPartialTableToSendRegular(
 }
 
 void ServerTable::GetPartialTableToSendFixedOrder(
-    std::vector<std::pair<int32_t, ServerRow*> > *rows_to_send,
+    std::vector<std::pair<RowId, ServerRow*> > *rows_to_send,
     boost::unordered_map<int32_t, size_t> *client_size_map) {
 
   if (push_row_iter_ == storage_.end())
@@ -380,13 +418,13 @@ void ServerTable::GetPartialTableToSendFixedOrder(
 
 void ServerTable::AppendRowsToBuffsPartial(
     boost::unordered_map<int32_t, RecordBuff> *buffs,
-    const std::vector<std::pair<int32_t, ServerRow*> > &rows_to_send) {
+    const std::vector<std::pair<RowId, ServerRow*> > &rows_to_send) {
 
   tmp_row_buff_ = new uint8_t[tmp_row_buff_size_];
 
   size_t num_clients = 0;
   for (const auto &row_pair : rows_to_send) {
-    int32_t row_id = row_pair.first;
+    RowId row_id = row_pair.first;
     ServerRow *row = row_pair.second;
     if (row->NoClientSubscribed()
         || !row->IsDirty()) {
@@ -503,7 +541,7 @@ void ServerTable::ReadSnapShot(const std::string &resume_dir,
 
   leveldb::Iterator* it = db->NewIterator(leveldb::ReadOptions());
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
-    int32_t row_id = *(reinterpret_cast<const int32_t*>(it->key().data()));
+    RowId row_id = *(reinterpret_cast<const RowId*>(it->key().data()));
     const uint8_t *row_data
         = reinterpret_cast<const uint8_t*>(it->value().data());
     size_t row_data_size = it->value().size();

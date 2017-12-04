@@ -2,6 +2,7 @@
 
 #include <petuum_ps_common/include/ps_table_group.hpp>
 #include <petuum_ps_common/include/table.hpp>
+#include <petuum_ps_common/include/row_id.hpp>
 #include <petuum_ps_common/include/configs.hpp>
 #include <petuum_ps_common/storage/dense_row.hpp>
 #include <petuum_ps_common/storage/dense_row_float16.hpp>
