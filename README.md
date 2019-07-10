@@ -37,3 +37,43 @@ Before running the application, you need to prepare your dataset using `data_spl
 cd apps/lda
 make lda
 ```
+### Host file
+Bosen needs a host file listing all machines to be used in the following format, suppose we are using 4 machines:
+
+```bash
+0 10.0.0.1 10000
+2 10.0.0.2 10000
+3 10.0.0.3 10000
+4 10.0.0.4 10000
+```
+Each line contains `<host-id> <host-ip> <port number>`
+
+### Reproduce the TuX2 MatrixFact experiment
+1. Prepare your dataset
+```bash
+make data_split
+./scripts/run_data_split.sh
+```
+See `scripts/run_data_split.sh` for options. 
+
+2. Run the matrix program 
+```bash
+./scripts/run_matrixfact_nsdi17.sh
+```
+
+See `scripts/run_matrixfact_nsdi17.sh` for options, you don't need to worry aboud anything below table staleness if you just use the Netflix dataset.
+
+### Reproduce the TuX2 LDA experiment
+1. Prepare the pubmed dataset
+```bash
+make data_preprocessor
+./scripts/run_data_processor.sh [input-data-path] [output-data-path] [number-of-partitions]
+```
+`[input-data-path]` is in libsvm format.
+`[number-of-partitions]` is number of machines to use.
+
+2. Run the LDA program
+```bash
+./scripts/run_lda_nsdi17.sh
+```
+See `scripts/pubmed.config.sh` for options.
